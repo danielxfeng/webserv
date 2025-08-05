@@ -30,7 +30,7 @@ WHITE = \033[0;97m
 NAME := webserv
 CC := c++
 RM := rm -rf
-FLAGS := -Wall -Wextra -Werror -std=c++17
+FLAGS := -Wall -Wextra -Werror -std=c++20
 
 SRCS_FILES = main.cpp
 
