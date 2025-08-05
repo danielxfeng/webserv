@@ -6,7 +6,7 @@
 #    By: gpellech <gpellech@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/20 06:27:04 by gpellech          #+#    #+#              #
-#    Updated: 2025/06/19 07:29:02 by gpellech         ###   ########.fr        #
+#    Updated: 2025/08/05 07:45:22 by gpellech         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 X = \033[0;39m
@@ -27,12 +27,12 @@ MAGENTA = \033[0;95m
 CYAN = \033[0;96m
 WHITE = \033[0;97m
 
-NAME := RPN
+NAME := webserv
 CC := c++
 RM := rm -rf
 FLAGS := -Wall -Wextra -Werror -std=c++17
 
-SRCS_FILES = RPN.cpp main.cpp
+SRCS_FILES = main.cpp
 
 OBJS_FILES = $(SRCS_FILES:.cpp=.o)
 
