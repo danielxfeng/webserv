@@ -1,125 +1,155 @@
+#include "WebServ.hpp"
 
+void setNonBlocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1)
+        throw WebServErr::SysCallErrException("fcntl(F_GETFL) failed");
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        throw WebServErr::SysCallErrException("fcntl(F_SETFL) failed");
+}
+
+int listenToPort(unsigned int port)
+{
+    int serverFd = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverFd < 0)
+        throw WebServErr::SysCallErrException("socket creation failed");
+
+    setNonBlocking(serverFd);
+
+    sockaddr_in serverAddress;
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(port);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(serverFd, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
+        throw WebServErr::SysCallErrException("bind failed");
+
+    if (listen(serverFd, 10) == -1)
+        throw WebServErr::SysCallErrException("listen failed");
+
+    return serverFd;
+}
+
+void registerToEpoll(int epollFd, int fd, int direction)
+{
+    struct epoll_event event{};
+    event.events = direction;
+    event.data.fd = fd;
+
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event) == -1)
+        throw WebServErr::SysCallErrException("epoll_ctl failed");
+}
+
+void timeoutKiller(const std::unordered_map<unsigned int, Server *> &serverMap)
+{
+    for (const auto &server : serverMap)
+        server.second->timeoutKiller();
+}
+
+WebServ::WebServ()
+{
+    // TODO:
+    // Parse from config file.
+    // Add servers to serverVec_.
+
+    // Initialize epoll.
+    epollFd_ = epoll_create(0);
+    if (epollFd_ == -1)
+        throw WebServErr::SysCallErrException("epoll_create failed");
+}
 
 void WebServ::eventLoop()
 {
-    struct epoll_event event, events[10]; // TODO: replace 10 with configurable value
+    struct epoll_event events[config_.max_poll_events()];
 
-    // Init a epoll instance
-    int epollFd = epoll_create(0);
-    if (epollFd == -1)
+    for (auto it = serverVec_.begin(); it != serverVec_.end(); ++it)
     {
-        std::cerr << "Failed to create epoll instance." << std::endl;
-        return;
+        int serverFd = listenToPort(it->port());
+        registerToEpoll(epollFd_, serverFd, EPOLLIN);
+        serverMap_[serverFd] = &(*it);
     }
 
-    // Listen to the ports
-    auto it = serverMap_.begin();
-    while (it != serverMap_.end())
-    {
-        int socketFd = socket(AF_INET, SOCK_STREAM, 0);
-        if (socketFd < 0)
-        {
-            std::cerr << "Error creating socket" << std::endl;
-            return;
-        }
-
-        sockaddr_in serverAddress;
-        serverAddress.sin_family = AF_INET;
-        serverAddress.sin_port = htons(8080); //  TODO: replace with it->first
-        serverAddress.sin_addr.s_addr = INADDR_ANY;
-
-        if (bind(socketFd, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
-        {
-            std::cerr << "Failed to bind socket." << std::endl;
-            close(socketFd);
-            return;
-        }
-
-        if (listen(socketFd, 10) == -1) //  TODO: replace it with value from config.
-        {
-            std::cerr << "Failed to listen." << std::endl;
-            close(socketFd);
-            return;
-        }
-
-        event.events = EPOLLIN;
-        event.data.fd = socketFd;
-        if (epoll_ctl(epollFd, EPOLL_CTL_ADD, socketFd, &event) == -1)
-        {
-            std::cerr << "Failed to add socket to epoll instance." << std::endl;
-            close(socketFd); // TODO: close all sockets.
-            close(epollFd);
-            return 1;
-        }
-    }
-
-    // event loop
     while (true)
     {
-        //TODO: Timeout killer.
+        int numEvents = epoll_wait(epollFd_, events, config_.max_poll_events(), config_.max_poll_timeout());
+        if (numEvents == -1)
+            throw WebServErr::SysCallErrException("epoll_wait failed");
 
-        while (true)
+        for (int i = 0; i < numEvents; ++i)
         {
-            //TODO: Timeout killer.
-
-            int numEvents = epoll_wait(epollFd, events, 10, 1000); // TODO:replace 10 and 1000 with configurable value
-            if (numEvents == -1)
+            const auto server = serverMap_.find(events[i].data.fd);
+            const bool isNewConn = server != serverMap_.end() && (events[i].events & EPOLLIN);
+            if (isNewConn)
             {
-                std::cerr << "Failed to wait for events." << std::endl; // TODO: handle error
-                break;
+                struct sockaddr_in clientAddress;
+                socklen_t clientAddressLength = sizeof(clientAddress);
+                int connClientFd = accept(events[i].data.fd, (struct sockaddr *)&clientAddress, &clientAddressLength);
+                if (connClientFd == -1)
+                {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        continue; // No more connections to accept
+                    if (errno == ECONNABORTED || errno == EINTR)
+                        continue; // Connection aborted or interrupted, ignore this error
+                    throw WebServErr::SysCallErrException("accept failed");
+                }
+
+                setNonBlocking(connClientFd);
+                connMap_[connClientFd] = server->second;
+                server->second->addConn(connClientFd);
+
+                registerToEpoll(epollFd_, connClientFd, EPOLLIN);
             }
-
-            for (int i = 0; i < numEvents; ++i)
+            else
             {
-                // Check if the event is for a server socket
-                if (serverMap_.find(events[i].data.fd) != serverMap_.end()) // TODO: replace with serverMap. fd
+                const auto connServer = connMap_.find(events[i].data.fd);
+                bool ifClose = false;
+                if (connServer == connMap_.end())
                 {
-                    struct sockaddr_in clientAddress;
-                    socklen_t clientAddressLength = sizeof(clientAddress);
-                    int clientFd = accept(serverFd, (struct sockaddr *)&clientAddress, &clientAddressLength);
-                    if (clientFd == -1)
-                    {
-                        std::cerr << "Failed to accept client connection." << std::endl;
-                        continue;
-                    }
+                    // TODO: Log error: connection not found
+                    continue;
+                }
 
-                    // Add client socket to epoll
-                    event.events = EPOLLIN;
-                    event.data.fd = clientFd;
-                    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &event) == -1)
-                    {
-                        std::cerr << "Failed to add client socket to epoll instance." << std::endl;
-                        close(clientFd);
-                        continue;
-                    }
-                }
-                else if (events[i].events & EPOLLIN) // Check if the event is for a client socket
+                if (events[i].events & EPOLLIN)
+                    ifClose = connServer->second->handleRequest(connServer->first);
+                if (events[i].events & EPOLLOUT)
                 {
-                    // incoming data from client
+                    const bool sendResponseClose = connServer->second->sendResponse(connServer->first);
+                    ifClose = ifClose || sendResponseClose;
+                }
+                if (events[i].events & (EPOLLHUP | EPOLLERR))
+                {
+                    connServer->second->closeConn(connServer->first);
+                    ifClose = true;
+                }
 
-                    // incoming data from response
-                }
-                else if (events[i].events & EPOLLOUT) // Check if the event is for a client socket
-                {
-                    // outgoing data to client
-
-                    // outgoing data to handler
-                }
-                else if (events[i].events & EPOLLERR) // Check if the event is an error
-                {
-                    std::cerr << "Error on socket: " << events[i].data.fd << std::endl;
-                    close(events[i].data.fd); // Close the socket on error
-                }
-                else if (events[i].events & EPOLLHUP) // Check if the event is a hang-up
-                {
-                    std::cerr << "Hang-up on socket: " << events[i].data.fd << std::endl;
-                    close(events[i].data.fd); // Close the socket on hang-up
-                }
-                else
-                {
-                    std::cerr << "Unknown event on socket: " << events[i].data.fd << std::endl;
-                    close(events[i].data.fd); // Close the socket on unknown event
-                }
+                if (ifClose)
+                    closeConn(connServer->first);
             }
         }
+
+        timeoutKiller(serverMap_);
     }
+}
+
+void WebServ::closeConn(int fd)
+{
+    if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr) == -1 && errno != ENOENT)
+        throw WebServErr::SysCallErrException("epoll_ctl failed");
+    close(fd);
+    connMap_.erase(fd);
+}
+
+WebServ::~WebServ()
+{
+    for (const auto &server : serverMap_)
+    {
+        close(server.first);
+    }
+    for (const auto &conn : connMap_)
+    {
+        close(conn.first);
+    }
+    close(epollFd_);
+}
