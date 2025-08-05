@@ -1,16 +1,22 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   webserv.hpp                                        :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: gpellech <gpellech@student.hive.fi>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/05 07:42:17 by gpellech          #+#    #+#             */
-/*   Updated: 2025/08/05 07:42:55 by gpellech         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
 
 #pragma once
 
 #include <iostream>
 #include <string>
+#include <unordered_map>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <sys/epoll.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+class WebServ
+{
+private:
+    // Config config_;
+    std::unordered_map<unsigned int, std::string> serverMap_; // todo: implement Server class
+public:
+    WebServ() = default;
+    ~WebServ() = default;
+    void eventLoop();
+};
