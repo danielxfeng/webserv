@@ -1,4 +1,5 @@
 #include "WebServ.hpp"
+#include "LogSys.hpp"
 
 void setNonBlocking(int fd)
 {
@@ -64,9 +65,11 @@ void WebServ::eventLoop()
 {
     struct epoll_event events[config_.max_poll_events()];
 
+	LOG_INFO("Server started.");
     for (auto it = serverVec_.begin(); it != serverVec_.end(); ++it)
     {
         int serverFd = listenToPort(it->port());
+		LOG_INFO("Server listening to port:", serverFd);
         registerToEpoll(epollFd_, serverFd, EPOLLIN);
         serverMap_[serverFd] = &(*it);
     }
@@ -107,7 +110,7 @@ void WebServ::eventLoop()
                 bool ifClose = false;
                 if (connServer == connMap_.end())
                 {
-                    // TODO: Log error: connection not found
+                    LOG_ERROR("Connection not found", connServer);
                     continue;
                 }
 
@@ -138,17 +141,21 @@ void WebServ::closeConn(int fd)
     if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr) == -1 && errno != ENOENT)
         throw WebServErr::SysCallErrException("epoll_ctl failed");
     close(fd);
+	LOG_INFO("Connection closed to: ", fd);
     connMap_.erase(fd);
 }
 
 WebServ::~WebServ()
 {
+	LOG_INFO("Closing down server.");
     for (const auto &server : serverMap_)
     {
+		LOG_INFO("Closing Server: ", server.first);
         close(server.first);
     }
     for (const auto &conn : connMap_)
     {
+		LOG_INFO("Closing Connection: ", conn.first);
         close(conn.first);
     }
     close(epollFd_);
