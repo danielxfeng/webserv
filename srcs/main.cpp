@@ -1,24 +1,20 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: gpellech <gpellech@student.hive.fi>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/05 07:43:09 by gpellech          #+#    #+#             */
-/*   Updated: 2025/08/05 07:44:21 by gpellech         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include "../includes/webserv.hpp"
+#include "../includes/LogSys.hpp"
 
-int main(int argc, char **argv)
+int main(/*int argc, char **argv*/)
 {
-	if (argc != 2)
+/*	if (argc != 2)
 	{
 		//TODO error and log
 		return (1);
 	}
-
+*/
+	std::string	test = "Testing this string,";
+	LOG_TRACE("Trace", test);
+	LOG_DEBUG("Debug", test);
+	LOG_INFO("Info", test);
+	LOG_WARN("Warning", test);
+	LOG_ERROR("Error", test);
+	LOG_FATAL("Fatal", test);
 	return (0);
 }
