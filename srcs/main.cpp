@@ -1,5 +1,5 @@
-#include "../includes/webserv.hpp"
-#include "../includes/LogSys.hpp"
+#include "WebServ.hpp"
+#include "LogSys.hpp"
 
 int main(/*int argc, char **argv*/)
 {
