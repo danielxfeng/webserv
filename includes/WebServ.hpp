@@ -23,6 +23,9 @@ private:
     std::unordered_map<unsigned int, Server *> serverMap_; // Maps `listen` file descriptors to pointers to Server instances
     std::unordered_map<unsigned int, Server *> connMap_;   // Maps `connections` file descriptors to pointers to Server instances
 
+    void closeConn(int fd);
+    void handleServerMsg(const t_msg_from_serv &msg, t_direction direction, const std::unordered_map<unsigned int, Server *>::const_iterator &connServer);
+
 public:
     WebServ(const WebServ &other) = delete;
     WebServ &operator=(const WebServ &other) = delete;
@@ -40,8 +43,4 @@ public:
      * @brief Main event loop for the web server.
      */
     void eventLoop();
-    /**
-     * @brief Closes a connection.
-     */
-    void closeConn(int fd);
 };

@@ -32,10 +32,10 @@ int listenToPort(unsigned int port)
     return serverFd;
 }
 
-void registerToEpoll(int epollFd, int fd, int direction)
+void registerToEpoll(int epollFd, int fd, uint32_t events)
 {
     struct epoll_event event{};
-    event.events = direction;
+    event.events = events;
     event.data.fd = fd;
 
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event) == -1)
@@ -104,7 +104,6 @@ void WebServ::eventLoop()
             else
             {
                 const auto connServer = connMap_.find(events[i].data.fd);
-                bool ifClose = false;
                 if (connServer == connMap_.end())
                 {
                     // TODO: Log error: connection not found
@@ -112,20 +111,25 @@ void WebServ::eventLoop()
                 }
 
                 if (events[i].events & EPOLLIN)
-                    ifClose = connServer->second->handleRequest(connServer->first);
+                {
+                    auto msg = connServer->second->handleRequest(connServer->first);
+                    handleServerMsg(msg, IN, connServer);
+                }
                 if (events[i].events & EPOLLOUT)
                 {
-                    const bool sendResponseClose = connServer->second->sendResponse(connServer->first);
-                    ifClose = ifClose || sendResponseClose;
+                    auto msg = connServer->second->sendResponse(connServer->first);
+                    handleServerMsg(msg, OUT, connServer);
                 }
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
                     connServer->second->closeConn(connServer->first);
-                    ifClose = true;
+                    handleServerMsg({true, -1, IN, -1}, OUT, connServer);
                 }
-
-                if (ifClose)
-                    closeConn(connServer->first);
+                if (events[i].events & EPOLLRDHUP)
+                {
+                    connServer->second->closeRead(connServer->first);
+                    handleServerMsg({true, -1, IN, -1}, IN, connServer);
+                }
             }
         }
 
@@ -139,6 +143,24 @@ void WebServ::closeConn(int fd)
         throw WebServErr::SysCallErrException("epoll_ctl failed");
     close(fd);
     connMap_.erase(fd);
+}
+
+void WebServ::handleServerMsg(const t_msg_from_serv &msg, t_direction direction, const std::unordered_map<unsigned int, Server *>::const_iterator &connServer)
+{
+    if (msg.is_done)
+    {
+        if (direction == IN)
+            shutdown(connServer->first, SHUT_RD);
+        else if (direction == OUT)
+            closeConn(connServer->first);
+        else
+            throw std::runtime_error("Invalid direction in handleServerMsg");
+    }
+
+    if (msg.fd_to_register != -1)
+        registerToEpoll(epollFd_, msg.fd_to_register, (msg.direction == IN) ? EPOLLIN : EPOLLOUT);
+    if (msg.fd_to_unregister != -1)
+        closeConn(msg.fd_to_unregister);
 }
 
 WebServ::~WebServ()
