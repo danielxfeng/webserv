@@ -22,7 +22,7 @@ WHITE := \033[0;97m
 RM := rm -rf
 NAME := webserv
 CXX = c++
-CXXFLAGS := -Wall -Wextra -Werror -std=c++17 $(DEPFLAGS)
+CXXFLAGS := -Wall -Wextra -Werror -std=c++20 $(DEPFLAGS)
 LDFLAGS = 
 
 SRCS_FILES := main.cpp
