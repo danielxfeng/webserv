@@ -1,42 +1,54 @@
 #include "Buffer.hpp"
 
-Buffer::Buffer(size_t capacity, size_t block_size) : capacity_(capacity), block_size_(block_size) {}
+Buffer::Buffer(size_t capacity, size_t block_size) : capacity_(capacity), block_size_(block_size), readPos_(0), writePos_(0), size_(0) {}
 
-void Buffer::readFd(int fd)
+bool Buffer::readFd(int fd)
 {
     if (isFull())
-        return;
+        return false;
 
-    std::vector<char> buf;
-    buf.reserve(block_size_);
+    if (data_.empty() || readPos_ == block_size_)
+    {
+        data_.push(std::vector<char>(block_size_));
+        readPos_ = 0;
+    }
 
-    size_t read_size = std::min(block_size_, capacity_ - size_);
-    ssize_t read_bytes = read(fd, buf.data(), read_size);
+    std::vector<char> &buf = data_.back();
 
-    if (read_bytes <= 0) // TODO: if it's 0, what will happen?
-        throw WebServErr::SysCallErrException("read failed");
+    size_t read_size = std::min(block_size_ - readPos_, capacity_ - size_);
+    ssize_t read_bytes = read(fd, &(buf.data()[readPos_]), read_size);
 
-    data_.push(std::move(buf));
+    if (read_bytes < 0)
+        return false;
+
+    if (read_bytes == 0)
+        return true; // EOF reached
+
+    readPos_ += read_bytes;
     size_ += read_bytes;
+    return false;
 }
 
 void Buffer::writeFd(int fd)
 {
-    while (!data_.empty())
-    {
-        std::vector<char> block = data_.front();
-        size_t write_bytes = write(fd, block.data()[writePos_], block.size() - writePos_);
-        if (write_bytes <= 0)
-            throw WebServErr::SysCallErrException("write failed");
 
-        if (write_bytes < block.size())
-            writePos_ += write_bytes;
-        else
-        {
-            data_.pop();
-            writePos_ = 0;
-        }
+    if (data_.empty())
+        return;
+
+    std::vector<char> &block = data_.front();
+    size_t write_bytes = write(fd, &(block.data()[writePos_]), block.size() - writePos_);
+    if (write_bytes <= 0)
+        return;
+
+    if (write_bytes < block.size() - writePos_)
+        writePos_ += write_bytes;
+    else
+    {
+        data_.pop();
+        writePos_ = 0;
     }
+
+    size_ -= write_bytes;
 }
 
 bool Buffer::isFull() const
