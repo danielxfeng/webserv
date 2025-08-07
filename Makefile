@@ -23,9 +23,9 @@ RM := rm -rf
 NAME := webserv
 CXX = c++
 CXXFLAGS := -Wall -Wextra -Werror -std=c++20 $(DEPFLAGS)
-LDFLAGS = 
+LDFLAGS =
 
-SRCS_FILES := main.cpp
+SRCS_FILES := main.cpp #WebServ.cpp
 
 SRCS_DIR := srcs/
 OBJS_DIR := objs/
@@ -70,7 +70,7 @@ clean:
 	else \
 	echo "No object files to clean"; \
 	fi
-	
+
 	@if [ -d "$(DEPS_DIR)" ]; then \
 	$(RM) $(DEPS_DIR); \
 	echo "$(DARK_RED)Dependencies cleaned $(X)"; else \

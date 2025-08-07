@@ -1,0 +1,12 @@
+
+objs/
+build/
+webserv
+*.o
+*.d
+*.a
+*.so
+*.out
+*.exe
+*.log
+*.tmp
