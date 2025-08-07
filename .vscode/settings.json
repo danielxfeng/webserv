@@ -58,5 +58,39 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/home/xifeng/webserv/",
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "cmake.configureArgs": [
+    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+  ],
+  "gtestExplorer.testAutoRun": true,
+  "gtestExplorer.testExecution": "onSave",
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": "googletest.failed",
+        "settings": {
+          "foreground": "#f00"
+        }
+      },
+      {
+        "scope": "googletest.passed",
+        "settings": {
+          "foreground": "#0f0"
+        }
+      },
+      {
+        "scope": "googletest.run",
+        "settings": {
+          "foreground": "#0f0"
+        }
+      }
+    ]
+  },
+  "gtest-adapter.debugConfig": [
+    "google test debug config"
+  ],
+  "gtest-adapter.supportLocation": true,
 }

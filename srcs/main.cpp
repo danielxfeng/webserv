@@ -1,3 +1,4 @@
+
 #include "WebServ.hpp"
 #include "LogSys.hpp"
 
@@ -10,7 +11,7 @@ int main(/*int argc, char **argv*/)
 	}
 */
 	std::string	test = "Testing this string,";
-	LOG_TRACE("Trace", test);
+	LOG_TRACE("Trace", test, __FUNCTION__);
 	LOG_DEBUG("Debug", test);
 	LOG_INFO("Info", test);
 	LOG_WARN("Warning", test);
