@@ -25,7 +25,10 @@ public:
     static std::string stringify(const JsonValue &jsonValue, int indent = 2);
 
     template <typename T>
-    static T as(const JsonValue &jsonValue, T defaultValue = T());
+    static T as(const JsonValue &jsonValue);
+
+    template <typename T>
+    static T as(const JsonValue &jsonValue, T &defaultValue);
 
     template <typename T>
     static T deserialize(const std::string &jsonString);
