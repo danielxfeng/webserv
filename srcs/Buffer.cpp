@@ -26,6 +26,9 @@ bool Buffer::readFd(int fd)
 
     readPos_ += read_bytes;
     size_ += read_bytes;
+
+    // TODO: Check EOF then return true;
+
     return false;
 }
 
