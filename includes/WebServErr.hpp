@@ -26,4 +26,34 @@ public:
 
         const char *what() const noexcept override;
     };
+
+    class ShouldNotBeHereException : public std::exception
+    {
+    private:
+        std::string what_;
+
+    public:
+        ShouldNotBeHereException() = delete;
+        explicit ShouldNotBeHereException(const std::string &what_arg);
+        ShouldNotBeHereException(const ShouldNotBeHereException &other) = default;
+        ShouldNotBeHereException &operator=(const ShouldNotBeHereException &o) = delete;
+        ~ShouldNotBeHereException() override = default;
+
+        const char *what() const noexcept override;
+    };
+
+    class BadRequestException : public std::exception
+    {
+    private:
+        std::string what_;
+
+    public:
+        BadRequestException() = delete;
+        explicit BadRequestException(const std::string &what_arg);
+        BadRequestException(const BadRequestException &other) = default;
+        BadRequestException &operator=(const BadRequestException &o) = delete;
+        ~BadRequestException() override = default;
+
+        const char *what() const noexcept override;
+    };
 };

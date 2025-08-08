@@ -5,6 +5,13 @@
 #include <unistd.h>
 #include "WebServErr.hpp"
 
+typedef enum e_error_code
+{
+    EOF_REACHED = 0,
+    ERROR = -1,
+    BUFFER_FULL = -2
+} t_error_code;
+
 class Buffer
 {
 private:
@@ -25,9 +32,9 @@ public:
 
     /**
      * @brief Reads data from the file descriptor(a file/socket/pipe) into the buffer.
-     * @return true if EOF is reached, false otherwise. TODO: decide the return type, enum/int
+     * @return The number of bytes read, 0 if EOF is reached, -1 if an error occurs, -2 if the buffer is full.
      */
-    bool readFd(int fd);
+    size_t readFd(int fd);
 
     /**
      * @brief Writes data from the buffer to the file descriptor(a file/socket/pipe).
