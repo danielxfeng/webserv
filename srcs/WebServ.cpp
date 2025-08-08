@@ -115,22 +115,22 @@ void WebServ::eventLoop()
 
                 if (events[i].events & EPOLLIN)
                 {
-                    auto msg = connServer->second->handleRequest(connServer->first);
+                    auto msg = connServer->second->handleDataIn(connServer->first);
                     handleServerMsg(msg, IN, connServer);
                 }
                 if (events[i].events & EPOLLOUT)
                 {
-                    auto msg = connServer->second->sendResponse(connServer->first);
+                    auto msg = connServer->second->handleDataOut(connServer->first);
                     handleServerMsg(msg, OUT, connServer);
                 }
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
-                    connServer->second->closeConn(connServer->first);
+                    connServer->second->handleDataEnd(connServer->first);
                     handleServerMsg({true, -1, IN, -1}, OUT, connServer);
                 }
                 if (events[i].events & EPOLLRDHUP)
                 {
-                    connServer->second->closeRead(connServer->first);
+                    connServer->second->handleReadEnd(connServer->first);
                     handleServerMsg({true, -1, IN, -1}, IN, connServer);
                 }
             }
