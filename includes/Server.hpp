@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include "Buffer.hpp"
 
@@ -19,17 +20,38 @@ typedef enum e_method
     UNKNOWN,
 } t_method;
 
+typedef enum e_status
+{
+    HEADER_PARSING,
+    READING,
+    WRITING,
+    DONE,
+    ERROR
+} t_status;
+
+typedef enum e_error_codes
+{
+    NO_ERROR,
+    NOT_FOUND,
+    BAD_REQUEST,
+    INTERNAL_SERVER_ERROR
+} t_error_code;
+
 typedef struct s_conn
 {
-    int socketFd;
-    int innerFdIn;
-    int innerFdOut;
+    int socket_fd;
+    int inner_fd_in;
+    int inner_fd_out;
     std::string path;
     t_method method;
-    int startTimeStamp;
-    int lastTimeStamp;
-    Buffer readBuf;
-    Buffer writeBuf;
+    t_status status;
+    time_t start_timestamp;
+    time_t last_heartbeat;
+    size_t content_length;
+    size_t bytes_received;
+    Buffer read_buf;
+    Buffer write_buf;
+    std::unordered_map<std::string, std::string> headers;
 } t_conn;
 
 typedef struct s_msg_from_serv
@@ -46,15 +68,18 @@ class Server
 private:
     unsigned int port_;
     std::string name_;
-    std::unordered_map<int, t_conn> connMap_;
+    unsigned int max_header_size_;
+    std::vector<t_conn> conn_vec_;
+    std::unordered_map<int, t_conn *> conn_map_;
 
 public:
     unsigned int port() const { return port_; }
 
     void addConn(int fd) { /* TODO: implement */ }
-    void closeConn(int fd) { /* TODO: implement */ }
-    void closeRead(int fd) { /* TODO: implement */ }
-    t_msg_from_serv handleDataIn(int fd) { /* TODO: implement */ }
-    t_msg_from_serv handleDataOut(int fd) { /* TODO: implement */ }
+    void handleDataEnd(int fd) { /* TODO: implement */ }
+    void handleReadEnd(int fd) { /* TODO: implement */ }
+    t_msg_from_serv handleDataIn(int fd);
+    t_msg_from_serv handleDataOut(int fd);
+    t_msg_from_serv handleError(t_conn *conn, t_error_code error_code, const std::string &error_message);
     void timeoutKiller() { /* TODO: implement */ }
 };

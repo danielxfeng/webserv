@@ -2,10 +2,10 @@
 
 Buffer::Buffer(size_t capacity, size_t block_size) : capacity_(capacity), block_size_(block_size), readPos_(0), writePos_(0), size_(0) {}
 
-bool Buffer::readFd(int fd)
+size_t Buffer::readFd(int fd)
 {
     if (isFull())
-        return false;
+        return BUFFER_FULL;
 
     if (data_.empty() || readPos_ == block_size_)
     {
@@ -19,17 +19,17 @@ bool Buffer::readFd(int fd)
     ssize_t read_bytes = read(fd, &(buf.data()[readPos_]), read_size);
 
     if (read_bytes < 0)
-        return false;
+        return ERROR;
 
     if (read_bytes == 0)
-        return true; // EOF reached
+        return EOF_REACHED;
 
     readPos_ += read_bytes;
     size_ += read_bytes;
 
     // TODO: Check EOF then return true;
 
-    return false;
+    return read_bytes;
 }
 
 void Buffer::writeFd(int fd)
