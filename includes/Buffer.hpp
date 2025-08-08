@@ -25,7 +25,7 @@ public:
 
     /**
      * @brief Reads data from the file descriptor(a file/socket/pipe) into the buffer.
-     * @return true if EOF is reached, false otherwise.
+     * @return true if EOF is reached, false otherwise. TODO: decide the return type, enum/int
      */
     bool readFd(int fd);
 
