@@ -39,6 +39,8 @@ class HttpRequests{
 		void content_length_validator(void);
 		void header_connection_validator(void);
 		void header_accept_validator();
+		void header_contenttype_validator();
+
 		//getters
 		size_t getupToBodyCounter();
 		std::string getrequestServerName();
@@ -46,4 +48,6 @@ class HttpRequests{
 		std::unordered_map<std::string, std::string> getrequestLineMap();
 		std::unordered_map<std::string, std::string> getrequestHeaderMap();
 
+		// extra
+		std::vector<std::string> stov(std::string &string);
 	};

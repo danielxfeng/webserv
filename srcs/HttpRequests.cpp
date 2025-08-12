@@ -226,9 +226,6 @@ void HttpRequests::content_length_validator(void){
 	else if(requestLineMap["Method"] == "GET")
 		if( requestHeaderMap.contains("content-length"))
 			throw WebServErr::BadRequestException("GET must have no content-length");
-
-	
-	std::cout<<"content-length: "<< content_length_var<< std::endl;
 } 
 
 void HttpRequests::header_connection_validator(void){
@@ -242,20 +239,61 @@ void HttpRequests::header_connection_validator(void){
 		
 }
 
+
+std::vector<std::string> HttpRequests::stov(std::string &string){
+	std::vector<std::string> result;
+	std::string tmp;
+	for(size_t i=0;i < string.length(); i++){
+		if(string[i] == ','){
+			result.push_back(tmp);
+			tmp="";
+			i++;
+		}
+		tmp+=string[i];
+	}
+	result.push_back(tmp);
+return (result);
+}
+
 void HttpRequests::header_accept_validator(){
 	if (requestHeaderMap.contains("accept")){
 		bool valid_accept = false;
-		std::vector<std::string> validAccepts = {"text/html", "application/json", "image/webp", "*/*", "text/html, application/json;q=0.9"};
-		for(std::string im:validAccepts)
+		std::vector<std::string> data;
+		data = stov(requestHeaderMap["accept"]);
+		std::vector<std::string> validAccepts = {"text/html", "application/xhtml+xml", "application/json", "image/webp", "*/*", "text/html, application/json;q=0.9"};
+		for(std::string va:validAccepts)
 		{
-			if(requestLineMap["accept"] == im)
-				valid_accept = true;
+			if (valid_accept == true)
+				valid_accept = false;
+			for(std::string d:data){
+				if(d == va)
+					valid_accept = true;
+			}
+			if(valid_accept == false)
+				throw WebServErr::BadRequestException("accept value is Not Acceptable");
+			
 		}
-		if (!valid_accept)
-			throw WebServErr::BadRequestException("Not Acceptable");
 	}
 	else{
 		requestHeaderMap["accept"] = "*/*";
+	}
+}
+
+
+void HttpRequests::header_contenttype_validator(){
+	if (requestHeaderMap.contains("content-type")){
+		bool valid_accept = false;
+		std::vector<std::string> validAccepts = {"application/json", "application/x-www-form-urlencoded", "multipart/form-data", "text/plain", "application/xml"};
+		for(std::string im:validAccepts)
+		{
+			if(requestLineMap["content-type"] == im)
+				valid_accept = true;
+		}
+		if (!valid_accept)
+			throw WebServErr::BadRequestException("content-type is Not Acceptable");
+	}
+	else{
+		requestHeaderMap["content-type"] = "application/json";
 	}
 }
 
@@ -264,6 +302,7 @@ void HttpRequests::validateRequestHeader(void){
 	content_length_validator();
 	header_connection_validator();
 	header_accept_validator();
+	// header_contenttype_validator();
 }
 
 
