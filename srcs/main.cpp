@@ -42,7 +42,5 @@ int main(/*int argc, char **argv*/)
 	
 	HttpRequests parser;
 	parser.httpParser(request);
-
-
 	return (0);
 }

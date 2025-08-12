@@ -10,3 +10,4 @@ webserv
 *.exe
 *.log
 *.tmp
+.vscode/settings.json

@@ -12,14 +12,21 @@ enable_testing()
 
 # Add test executable(s)
 add_executable(testtest test/test/test.cpp)
+add_executable(testparsing
+				test/test/test_parsing.cpp
+				srcs/HttpRequests.cpp
+				srcs/WebServErr.cpp )
 
 target_include_directories(testtest PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
+target_include_directories(testparsing PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
 
 # Link Google Test libraries to your tests
 target_link_libraries(testtest PRIVATE gtest_main)
+target_link_libraries(testparsing PRIVATE gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(testtest)
+gtest_discover_tests(testparsing)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 
