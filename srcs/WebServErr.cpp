@@ -30,3 +30,11 @@ const char *WebServErr::BadRequestException::what() const noexcept
 {
     return what_.c_str();
 }
+
+WebServErr::MethodException::MethodException(const std::string &what_arg)
+	: what_(std::format(what_arg) {}
+
+const char *WebServErr::MethodException::what() const noexcept
+{
+	return what_.c_str();
+}

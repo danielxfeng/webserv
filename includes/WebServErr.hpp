@@ -56,4 +56,16 @@ public:
 
         const char *what() const noexcept override;
     };
+
+	class MethodException: public std::exception
+	{
+		private:
+			std::string what_;
+		public:
+			MethodException() = delete;
+			explicit MethodException(const std::string &what_arg);
+			MethodException(const MethodException &other) = default;
+			MethodException &operator=(const MethodException &other) = delete;
+			~MethodException() override = default;
+	}
 };
