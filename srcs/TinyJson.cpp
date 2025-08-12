@@ -24,21 +24,7 @@ JsonValue TinyJson::parse(const std::string &jsonString)
 
     JsonValue value{};
     std::string_view rest;
-
-    if (sv.front() == '{')
-        std::tie(value, rest) = parseObject(sv);
-    else if (sv.front() == '[')
-        std::tie(value, rest) = parseArray(sv);
-    else if (sv.front() == '"')
-        std::tie(value, rest) = parseString(sv);
-    else if (isdigit(sv.front()) || sv.front() == '-')
-        std::tie(value, rest) = parseNumber(sv);
-    else if (sv.front() == 't' || sv.front() == 'f')
-        std::tie(value, rest) = parseBool(sv);
-    else if (sv.front() == 'n')
-        std::tie(value, rest) = parseNull(sv);
-    else
-        throw std::runtime_error("Invalid JSON format");
+    std::tie(value, rest) = parseJson(sv);
 
     rest = skipWhitespace(rest);
     if (!rest.empty())
@@ -47,8 +33,35 @@ JsonValue TinyJson::parse(const std::string &jsonString)
     return value;
 }
 
+std::pair<JsonValue, std::string_view> TinyJson::parseJson(const std::string_view sv)
+{
+    JsonValue value{};
+    std::string_view rest;
+
+    if (sv.empty())
+        throw std::runtime_error("Empty JSON string");
+
+    if (sv.front() == '{')
+        return parseObject(sv);
+    else if (sv.front() == '[')
+        return parseArray(sv);
+    else if (sv.front() == '"')
+        return parseString(sv);
+    else if (isdigit(sv.front()) || sv.front() == '-')
+        return parseNumber(sv);
+    else if (sv.front() == 't' || sv.front() == 'f')
+        return parseBool(sv);
+    else if (sv.front() == 'n')
+        return parseNull(sv);
+    else
+        throw std::runtime_error("Invalid JSON format");
+}
+
 std::pair<JsonValue, std::string_view> TinyJson::parseBool(const std::string_view sv)
 {
+    if (sv.empty())
+        throw std::runtime_error("Empty JSON string");
+
     if (sv.starts_with("true"))
         return {JsonValue(true), sv.substr(4)};
     if (sv.starts_with("false"))
@@ -58,6 +71,9 @@ std::pair<JsonValue, std::string_view> TinyJson::parseBool(const std::string_vie
 
 std::pair<JsonValue, std::string_view> TinyJson::parseNull(const std::string_view sv)
 {
+    if (sv.empty())
+        throw std::runtime_error("Empty JSON string");
+
     if (sv.starts_with("null"))
         return {JsonValue(nullptr), sv.substr(4)};
     throw std::runtime_error("Invalid JSON null value");
@@ -66,6 +82,9 @@ std::pair<JsonValue, std::string_view> TinyJson::parseNull(const std::string_vie
 // TODO: prevent leading zeros
 std::pair<JsonValue, std::string_view> TinyJson::parseNumber(const std::string_view sv)
 {
+    if (sv.empty())
+        throw std::runtime_error("Empty JSON string");
+
     double result{};
 
     const auto end_pos = sv.data() + sv.size();
@@ -83,6 +102,9 @@ std::pair<JsonValue, std::string_view> TinyJson::parseNumber(const std::string_v
 
 std::pair<JsonValue, std::string_view> TinyJson::parseString(const std::string_view sv)
 {
+    if (sv.empty() || sv.front() != '"')
+        throw std::runtime_error("Invalid JSON string format");
+
     size_t end_pos = 1; // Skip the opening quote
     std::string buf;
 

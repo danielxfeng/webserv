@@ -34,6 +34,7 @@ private:
     static std::pair<JsonValue, std::string_view> parseNumber(const std::string_view sv);
     static std::pair<JsonValue, std::string_view> parseBool(const std::string_view sv);
     static std::pair<JsonValue, std::string_view> parseNull(const std::string_view sv);
+    static std::pair<JsonValue, std::string_view> parseJson(const std::string_view sv);
     static std::string_view skipWhitespace(std::string_view s);
 
 public:
