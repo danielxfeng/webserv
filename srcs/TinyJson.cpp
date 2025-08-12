@@ -79,11 +79,35 @@ std::pair<JsonValue, std::string_view> TinyJson::parseNull(const std::string_vie
     throw std::runtime_error("Invalid JSON null value");
 }
 
-// TODO: prevent leading zeros
+bool isLeadingZeros(const std::string_view sv)
+{
+    std::string_view new_sv = sv;
+
+    if (new_sv.empty())
+        return false;
+
+    if (new_sv.front() == '-')
+        new_sv.remove_prefix(1); // Skip the negative sign
+
+    if (new_sv.empty() || new_sv.front() != '0')
+        return false;
+
+    if (new_sv.size() == 1)
+        return false;
+
+    new_sv.remove_prefix(1); // Skip the leading zero
+
+    // Check if the string is just "0" or has leading zeros
+    return isdigit(new_sv[0]);
+}
+
 std::pair<JsonValue, std::string_view> TinyJson::parseNumber(const std::string_view sv)
 {
     if (sv.empty())
         throw std::runtime_error("Empty JSON string");
+
+    if (isLeadingZeros(sv))
+        throw std::runtime_error("Invalid JSON number format: leading zeros are not allowed");
 
     double result{};
 
@@ -161,4 +185,98 @@ std::pair<JsonValue, std::string_view> TinyJson::parseString(const std::string_v
     }
 
     throw std::runtime_error("Unterminated JSON string");
+}
+
+std::pair<JsonValue, std::string_view> TinyJson::parseArray(const std::string_view sv)
+{
+    JsonArray array;
+
+    if (sv.empty() || sv.front() != '[')
+        throw std::runtime_error("Invalid JSON array format");
+
+    std::string_view rest = sv.substr(1); // Skip the opening bracket
+
+    while (true)
+    {
+        rest = skipWhitespace(rest);
+        if (rest.empty())
+            throw std::runtime_error("Unterminated JSON array");
+
+        if (rest.front() == ']')
+            return {JsonValue(std::move(array)), rest.substr(1)};
+
+        JsonValue value;
+
+        std::tie(value, rest) = parseJson(rest);
+        array.push_back(std::move(value));
+        rest = skipWhitespace(rest);
+
+        if (rest.empty())
+            throw std::runtime_error("Unterminated JSON array");
+        else if (rest.front() == ',')
+        {
+            rest.remove_prefix(1); // Skip the comma
+            rest = skipWhitespace(rest);
+            if (rest.empty() || rest.front() == ']')
+                throw std::runtime_error("Invalid JSON array format");
+            continue;
+        }
+        else if (rest.front() == ']')
+            return {JsonValue(std::move(array)), rest.substr(1)};
+        else
+            throw std::runtime_error("Invalid JSON array format");
+    }
+}
+
+std::pair<JsonValue, std::string_view> TinyJson::parseObject(const std::string_view sv)
+{
+    JsonObject object;
+
+    if (sv.empty() || sv.front() != '{')
+        throw std::runtime_error("Invalid JSON object format");
+
+    std::string_view rest = sv.substr(1); // Skip the opening brace
+
+    while (true)
+    {
+        rest = skipWhitespace(rest);
+        if (rest.empty())
+            throw std::runtime_error("Unterminated JSON object");
+
+        if (rest.front() == '}')
+            return {JsonValue(std::move(object)), rest.substr(1)}; // Empty object
+
+        if (rest.front() != '"')
+            throw std::runtime_error("Invalid JSON object key format");
+
+        JsonValue key;
+        std::tie(key, rest) = parseString(rest);
+
+        rest = skipWhitespace(rest);
+        if (rest.empty() || rest.front() != ':')
+            throw std::runtime_error("Invalid JSON object format");
+
+        rest.remove_prefix(1); // Skip the colon
+        rest = skipWhitespace(rest);
+
+        JsonValue value;
+        std::tie(value, rest) = parseJson(rest);
+        object.emplace(std::get<std::string>(key), std::move(value));
+
+        rest = skipWhitespace(rest);
+        if (rest.empty())
+            throw std::runtime_error("Unterminated JSON object");
+        else if (rest.front() == ',')
+        {
+            rest.remove_prefix(1); // Skip the comma
+            rest = skipWhitespace(rest);
+            if (rest.empty() || rest.front() == '}')
+                throw std::runtime_error("Invalid JSON object format");
+            continue;
+        }
+        else if (rest.front() == '}')
+            return {JsonValue(std::move(object)), rest.substr(1)};
+        else
+            throw std::runtime_error("Invalid JSON object format");
+    }
 }

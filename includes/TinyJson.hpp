@@ -7,6 +7,7 @@
 #include <string_view>
 #include <charconv>
 #include <stdexcept>
+#include <type_traits>
 
 struct JsonValue;
 
