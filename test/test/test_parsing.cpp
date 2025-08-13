@@ -56,8 +56,8 @@ TEST(HTTPrequesttest, returnedmaps) {
 HttpRequests parser;
 parser.httpParser(request);
 
-std::unordered_map<std::string, std::string> requestMap = parser.getrequestLineMap();
-std::unordered_map<std::string, std::string> requestBody = parser.getrequestHeaderMap();
+std::unordered_map<std::string, std::string> requestMap = parser.getrequestMap();
+std::unordered_map<std::string, std::string> requestBody = parser.getrequestMap();
 
 EXPECT_EQ(requestMap["HttpVersion"], "HTTP/1.1");
 EXPECT_EQ(requestMap["Method"], "GET");
