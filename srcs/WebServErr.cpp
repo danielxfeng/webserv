@@ -31,3 +31,11 @@ const char *WebServErr::MethodException::what() const noexcept
 {
 	return what_.c_str();
 }
+
+WebServErr::UtilsException::UtilsException(const std::string &what_arg)
+	: what_(std::format(what_arg) {}
+
+const char *WebServErr::UtilsException::what() const noexcept
+{
+	return what_.c_str();
+}
