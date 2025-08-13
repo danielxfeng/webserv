@@ -293,6 +293,7 @@ void HttpRequests::header_contenttype_validator(){
 		}
 		if (!valid_accept)
 			throw WebServErr::BadRequestException("content-type is Not Acceptable or not suppoted value");
+			
 	}
 }
 
