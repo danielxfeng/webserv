@@ -214,12 +214,18 @@ void HttpRequests::content_length_validator(void){
 	size_t content_length_var = 0;
 	if(requestMap["Method"] == "POST" || requestMap["Method"] == "DELETE")
 	{
-		if( !requestMap.contains("content-length") || requestMap["content-length"].empty())
-			throw WebServErr::BadRequestException("POST and DELETE must have content-length value");
-		content_length_var = static_cast<size_t> (stoull(requestMap["content-length"]));
-		if (content_length_var > 1073741824)
-			throw WebServErr::BadRequestException("Bad content-length less than 1GB are allowed");
+		if( !requestMap.contains("content-length") && !requestMap.contains("transfer-encoding"))
+			throw WebServErr::BadRequestException("POST must have content-length or transfer-encoding");
+		if (requestMap.contains("content-length")){
+			if(requestMap["content-length"].empty())
+				throw WebServErr::BadRequestException("POST and DELETE must have content-length value");
+			else{
+				content_length_var = static_cast<size_t> (stoull(requestMap["content-length"]));
+				if (content_length_var > 1073741824)
+					throw WebServErr::BadRequestException("Bad content-length less than 1GB are allowed");
+			}
 	}
+}
 	else if(requestMap["Method"] == "GET")
 		if( requestMap.contains("content-length"))
 			throw WebServErr::BadRequestException("GET must have no content-length");
