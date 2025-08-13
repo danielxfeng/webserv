@@ -240,60 +240,59 @@ void HttpRequests::header_connection_validator(void){
 }
 
 
-std::vector<std::string> HttpRequests::stov(std::string &string){
-	std::vector<std::string> result;
-	std::string tmp;
-	for(size_t i=0;i < string.length(); i++){
-		if(string[i] == ','){
-			result.push_back(tmp);
-			tmp="";
-			i++;
-		}
-		tmp+=string[i];
-	}
-	result.push_back(tmp);
-return (result);
-}
+// std::vector<std::string> HttpRequests::stov(std::string &string){
+// 	std::vector<std::string> result;
+// 	std::string tmp;
+// 	for(size_t i=0;i < string.length(); i++){
+// 		if(string[i] == ','){
+// 			result.push_back(tmp);
+// 			tmp="";
+// 			i++;
+// 		}
+// 		tmp+=string[i];
+// 	}
+// 	result.push_back(tmp);
+// return (result);
+// }
 
-void HttpRequests::header_accept_validator(){
-	if (requestHeaderMap.contains("accept")){
-		bool valid_accept = false;
-		std::vector<std::string> data;
-		data = stov(requestHeaderMap["accept"]);
-		std::vector<std::string> validAccepts = {"text/html", "application/xhtml+xml", "application/json", "image/webp", "*/*", "text/html, application/json;q=0.9"};
-		for(std::string va:validAccepts)
-		{
-			if (valid_accept == true)
-				valid_accept = false;
-			for(std::string d:data){
-				if(d == va)
-					valid_accept = true;
-			}
-			if(valid_accept == false)
-				throw WebServErr::BadRequestException("accept value is Not Acceptable");
-			
-		}
-	}
-	else{
-		requestHeaderMap["accept"] = "*/*";
-	}
-}
+// void HttpRequests::header_accept_validator(){
+// 	if (requestHeaderMap.contains("accept")){
+// 		bool valid_accept = false;
+// 		std::vector<std::string> data;
+
+// 		data = stov(requestHeaderMap["accept"]);
+// 		std::vector<std::string> validAccepts = {"text/html", "text/css","text/javascript", "application/javascript", "image/*", "*/*", "application/json"};
+// 			for(std::string d:data){
+// 				if (valid_accept == true)
+// 					valid_accept = false;
+// 				for(std::string va:validAccepts)
+// 					{
+// 						if(d == va)
+// 							valid_accept = true;
+// 					}
+// 			if(valid_accept == false){
+// 				throw WebServErr::BadRequestException("Accept value is Not Acceptable or unsupported");
+// 			}
+				
+// 		}
+// 	}
+// 	else{
+// 		requestHeaderMap["accept"] = "*/*";
+// 	}
+// }
 
 
 void HttpRequests::header_contenttype_validator(){
 	if (requestHeaderMap.contains("content-type")){
 		bool valid_accept = false;
-		std::vector<std::string> validAccepts = {"application/json", "application/x-www-form-urlencoded", "multipart/form-data", "text/plain", "application/xml"};
+		std::vector<std::string> validAccepts = {"image/png"};
 		for(std::string im:validAccepts)
 		{
-			if(requestLineMap["content-type"] == im)
-				valid_accept = true;
+			if(requestHeaderMap["content-type"] == im)
+				valid_accept = true;			
 		}
 		if (!valid_accept)
-			throw WebServErr::BadRequestException("content-type is Not Acceptable");
-	}
-	else{
-		requestHeaderMap["content-type"] = "application/json";
+			throw WebServErr::BadRequestException("content-type is Not Acceptable or not suppoted value");
 	}
 }
 
@@ -301,8 +300,8 @@ void HttpRequests::validateRequestHeader(void){
 	host_validator();
 	content_length_validator();
 	header_connection_validator();
-	header_accept_validator();
-	// header_contenttype_validator();
+	// header_accept_validator();
+	header_contenttype_validator();
 }
 
 
@@ -320,7 +319,12 @@ void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength, const std::v
 }
 
 
-
+void pre_validator(size_t requestLength, const std::vector<char> &request){
+	for(size_t i=0; i<requestLength; i++){
+		if(request[i]==',' && request[i+1] && request[i+1] == ',')
+			throw WebServErr::BadRequestException("Invalid Http request, it has extra (,).");
+	}
+}
 
 HttpRequests &HttpRequests::httpParser(const std::vector<char> &request){
 
@@ -328,6 +332,7 @@ HttpRequests &HttpRequests::httpParser(const std::vector<char> &request){
 	size_t i = 0;
 	
 	// will extract the first line as a request line.
+	pre_validator(requestLength, request);
 	if(!extractRequestLine(i, requestLength, request))
 		std::cerr<<"extractRequestLine";
 	validateRequestLine();
