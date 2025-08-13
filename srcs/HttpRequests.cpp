@@ -281,7 +281,7 @@ return (result);
 // }
 
 
-void HttpRequests::git header_contenttype_validator(){
+void HttpRequests::header_contenttype_validator(){
 	if(requestMap["Method"] == "POST")
 	{
 		
