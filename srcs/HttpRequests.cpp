@@ -1,6 +1,6 @@
 #include "../includes/HttpRequests.hpp"
 //default
-HttpRequests::HttpRequests():upToBodyCounter(0),requestString(""),requestLine(""),requestHeader(""),requestBody(""),requestServerName(""),requestPort(1),requestLineMap(),requestHeaderMap() {
+HttpRequests::HttpRequests():upToBodyCounter(0),requestString(""),requestLine(""),requestHeader(""),requestBody(""),requestMap() {
 };
 
 HttpRequests::HttpRequests(const HttpRequests &obj){
@@ -10,10 +10,8 @@ HttpRequests::HttpRequests(const HttpRequests &obj){
 		requestLine= obj.requestLine;
 		requestHeader= obj.requestHeader;
 		requestBody= obj.requestBody;
-		requestServerName= obj.requestServerName;
-		requestPort= obj.requestPort;
-		requestLineMap= obj.requestLineMap;
-		requestHeaderMap= obj.requestHeaderMap;
+		requestMap= obj.requestMap;
+
 	}
 };
 
@@ -24,10 +22,9 @@ HttpRequests HttpRequests::operator=(const HttpRequests &obj){
 		requestLine= obj.requestLine;
 		requestHeader= obj.requestHeader;
 		requestBody= obj.requestBody;
-		requestServerName= obj.requestServerName;
-		requestPort= obj.requestPort;
-		requestLineMap= obj.requestLineMap;
-		requestHeaderMap= obj.requestHeaderMap;
+
+		requestMap= obj.requestMap;
+
 	}
 	return (*this);
 };
@@ -78,9 +75,9 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std
 		httpVersion += requestLine[j];
 	}
 
-	requestLineMap["Method"] = method;
-	requestLineMap["Target"] = target;
-	requestLineMap["HttpVersion"] = httpVersion;
+	requestMap["Method"] = method;
+	requestMap["Target"] = target;
+	requestMap["HttpVersion"] = httpVersion;
 
 	return (true);
 }
@@ -89,20 +86,20 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std
 
 void HttpRequests::validateHttpVersion()
 {
-	if(requestLineMap["HttpVersion"].empty())
+	if(requestMap["HttpVersion"].empty())
 		throw WebServErr::BadRequestException("Http version must be 1.1 ot 1.0");
-	if( !(requestLineMap["HttpVersion"] == "HTTP/1.1" || requestLineMap["HttpVersion"] == "HTTP/1.0"))	
+	if( !(requestMap["HttpVersion"] == "HTTP/1.1" || requestMap["HttpVersion"] == "HTTP/1.0"))	
 		throw WebServErr::BadRequestException("Http version must be 1.1 ot 1.0");
 
 }
 
 void HttpRequests::validateTarget()
 {
-	if(requestLineMap["Target"].empty())
+	if(requestMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
 
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
-	for(char j:requestLineMap["Target"] ){
+	for(char j:requestMap["Target"] ){
 		for(char i:invalidCharactersUri)
 			{
 				if (i == j)
@@ -118,7 +115,7 @@ void HttpRequests::validateMethod()
 	std::vector<std::string> validMethods = {"GET", "POST", "DELETE"};
 	for(std::string im:validMethods)
 	{
-		if(requestLineMap["Method"] == im)
+		if(requestMap["Method"] == im)
 			valid_method = true;
 	}
 	if (!valid_method)
@@ -141,7 +138,6 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 	std::string firstPart;
 	std::string secondPart;
 	bool secondPartBool = false;
-
 	for (; i <= requestLength; i++)
 			{
 				if(request[i] == '\r' && request[i+1]&&  request[i+1] == '\n' &&request[i+2] && request[i+2] == '\r' && request[i+3] && request[i+3] == '\n')
@@ -151,6 +147,7 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 				}
 				requestHeader+=request[i];
 			}
+	requestHeader.append("\r\n");
 	size_t j = 0;
 
 	for (; j< requestHeader.length(); j++)
@@ -159,12 +156,12 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 			j+=2;
 			secondPartBool = false;
 			//to make sure that Host and content-length has only one value, it is not allowed to be duplicated.
-			if ((requestHeaderMap.contains("host") && firstPart=="host") || (requestHeaderMap.contains("content-length") && firstPart=="content-length"))
+			if ((requestMap.contains("host") && firstPart=="host") || (requestMap.contains("content-length") && firstPart=="content-length"))
 			{
 				std::cerr<<"Error: we have host before"<<std::endl;
 				break;
 			}
-			requestHeaderMap[firstPart] = secondPart;
+			requestMap[firstPart] = secondPart;
 			firstPart = "";
 			secondPart = "";
 		}
@@ -189,9 +186,9 @@ void HttpRequests::host_validator(void){
 	std::string secondPart;
 	bool secondPartBool = false;
 
-	if(!requestHeaderMap.contains("host"))
+	if(!requestMap.contains("host"))
 		throw WebServErr::BadRequestException("host is required");
-	host_str = requestHeaderMap["host"];
+	host_str = requestMap["host"];
 	for(size_t i = 0; i < host_str.length();i++)
 		{
 			if (host_str[i] == ':'){
@@ -203,50 +200,58 @@ void HttpRequests::host_validator(void){
 			else
 				secondPart +=host_str[i] ;
 		}
-		requestServerName = firstPart;
+		requestMap["servername"] = firstPart;
 		// TODO check if the ServerName is valid from the list.
 		// validate Port
-		requestPort = std::stoi(secondPart);
-		if (requestPort < 1 || requestPort > 65535)	
-			throw WebServErr::BadRequestException("post is out of allowed range from 1 to 655535");
 
+		if (std::stoi(secondPart) < 1 || std::stoi(secondPart) > 65535)	
+			throw WebServErr::BadRequestException("post is out of allowed range from 1 to 655535");
+		requestMap["requestport"] = secondPart;
 } 
 
 
 void HttpRequests::content_length_validator(void){
 	size_t content_length_var = 0;
-	if(requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
+	if(requestMap["Method"] == "POST" || requestMap["Method"] == "DELETE")
 	{
-		if( !requestHeaderMap.contains("content-length") || requestHeaderMap["content-length"].empty())
-			throw WebServErr::BadRequestException("POST and DELETE must have content-length value");
-		content_length_var = static_cast<size_t> (stoull(requestHeaderMap["content-length"]));
-		if (content_length_var > 1073741824)
-			throw WebServErr::BadRequestException("Bad content-length less than 1GB are allowed");
+		if( !requestMap.contains("content-length") && !requestMap.contains("transfer-encoding"))
+			throw WebServErr::BadRequestException("POST must have content-length or transfer-encoding");
+		if (requestMap.contains("content-length")){
+			if(requestMap["content-length"].empty())
+				throw WebServErr::BadRequestException("POST and DELETE must have content-length value");
+			else{
+				content_length_var = static_cast<size_t> (stoull(requestMap["content-length"]));
+				if (content_length_var > 1073741824)
+					throw WebServErr::BadRequestException("Bad content-length less than 1GB are allowed");
+			}
 	}
-	else if(requestLineMap["Method"] == "GET")
-		if( requestHeaderMap.contains("content-length"))
+}
+	else if(requestMap["Method"] == "GET")
+		if( requestMap.contains("content-length"))
 			throw WebServErr::BadRequestException("GET must have no content-length");
 } 
 
 void HttpRequests::header_connection_validator(void){
-	if (requestHeaderMap.contains("connection")){
-		if(!(requestHeaderMap["connection"] == "keep-alive" || requestHeaderMap["connection"] == "close"))
+	if (requestMap.contains("connection")){
+		if(!(requestMap["connection"] == "keep-alive" || requestMap["connection"] == "close"))
 			throw WebServErr::BadRequestException("Incrorrect connection value, must be keep-alive or close");
 	}
 	else{
-		requestHeaderMap["connection"] = "keep-alive";
+		requestMap["connection"] = "keep-alive";
 	}
 		
 }
 
 
-std::vector<std::string> HttpRequests::stov(std::string &string){
+std::vector<std::string> HttpRequests::stov(std::string &string, char c){
 	std::vector<std::string> result;
 	std::string tmp;
 	for(size_t i=0;i < string.length(); i++){
-		if(string[i] == ','){
+		if(string[i] == c){
 			result.push_back(tmp);
 			tmp="";
+			if(string[i] && string[i+1] ==' ')
+				i++;
 			i++;
 		}
 		tmp+=string[i];
@@ -255,54 +260,72 @@ std::vector<std::string> HttpRequests::stov(std::string &string){
 return (result);
 }
 
-void HttpRequests::header_accept_validator(){
-	if (requestHeaderMap.contains("accept")){
-		bool valid_accept = false;
-		std::vector<std::string> data;
-		data = stov(requestHeaderMap["accept"]);
-		std::vector<std::string> validAccepts = {"text/html", "application/xhtml+xml", "application/json", "image/webp", "*/*", "text/html, application/json;q=0.9"};
-		for(std::string va:validAccepts)
-		{
-			if (valid_accept == true)
-				valid_accept = false;
-			for(std::string d:data){
-				if(d == va)
-					valid_accept = true;
-			}
-			if(valid_accept == false)
-				throw WebServErr::BadRequestException("accept value is Not Acceptable");
-			
-		}
-	}
-	else{
-		requestHeaderMap["accept"] = "*/*";
-	}
-}
+// void HttpRequests::header_accept_validator(){
+// 	if (requestMap.contains("accept")){
+// 		bool valid_accept = false;
+// 		std::vector<std::string> data;
+
+// 		data = stov(requestMap["accept"]);
+// 		std::vector<std::string> validAccepts = {"text/html", "text/css","text/javascript", "application/javascript", "image/*", "*/*", "application/json"};
+// 			for(std::string d:data){
+// 				if (valid_accept == true)
+// 					valid_accept = false;
+// 				for(std::string va:validAccepts)
+// 					{
+// 						if(d == va)
+// 							valid_accept = true;
+// 					}
+// 			if(valid_accept == false){
+// 				throw WebServErr::BadRequestException("Accept value is Not Acceptable or unsupported");
+// 			}
+				
+// 		}
+// 	}
+// 	else{
+// 		requestMap["accept"] = "*/*";
+// 	}
+// }
 
 
 void HttpRequests::header_contenttype_validator(){
-	if (requestHeaderMap.contains("content-type")){
-		bool valid_accept = false;
-		std::vector<std::string> validAccepts = {"application/json", "application/x-www-form-urlencoded", "multipart/form-data", "text/plain", "application/xml"};
-		for(std::string im:validAccepts)
-		{
-			if(requestLineMap["content-type"] == im)
-				valid_accept = true;
+	if(requestMap["Method"] == "POST")
+	{
+		
+		bool has_semicolon = false;
+		std::string type = requestMap["content-type"];
+		for (size_t i = 0; i < type.length(); i++){
+				if (type[i] == ';'){
+					has_semicolon = true;
+				}
+			}
+		if (has_semicolon){
+			std::vector<std::string> type = stov(requestMap["content-type"],';');
+			requestMap["content-type"] = type[0];
+			requestMap["boundary"] = type[1].substr(9);
 		}
-		if (!valid_accept)
-			throw WebServErr::BadRequestException("content-type is Not Acceptable");
+		
+			bool valid_types = false;
+			if( !requestMap.contains("content-type") || requestMap["content-type"].empty())
+				throw WebServErr::BadRequestException("POST must have content-type value");
+			std::vector<std::string> validAccepts = {"image/png" , "multipart/form-data"};
+			for(std::string im:validAccepts)
+			{
+				if(requestMap["content-type"] == im)
+					valid_types = true;			
+			}
+			if (!valid_types)
+				throw WebServErr::BadRequestException("content-type is Not Acceptable or not suppoted value");
+			}
+		
 	}
-	else{
-		requestHeaderMap["content-type"] = "application/json";
-	}
-}
+
 
 void HttpRequests::validateRequestHeader(void){
 	host_validator();
 	content_length_validator();
 	header_connection_validator();
-	header_accept_validator();
-	// header_contenttype_validator();
+	// header_accept_validator();
+	header_contenttype_validator();
 }
 
 
@@ -320,7 +343,12 @@ void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength, const std::v
 }
 
 
-
+void pre_validator(size_t requestLength, const std::vector<char> &request){
+	for(size_t i=0; i<requestLength; i++){
+		if(request[i]==',' && request[i+1] && request[i+1] == ',')
+			throw WebServErr::BadRequestException("Invalid Http request, it has extra (,).");
+	}
+}
 
 HttpRequests &HttpRequests::httpParser(const std::vector<char> &request){
 
@@ -328,40 +356,38 @@ HttpRequests &HttpRequests::httpParser(const std::vector<char> &request){
 	size_t i = 0;
 	
 	// will extract the first line as a request line.
+	pre_validator(requestLength, request);
+
 	if(!extractRequestLine(i, requestLength, request))
 		std::cerr<<"extractRequestLine";
 	validateRequestLine();
-
+	
 	// will extract the request header part as a request line.
 	if(!extractRequestHeader(i, requestLength, request))
 			std::cerr<<"extractRequestHeader";
 	validateRequestHeader();
-	for(const auto & pair:requestHeaderMap)
+	for(const auto & pair:requestMap)
 		std::cout<<pair.first<<": "<<pair.second<<std::endl;
 
 	i = 0;
 	tillBodyCounter(i, requestLength, request); 
-	std::cout<<"up to body counter: "<<upToBodyCounter<<std::endl;
 return(*this);
 
 }
-
 
 size_t HttpRequests::getupToBodyCounter(){
 	return upToBodyCounter;
 }
 
-std::string HttpRequests::getrequestServerName(){
-	return requestServerName;
+// std::string HttpRequests::getrequestServerName(){
+// 	return requestServerName;
+// }
+
+// unsigned int HttpRequests::getrequestPort(){
+// 	return requestPort;
+// }
+
+std::unordered_map<std::string, std::string> HttpRequests::getrequestMap(){
+	return requestMap;
 }
 
-unsigned int HttpRequests::getrequestPort(){
-	return requestPort;
-}
-
-std::unordered_map<std::string, std::string> HttpRequests::getrequestLineMap(){
-	return requestLineMap;
-}
-std::unordered_map<std::string, std::string> HttpRequests::getrequestHeaderMap(){
-	return requestHeaderMap;
-}
