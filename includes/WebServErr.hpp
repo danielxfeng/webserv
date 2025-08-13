@@ -67,5 +67,17 @@ public:
 			MethodException(const MethodException &other) = default;
 			MethodException &operator=(const MethodException &other) = delete;
 			~MethodException() override = default;
-	}
+	};
+
+	class UtilsException: public std::exception
+	{
+		private:
+			std::string what_;
+		public:
+			UtilsException() = delete;
+			explicit UtilsException(const std::string &what_arg);
+			UtilsException(const UtilsException &other) = default;
+			UtilsException &operator=(const UtilsException &other) = delete;
+			~UtilsException() override = default;
+	};
 };

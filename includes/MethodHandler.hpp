@@ -2,9 +2,13 @@
 
 #include "LogSys.hpp"
 #include "WebServErr.hpp"
+#include "utils.hpp"
+
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <fcntl>
+#include <sys/stat>
 
 typedef enum e_method
 {
@@ -18,10 +22,12 @@ typedef enum e_method
 class MethodHandler
 {
 private:
-	int		callGetMethod(std::unordered_map<std::string, std::string> headers);
-	int		callPostMethod(std::unordered_map<std::string, std::string> headers);
-	void	callDeleteMethod(std::unordered_map<std::string, std::string> headers);
-	int		callCGIMethod(std::unordered_map<std::string, std::string> headers);
+	int		fd_;
+
+	int		callGetMethod(std::string &path);
+	int		callPostMethod(std::string &path);
+	void	callDeleteMethod(std::string &path);
+	int		callCGIMethod(std::string &path);
 public:
     MethodHandler();
     MethodHandler(const MethodHandler &copy);
