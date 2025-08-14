@@ -22,7 +22,7 @@ struct JsonValue : std::variant<
                        JsonArray,
                        JsonObject>
 {
-    using variant::variant; // inherit ctors (so Json j = true; works)
+    using variant::variant;
     JsonValue() : variant(nullptr) {}
 };
 
