@@ -1,3 +1,5 @@
+#pragma once
+
 #include "TinyJson.hpp"
 
 template <typename T>
@@ -34,7 +36,7 @@ T TinyJson::as(const JsonValue &jsonValue)
 }
 
 template <typename T>
-T TinyJson::as(const JsonValue &jsonValue, T &defaultValue)
+T TinyJson::as(const JsonValue &jsonValue, T defaultValue)
 {
     try
     {

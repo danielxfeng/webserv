@@ -51,7 +51,7 @@ public:
     static T as(const JsonValue &jsonValue);
 
     template <typename T>
-    static T as(const JsonValue &jsonValue, T &defaultValue);
+    static T as(const JsonValue &jsonValue, T defaultValue);
 
     template <typename T>
     static T deserialize(const std::string &jsonString);

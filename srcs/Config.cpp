@@ -1,0 +1,63 @@
+#include "Config.hpp"
+
+void Config::fromJson(const std::string &json_string)
+{
+    const JsonValue json_value = TinyJson::parse(json_string);
+    const JsonObject &json_obj = std::get<JsonObject>(json_value);
+    global_config_.max_poll_events = TinyJson::as<unsigned int>(json_obj.at("max_poll_events"), MAX_POLL_EVENTS);
+    global_config_.max_poll_timeout = TinyJson::as<unsigned int>(json_obj.at("max_poll_timeout"), MAX_POLL_TIMEOUT);
+    global_config_.max_connections = TinyJson::as<unsigned int>(json_obj.at("max_connections"), MAX_CONNECTIONS);
+    global_config_.global_request_timeout = TinyJson::as<unsigned int>(json_obj.at("global_request_timeout"), GLOBAL_REQUEST_TIMEOUT);
+    global_config_.max_request_size = TinyJson::as<unsigned int>(json_obj.at("max_request_size"), MAX_REQUEST_SIZE);
+    global_config_.max_headers_size = TinyJson::as<unsigned int>(json_obj.at("max_headers_size"), MAX_HEADERS_SIZE);
+
+    const JsonArray &server_array = std::get<JsonArray>(json_obj.at("servers"));
+    for (const JsonValue &server_value : server_array)
+    {
+        const JsonObject &server_obj = std::get<JsonObject>(server_value);
+        t_server_config server_config;
+        server_config.server_name = TinyJson::as<std::string>(server_obj.at("server_name"));
+        server_config.root = TinyJson::as<std::string>(server_obj.at("root"));
+        server_config.index = TinyJson::as<std::string>(server_obj.at("index"), "");
+        server_config.port = TinyJson::as<unsigned int>(server_obj.at("port"));
+
+        unsigned int max_request_timeout = TinyJson::as<unsigned int>(server_obj.at("max_request_timeout"), global_config_.global_request_timeout);
+        server_config.max_request_timeout = std::min(max_request_timeout, global_config_.global_request_timeout);
+
+        unsigned int max_request_size = TinyJson::as<unsigned int>(server_obj.at("max_request_size"), global_config_.max_request_size);
+        server_config.max_request_size = std::min(max_request_size, global_config_.max_request_size);
+
+        unsigned int max_headers_size = TinyJson::as<unsigned int>(server_obj.at("max_headers_size"), global_config_.max_headers_size);
+        server_config.max_headers_size = std::min(max_headers_size, global_config_.max_headers_size);
+
+        server_config.is_cgi = TinyJson::as<bool>(server_obj.at("is_cgi"), false);
+
+        if (server_config.is_cgi)
+        {
+            const JsonObject &cgi_obj = std::get<JsonObject>(server_obj.at("cgi_config"));
+            for (const auto &cgi_pair : cgi_obj)
+                server_config.cgi_paths[cgi_pair.first] = TinyJson::as<std::string>(cgi_pair.second);
+        }
+        else
+        {
+            const JsonObject &locations_obj = std::get<JsonObject>(server_obj.at("locations"));
+            for (const auto &location_pair : locations_obj)
+            {
+                const std::string &location_path = location_pair.first;
+                const JsonArray &methods_array = std::get<JsonArray>(location_pair.second);
+                for (const JsonValue &method_value : methods_array)
+                {
+                    t_method method = convertMethod(TinyJson::as<std::string>(method_value));
+                    if (method == CGI || method == UNKNOWN)
+                        throw std::invalid_argument("invalid method in locations: " + location_path);
+                    server_config.locations[location_path].push_back(method);
+                }
+            }
+        }
+    }
+}
+
+std::string Config::toJson() const
+{
+    return "to be implemented";
+}

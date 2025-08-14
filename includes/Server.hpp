@@ -62,6 +62,8 @@ typedef struct s_msg_from_serv
     int fd_to_unregister;  // File descriptor to unregister from epoll
 } t_msg_from_serv;
 
+t_method convertMethod(const std::string &method_str);
+
 // TODO: to be implemented
 class Server
 {
