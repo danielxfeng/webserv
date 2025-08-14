@@ -40,7 +40,11 @@ HttpRequests::~HttpRequests() {
 
 };
 
-// request line functions
+/**
+ * @brief extract the requestline from the request, then stores them into the map.
+ * @param (size_t &i, size_t requestLength, const std::vector<char> &request)
+ * @return nothing
+ */
 bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std::vector<char> &request)
 {
 	std::string method;
@@ -88,6 +92,11 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std
 	return (true);
 }
 
+/**
+ * @brief validate the HTTP version and we accept 1.1 and 1.0
+ * @param nothing
+ * @return nothing
+ */
 void HttpRequests::validateHttpVersion()
 {
 	if (requestMap["HttpVersion"].empty())
@@ -111,7 +120,11 @@ void HttpRequests::validateTarget()
 		}
 	}
 }
-
+/**
+ * @brief validate the method it must be get, post and delete.
+ * @param (size_t &i, size_t requestLength, const std::vector<char> &request)
+ * @return nothing
+ */
 void HttpRequests::validateMethod()
 {
 	bool valid_method = false;
@@ -419,9 +432,7 @@ HttpRequests &HttpRequests::httpParser(const std::vector<char> &request)
 		std::cerr << "extractRequestHeader";
 	validateRequestHeader();
 	for (const auto &pair : requestMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
-
-	
+		std::cout << pair.first << ": " << pair.second << std::endl;	
 	return (*this);
 }
 
