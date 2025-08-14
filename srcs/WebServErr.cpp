@@ -24,8 +24,11 @@ const char *WebServErr::BadRequestException::what() const noexcept
     return what_.c_str();
 }
 
-WebServErr::MethodException::MethodException(const std::string &what_arg)
-	: what_(std::format(what_arg) {}
+WebServErr::MethodException::MethodException(t_error_codes code, const std::string &what_arg)
+	: what_(std::format(what_arg)
+{
+	(void)code;//TODO This needs to change
+}
 
 const char *WebServErr::MethodException::what() const noexcept
 {
