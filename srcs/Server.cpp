@@ -46,7 +46,9 @@ t_msg_from_serv Server::handleDataIn(int fd)
                 return handleError(conn, BAD_REQUEST, "Header not found");
             break;
         case READING:
+			// TODO: Construct full path fron Config + Path
             // TODO: Handle the methods.
+			// TODO: Generate Header
             break;
         default:
             return {false, -1, IN, -1}; // Just skip for now.
