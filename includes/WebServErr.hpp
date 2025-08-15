@@ -7,6 +7,7 @@
 typedef enum e_status_error_codes
 {
 	ERR_301,
+	ERR_400,
 	ERR_401,
 	ERR_403,
 	ERR_404,

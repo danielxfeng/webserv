@@ -21,15 +21,15 @@ class MethodHandler
 private:
 	int		fd_;
 
-	int		callGetMethod(std::string &path);
-	int		callPostMethod(std::string &path);
+	int	callGetMethod(std::string &path);
+	int	callPostMethod(std::string &path, std::unordered_map<std::string, std::string> headers);
 	void	callDeleteMethod(std::string &path);
-	int		callCGIMethod(std::string &path, std::unordered_map<std::string, std::string> headers);
+	int	callCGIMethod(std::string &path, std::unordered_map<std::string, std::string> headers);
 public:
     MethodHandler();
     MethodHandler(const MethodHandler &copy);
     ~MethodHandler();
     MethodHandler &operator=(const MethodHandler &copy);
 
-	int	    handleMethod(t_method method, std::unordered_map<std::string, std::string> headers);
+	int	handleMethod(t_method method, std::unordered_map<std::string, std::string> headers);
 };

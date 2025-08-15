@@ -89,11 +89,20 @@ int		MethodHandler::callGetMethod(std::string &path)
 	return (fd_);
 }
 
-int		MethodHandler::callPostMethod(std::string &path)
+int		MethodHandler::callPostMethod(std::string &path, std::unordered_map<std::string, std::string> headers)
 {
 	checkIfLocExists(path);
 	checkIfDirectory(path);
-	//TODO eed to check for multipart/form-data
+	auto typeCheck = headers.find("Type");//TODO Check with Mohammad what this will be
+	if (typeCheck == headers.end())
+	{
+		LOG_ERROR("Bad Request, Type not found.", typeCheck);
+		throw WebServErr::MethodException(ERR_400, "Bad Request, Type not found.");
+	}
+	if (typeCheck->second.find("multipart/form"))
+	{
+		//TODO
+	}
 	fd_ = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);//TODO need to check if there is space for file
 	if (fd_ == -1)
 	{
