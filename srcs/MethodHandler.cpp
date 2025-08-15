@@ -1,7 +1,7 @@
 #include "../includes/MethodHandler.hpp"
 
 MethodHandler::MethodHandler()
-	: fd_(-1);
+	: fd_(-1)
 {
 	LOG_TRACE("Method Handler created", (void));
 }
@@ -35,8 +35,6 @@ MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
  *
  */
 
-//TODO Change to using filesystem
-//TODO Throw rather than returning an error page
 int		MethodHandler::handleMethod(t_method method, std::unordered_map<std::string, std::string> headers)
 {
 	std::string &pathRef = headers["Path"];
@@ -57,63 +55,24 @@ int		MethodHandler::handleMethod(t_method method, std::unordered_map<std::string
 			return (callCGIMethod(pathRef));
 		default:
 			LOG_WARN("Method is unknown: ", headers);
-			throw WebServErr::MethodException("Unknown Method");
+			throw WebServErr::MethodException(OTHER, "Unknown Method");
 	}
 }
 
 int		MethodHandler::callGetMethod(std::string &path)
 {
-	std::string pathRef = //TODO May need to construct true path
-	struct stat st;
-
-	if (stat(pathRef.c_str(), &st) != 0)
+	checkIfLocExists(path);
+	checkIfDirectory(path);
+	checkIfRegFile(path);
+	if (!access(path, R_OK))
 	{
-		LOG_WARN("File/Directory Not Found: ", pathRef);
-		fd_ = open("../index/html/403.html", O_RDONLY);
-		if (fd_ == -1)
-		{
-			LOG_ERR("Failed to get 403.html ", (void);
-			throw WebServErr::MethodException(ERR_403, "Failed to get 403.html");
-		}
-		return (fd_);
+		LOG_INFO("Permission Denied, cannot access: ", path);
+		throw WebServErr::MethodException(ERR_404, "Permission denied to file");
 	}
-	if (S_ISDIR(st.st_mode))
-	{
-		LOG_WARN("Target is a Directory: ", pathRef);
-		fd_ = open("../index/html/403.html", O_RDONLY);
-		if (fd_ == -1)
-		{
-			LOG_ERR("Failed to get 403.html ", (void);
-			throw WebServErr::MethodException(ERR_403, "Failed to get 403.html");
-		}
-		return (fd_);
-	}
-	if (!S_ISREG(st.st_mode))
-	{
-		LOG_WARN("File is not a regular file.", pathRef);
-		fd_ = open("../index/html/403.html", O_RDONLY);
-		if (fd_ == -1)
-		{
-			LOG_ERR("Failed to get 403.html ", (void);
-			throw WebServErr::MethodException(ERR_403, "Failed to get 403.html");
-		}
-		return (fd_);
-	}
-	if (!access(pathRef, R_OK)
-	{
-		LOG_INFO("Permission Denied, cannot access: ", pathRef);
-		fd_ = open("../index/html/404.html", O_RDONLY);
-		if (fd_ == -1)
-		{
-			LOG_ERR("Failed to get 404.html ", (void);
-			throw WebServErr::MethodException(ERR_404, "Failed to get 404.html");
-		}
-		return (fd_);
-	}
-	fd = open(pathRef.c_str(), O_RDONLY);
+	fd_ = open(path.c_str(), O_RDONLY | O_NONBLOCK);
 	if (fd_ == -1)
 	{
-		LOG_ERR("Failed to open file with permission: ", pathRef;
+		LOG_ERR("Failed to open file with permission: ", path);
 		throw WebServErr::MethodException(OTHER, "Failed to open file with permission");
 	}
 	return (fd_);
@@ -121,19 +80,15 @@ int		MethodHandler::callGetMethod(std::string &path)
 
 int		MethodHandler::callPostMethod(std::string &path)
 {
-
-	if (std::filesystem::is_directory())
+	checkIfLocExists(path);
+	checkIfDirectory(path);
+	if (!std::filesystem::is_empty(path))
 	{
-		LOG_WARN("Target is a Directory: ", pathRef);
-		throw WebServErr::MethodException(ERR_403, "Target is a directory");
-	}
-	if (!std::filesystem::is_empty())
-	{
-		LOG_ERR("File already exists: " path);
+		LOG_ERR("File already exists: ", path);
 		throw WebServErr::MethodException(/*TODO*/, "File already exists");
 	}
 	//TODO eed to check for multipart/form-data
-	fd_ = open(pathRef.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);//TODO need to check if there is space for file
+	fd_ = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);//TODO need to check if there is space for file
 	if (fd_ == -1)
 	{
 		LOG_WARN("Failed to create: ", path);
@@ -143,20 +98,17 @@ int		MethodHandler::callPostMethod(std::string &path)
 }
 
 //Only throw if something is wrong, otherwise success is assumed
-void	MethodHandler::callDeleteMethod(std::string &path, std::unordered_map<std::string, std::string> headers)
+void	MethodHandler::callDeleteMethod(std::string &path)
 {
-
-	if (!std::filesystem::exists(path))
+	checkIfLocExists(path);
+	checkIfDirectory(path);
+	checkIfRegFile(path);
+	if (!access(path, X_OK))
 	{
-		LOG_ERR("Permission Denied: Cannot Delete: ", path;
-		throw WebServErr::MethodException(OTHER, "Permission Denied, cannot delete selected file");
+		LOG_INFO("Permission Denied, cannot access: ", path);
+		throw WebServErr::MethodException(ERR_404, "Permission denied to file");
 	}
-	if (!std::filesystem::is_regular_file(path))
-	{
-		LOG_ERR("File is not a regular file: ", path);
-		throw WebServErr::MethodException(OTHER, "File is not a regular file");
-	}
-	if (!remove(path))
+	if (!std::filesystem::remove(path))
 	{
 		LOG_ERR("Failed to delete file: ", path);
 		throw WebServErr::MethodException(OTHER, "Failed to delete selected file");
@@ -165,6 +117,6 @@ void	MethodHandler::callDeleteMethod(std::string &path, std::unordered_map<std::
 
 int		MethodHandler::callCGIMethod(std::string &path)
 {
-
+	//TODO
 	return (fd_);
 }

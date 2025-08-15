@@ -5,5 +5,6 @@
 #include <filesystem>
 #include <string>
 
-std::string getPath():
-bool		isFile(const std::string &path);
+void	checkIfRegFile(const std::string &path);
+void	checkIfDirectory(const std::string &path);
+void	checkIfLocExists(const std::string &path);

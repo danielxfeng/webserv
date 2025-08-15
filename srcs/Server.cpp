@@ -47,7 +47,7 @@ t_msg_from_serv Server::handleDataIn(int fd)
             break;
         case READING:
 			// TODO: Construct full path fron Config + Path
-            // TODO: Handle the methods.
+                        // TODO: Handle the methods.
 			// TODO: Generate Header
             break;
         default:
