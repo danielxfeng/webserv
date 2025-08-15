@@ -1,4 +1,6 @@
 #include "../includes/MethodHandler.hpp"
+#include <fcntl.h>
+#include <filesystem>
 
 MethodHandler::MethodHandler()
 	: fd_(-1)
@@ -55,14 +57,23 @@ int		MethodHandler::handleMethod(t_method method, std::unordered_map<std::string
 			return (callCGIMethod(pathRef));
 		default:
 			LOG_WARN("Method is unknown: ", headers);
-			throw WebServErr::MethodException(OTHER, "Unknown Method");
+			throw WebServErr::MethodException(ERR_500, "Unknown Method");
 	}
 }
 
 int		MethodHandler::callGetMethod(std::string &path)
 {
 	checkIfLocExists(path);
-	checkIfDirectory(path);
+	if (std::filesystem::is_directory(path))
+	{
+		fd_ = open("../index/index.html", O_RDONLY | O_NONBLOCK);
+		if (fd_ == -1)
+		{
+			LOG_ERR("Failed to open file with permission: ", path);
+			throw WebServErr::MethodException(ERR_500, "Failed to open file with permission");
+		}
+		return (fd_);
+	}
 	checkIfRegFile(path);
 	if (!access(path, R_OK))
 	{
@@ -73,7 +84,7 @@ int		MethodHandler::callGetMethod(std::string &path)
 	if (fd_ == -1)
 	{
 		LOG_ERR("Failed to open file with permission: ", path);
-		throw WebServErr::MethodException(OTHER, "Failed to open file with permission");
+		throw WebServErr::MethodException(ERR_500, "Failed to open file with permission");
 	}
 	return (fd_);
 }
@@ -82,11 +93,6 @@ int		MethodHandler::callPostMethod(std::string &path)
 {
 	checkIfLocExists(path);
 	checkIfDirectory(path);
-	if (!std::filesystem::is_empty(path))
-	{
-		LOG_ERR("File already exists: ", path);
-		throw WebServErr::MethodException(/*TODO*/, "File already exists");
-	}
 	//TODO eed to check for multipart/form-data
 	fd_ = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);//TODO need to check if there is space for file
 	if (fd_ == -1)
@@ -111,7 +117,7 @@ void	MethodHandler::callDeleteMethod(std::string &path)
 	if (!std::filesystem::remove(path))
 	{
 		LOG_ERR("Failed to delete file: ", path);
-		throw WebServErr::MethodException(OTHER, "Failed to delete selected file");
+		throw WebServErr::MethodException(ERR_500, "Failed to delete selected file");
 	}
 }
 

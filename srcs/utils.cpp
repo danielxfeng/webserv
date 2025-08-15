@@ -5,7 +5,7 @@ void    checkIfRegFile(const std::string &path)
     if (!std::filesystem::is_regular_file(path))
 	{
 		LOG_ERR("File is not a regular file: ", path);
-		throw WebServErr::MethodException(OTHER, "File is not a regular file");
+		throw WebServErr::MethodException(ERR_500, "File is not a regular file");
 	}
 }
 
@@ -23,6 +23,6 @@ void    checkIfLocExists(const std::string &path)
     if (!std::filesystem::exists(path))
 	{
 		LOG_ERR("Permission Denied: Cannot Delete: ", path);
-		throw WebServErr::MethodException(OTHER, "Permission Denied, cannot delete selected file");
+		throw WebServErr::MethodException(ERR_500, "Permission Denied, cannot delete selected file");
 	}
 }
