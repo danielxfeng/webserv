@@ -11,9 +11,6 @@ class HttpRequests{
 		std::string requestLine;
 		std::string requestHeader;
 		std::string requestBody;
-		// std::string requestServerName;
-		// unsigned int requestPort;
-
 		std::unordered_map<std::string, std::string> requestMap;
 
 
@@ -41,14 +38,10 @@ class HttpRequests{
 		void header_connection_validator(void);
 		void header_accept_validator();
 		void header_contenttype_validator();
+		void pre_validator(size_t requestLength, const std::vector<char> &request);
 
 		//getters
 		size_t getupToBodyCounter();
-		// std::string getrequestServerName();
-		// unsigned int getrequestPort();
-
 		std::unordered_map<std::string, std::string> getrequestMap();
-
-		// extra
 		std::vector<std::string> stov(std::string &string, char c);
 	};
