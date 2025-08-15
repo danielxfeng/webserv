@@ -14,6 +14,16 @@ typedef enum e_error_codes
 	OTHER
 }	t_error_codes;
 
+typedef enum e_error_codes
+{
+	ERR_301,
+	ERR_401,
+	ERR_403,
+	ERR_404,
+	ERR_409,
+	OTHER
+}	t_error_codes;
+
 class WebServErr
 {
     WebServErr() = default;
