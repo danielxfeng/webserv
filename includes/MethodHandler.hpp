@@ -7,9 +7,11 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
-#include <fcntl>
+#include <fcntl.h>
 #include <sys/stat>
 #include <filesystem>
+#include <cstdio>
+#include <unistd.h>
 
 typedef enum e_method
 {
@@ -35,5 +37,5 @@ public:
     ~MethodHandler();
     MethodHandler &operator=(const MethodHandler &copy);
 
-	int		handleMethod(t_method method, std::unordered_map<std::string, std::string> headers);
+	int	    handleMethod(t_method method, std::unordered_map<std::string, std::string> headers);
 };
