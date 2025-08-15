@@ -69,8 +69,8 @@ int		MethodHandler::callGetMethod(std::string &path)
 		fd_ = open("../index/index.html", O_RDONLY | O_NONBLOCK);
 		if (fd_ == -1)
 		{
-			LOG_ERR("Failed to open file with permission: ", path);
-			throw WebServErr::MethodException(ERR_500, "Failed to open file with permission");
+			LOG_FATAL("Failed to open file with permission: ", path);
+			throw WebServErr::SysCallErrException("Failed to open file with permission");
 		}
 		return (fd_);
 	}
@@ -83,8 +83,8 @@ int		MethodHandler::callGetMethod(std::string &path)
 	fd_ = open(path.c_str(), O_RDONLY | O_NONBLOCK);
 	if (fd_ == -1)
 	{
-		LOG_ERR("Failed to open file with permission: ", path);
-		throw WebServErr::MethodException(ERR_500, "Failed to open file with permission");
+		LOG_FATAL("Failed to open file with permission: ", path);
+		throw WebServErr::SysCallErrException("Failed to open file with permission");
 	}
 	return (fd_);
 }
@@ -97,8 +97,8 @@ int		MethodHandler::callPostMethod(std::string &path)
 	fd_ = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);//TODO need to check if there is space for file
 	if (fd_ == -1)
 	{
-		LOG_WARN("Failed to create: ", path);
-		throw WebServErr::MethodException(ERR_403, "Failed to create file");
+		LOG_FATAL("Failed to create: ", path);
+		throw WebServErr::SysCallErrException("Failed to create file");
 	}
 	return (fd_);
 }
@@ -116,8 +116,8 @@ void	MethodHandler::callDeleteMethod(std::string &path)
 	}
 	if (!std::filesystem::remove(path))
 	{
-		LOG_ERR("Failed to delete file: ", path);
-		throw WebServErr::MethodException(ERR_500, "Failed to delete selected file");
+		LOG_FATAL("Failed to delete file: ", path);
+		throw WebServErr::SysCallErrException("Failed to delete selected file");
 	}
 }
 
