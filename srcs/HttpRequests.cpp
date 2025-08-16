@@ -1,6 +1,6 @@
 #include "../includes/HttpRequests.hpp"
 // default
-HttpRequests::HttpRequests() : upToBodyCounter(0), requestString(""), requestLine(""), requestHeader(""), requestBody(""), requestMap() {
+HttpRequests::HttpRequests() : upToBodyCounter(0), requestMap() {
 							   };
 /*
 std::string_view sv = string;
@@ -13,10 +13,6 @@ HttpRequests::HttpRequests(const HttpRequests &obj)
 	if (this != &obj)
 	{
 		upToBodyCounter = obj.upToBodyCounter;
-		requestString = obj.requestString;
-		requestLine = obj.requestLine;
-		requestHeader = obj.requestHeader;
-		requestBody = obj.requestBody;
 		requestMap = obj.requestMap;
 	}
 };
@@ -26,11 +22,6 @@ HttpRequests HttpRequests::operator=(const HttpRequests &obj)
 	if (this != &obj)
 	{
 		upToBodyCounter = obj.upToBodyCounter;
-		requestString = obj.requestString;
-		requestLine = obj.requestLine;
-		requestHeader = obj.requestHeader;
-		requestBody = obj.requestBody;
-
 		requestMap = obj.requestMap;
 	}
 	return (*this);
@@ -50,6 +41,7 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std
 	std::string method;
 	std::string target;
 	std::string httpVersion;
+	std::string requestLine;
 
 	for (; i <= requestLength; i++)
 	{
@@ -164,6 +156,8 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 
 	std::string firstPart;
 	std::string secondPart;
+	std::string requestHeader;
+
 	bool secondPartBool = false;
 	for (; i <= requestLength; i++)
 	{

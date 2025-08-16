@@ -63,7 +63,8 @@ int main(/*int argc, char **argv*/)
 
 std::vector<char> request = {
     'G','E','T',' ','/','u','p','l','o','a','d',' ','H','T','T','P','/','1','.','1','\r','\n',
-    '\r','\n',
+    'H','o','s','t',':',' ','l','o','c','a','l','h','o','s','t',':','8','0','8','0','\r','\n',
+	'\r','\n',
 };
 	HttpRequests parser;
 	parser.httpParser(request);
