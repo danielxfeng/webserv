@@ -7,10 +7,8 @@
 class HttpRequests{
 	private:
 		size_t upToBodyCounter;
-		std::string requestString;
-		std::string requestLine;
-		std::string requestHeader;
-		std::string requestBody;
+		
+		
 		std::unordered_map<std::string, std::string> requestMap;
 
 
