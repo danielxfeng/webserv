@@ -80,6 +80,13 @@ std::pair<JsonValue, std::string_view> parseNumber(const std::string_view sv)
         throw std::runtime_error("Invalid number format");
     }
 
+    std::string_view parsed(sv.data(), ptr - sv.data());
+    if (!parsed.empty() && parsed.back() == '.')
+        throw std::runtime_error("Invalid number format: trailing dot not allowed");
+
+    if (result == -INFINITY || result == INFINITY || std::isnan(result))
+        throw std::runtime_error("Invalid JSON number: NaN or Infinity is not allowed");
+
     return {JsonValue(result), std::string_view(ptr, end_pos - ptr)};
 }
 
