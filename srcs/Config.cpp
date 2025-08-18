@@ -1,4 +1,26 @@
-#include "Config.hpp"
+#include "../includes/Config.hpp"
+
+// TODO: remove this after we can include server.hpp
+t_method convertMethod(const std::string &method_str)
+{
+    std::string upper_method = method_str;
+    std::transform(upper_method.begin(), upper_method.end(), upper_method.begin(), ::toupper);
+    if (upper_method == "GET")
+        return GET;
+    else if (upper_method == "POST")
+        return POST;
+    else if (upper_method == "DELETE")
+        return DELETE;
+    else if (upper_method == "CGI")
+        return CGI;
+    else
+        return UNKNOWN;
+}
+
+t_global_config &Config::getGlobalConfig()
+{
+    return global_config_;
+}
 
 void Config::fromJson(const std::string &json_string)
 {
@@ -54,10 +76,9 @@ void Config::fromJson(const std::string &json_string)
                 }
             }
         }
+        if (global_config_.servers.contains(server_config.server_name))
+            throw std::invalid_argument("Duplicate server name: " + server_config.server_name);
+        
+        global_config_.servers[server_config.server_name] = server_config;
     }
-}
-
-std::string Config::toJson() const
-{
-    return "to be implemented";
 }

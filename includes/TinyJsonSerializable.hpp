@@ -10,6 +10,5 @@ public:
     TinyJsonSerializable& operator=(const TinyJsonSerializable&) = default;
     TinyJsonSerializable& operator=(TinyJsonSerializable&&) = default;
     virtual ~TinyJsonSerializable() = default;
-    virtual std::string toJson() const = 0;
     virtual void fromJson(const std::string& jsonString) = 0;
 };
