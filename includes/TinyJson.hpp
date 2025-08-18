@@ -28,16 +28,6 @@ struct JsonValue : std::variant<
 
 class TinyJson
 {
-private:
-    static std::pair<JsonValue, std::string_view> parseObject(const std::string_view sv);
-    static std::pair<JsonValue, std::string_view> parseArray(const std::string_view sv);
-    static std::pair<JsonValue, std::string_view> parseString(const std::string_view sv);
-    static std::pair<JsonValue, std::string_view> parseNumber(const std::string_view sv);
-    static std::pair<JsonValue, std::string_view> parseBool(const std::string_view sv);
-    static std::pair<JsonValue, std::string_view> parseNull(const std::string_view sv);
-    static std::pair<JsonValue, std::string_view> parseJson(const std::string_view sv);
-    static std::string_view skipWhitespace(std::string_view s);
-
 public:
     TinyJson() = default;
     TinyJson(const TinyJson &other) = default;
@@ -45,17 +35,10 @@ public:
     ~TinyJson() = default;
 
     static JsonValue parse(const std::string &jsonString);
-    static std::string stringify(const JsonValue &jsonValue, int indent = 2);
 
     template <typename T>
     static T as(const JsonValue &jsonValue);
 
     template <typename T>
     static T as(const JsonValue &jsonValue, T defaultValue);
-
-    template <typename T>
-    static T deserialize(const std::string &jsonString);
-
-    template <typename T>
-    static std::string serialize(const T &value, int indent = 2);
 };

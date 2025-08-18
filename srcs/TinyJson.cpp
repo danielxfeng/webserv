@@ -5,7 +5,7 @@ bool isJsonWhitespace(char c)
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
-std::string_view TinyJson::skipWhitespace(std::string_view sv)
+std::string_view skipWhitespace(std::string_view sv)
 {
     size_t i = 0;
     while (i < sv.size() && isJsonWhitespace(sv[i]))
@@ -14,26 +14,7 @@ std::string_view TinyJson::skipWhitespace(std::string_view sv)
     return sv;
 }
 
-JsonValue TinyJson::parse(const std::string &jsonString)
-{
-    std::string_view sv(jsonString);
-    sv = skipWhitespace(sv);
-
-    if (sv.empty())
-        throw std::runtime_error("Empty JSON string");
-
-    JsonValue value{};
-    std::string_view rest;
-    std::tie(value, rest) = parseJson(sv);
-
-    rest = skipWhitespace(rest);
-    if (!rest.empty())
-        throw std::runtime_error("Invalid JSON format");
-
-    return value;
-}
-
-std::pair<JsonValue, std::string_view> TinyJson::parseJson(const std::string_view sv)
+std::pair<JsonValue, std::string_view> parseJson(const std::string_view sv)
 {
     JsonValue value{};
     std::string_view rest;
@@ -57,7 +38,7 @@ std::pair<JsonValue, std::string_view> TinyJson::parseJson(const std::string_vie
         throw std::runtime_error("Invalid JSON format");
 }
 
-std::pair<JsonValue, std::string_view> TinyJson::parseBool(const std::string_view sv)
+std::pair<JsonValue, std::string_view> parseBool(const std::string_view sv)
 {
     if (sv.empty())
         throw std::runtime_error("Empty JSON string");
@@ -69,7 +50,7 @@ std::pair<JsonValue, std::string_view> TinyJson::parseBool(const std::string_vie
     throw std::runtime_error("Invalid JSON boolean value");
 }
 
-std::pair<JsonValue, std::string_view> TinyJson::parseNull(const std::string_view sv)
+std::pair<JsonValue, std::string_view> parseNull(const std::string_view sv)
 {
     if (sv.empty())
         throw std::runtime_error("Empty JSON string");
@@ -101,7 +82,7 @@ bool isLeadingZeros(const std::string_view sv)
     return isdigit(new_sv[0]);
 }
 
-std::pair<JsonValue, std::string_view> TinyJson::parseNumber(const std::string_view sv)
+std::pair<JsonValue, std::string_view> parseNumber(const std::string_view sv)
 {
     if (sv.empty())
         throw std::runtime_error("Empty JSON string");
@@ -124,7 +105,7 @@ std::pair<JsonValue, std::string_view> TinyJson::parseNumber(const std::string_v
     return {JsonValue(result), std::string_view(ptr, end_pos - ptr)};
 }
 
-std::pair<JsonValue, std::string_view> TinyJson::parseString(const std::string_view sv)
+std::pair<JsonValue, std::string_view> parseString(const std::string_view sv)
 {
     if (sv.empty() || sv.front() != '"')
         throw std::runtime_error("Invalid JSON string format");
@@ -187,7 +168,7 @@ std::pair<JsonValue, std::string_view> TinyJson::parseString(const std::string_v
     throw std::runtime_error("Unterminated JSON string");
 }
 
-std::pair<JsonValue, std::string_view> TinyJson::parseArray(const std::string_view sv)
+std::pair<JsonValue, std::string_view> parseArray(const std::string_view sv)
 {
     JsonArray array;
 
@@ -228,7 +209,7 @@ std::pair<JsonValue, std::string_view> TinyJson::parseArray(const std::string_vi
     }
 }
 
-std::pair<JsonValue, std::string_view> TinyJson::parseObject(const std::string_view sv)
+std::pair<JsonValue, std::string_view> parseObject(const std::string_view sv)
 {
     JsonObject object;
 
@@ -280,3 +261,22 @@ std::pair<JsonValue, std::string_view> TinyJson::parseObject(const std::string_v
             throw std::runtime_error("Invalid JSON object format");
     }
 }
+JsonValue TinyJson::parse(const std::string &jsonString)
+{
+    std::string_view sv(jsonString);
+    sv = skipWhitespace(sv);
+
+    if (sv.empty())
+        throw std::runtime_error("Empty JSON string");
+
+    JsonValue value{};
+    std::string_view rest;
+    std::tie(value, rest) = parseJson(sv);
+
+    rest = skipWhitespace(rest);
+    if (!rest.empty())
+        throw std::runtime_error("Invalid JSON format");
+
+    return value;
+}
+
