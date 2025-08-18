@@ -39,20 +39,20 @@ void Config::fromJson(const std::string &json_string)
         const JsonObject &server_obj = std::get<JsonObject>(server_value);
         t_server_config server_config;
         server_config.server_name = TinyJson::as<std::string>(server_obj.at("server_name"));
-        server_config.root = TinyJson::as<std::string>(server_obj.at("root"));
-        server_config.index = TinyJson::as<std::string>(server_obj.at("index"), "");
+        server_config.root = server_obj.contains("root") ? TinyJson::as<std::string>(server_obj.at("root")) : "";
+        server_config.index = server_obj.contains("index") ? TinyJson::as<std::string>(server_obj.at("index")) : "";
         server_config.port = TinyJson::as<unsigned int>(server_obj.at("port"));
 
-        unsigned int max_request_timeout = TinyJson::as<unsigned int>(server_obj.at("max_request_timeout"), global_config_.global_request_timeout);
+        const unsigned int max_request_timeout = server_obj.contains("max_request_timeout") ? TinyJson::as<unsigned int>(server_obj.at("max_request_timeout")) : global_config_.global_request_timeout;
         server_config.max_request_timeout = std::min(max_request_timeout, global_config_.global_request_timeout);
 
-        unsigned int max_request_size = TinyJson::as<unsigned int>(server_obj.at("max_request_size"), global_config_.max_request_size);
+        const unsigned int max_request_size = server_obj.contains("max_request_size") ? TinyJson::as<unsigned int>(server_obj.at("max_request_size")) : global_config_.max_request_size;
         server_config.max_request_size = std::min(max_request_size, global_config_.max_request_size);
 
-        unsigned int max_headers_size = TinyJson::as<unsigned int>(server_obj.at("max_headers_size"), global_config_.max_headers_size);
+        const unsigned int max_headers_size = server_obj.contains("max_headers_size") ? TinyJson::as<unsigned int>(server_obj.at("max_headers_size")) : global_config_.max_headers_size;
         server_config.max_headers_size = std::min(max_headers_size, global_config_.max_headers_size);
 
-        server_config.is_cgi = TinyJson::as<bool>(server_obj.at("is_cgi"), false);
+        server_config.is_cgi = server_obj.contains("is_cgi") ? TinyJson::as<bool>(server_obj.at("is_cgi")) : false;
 
         if (server_config.is_cgi)
         {
@@ -78,7 +78,7 @@ void Config::fromJson(const std::string &json_string)
         }
         if (global_config_.servers.contains(server_config.server_name))
             throw std::invalid_argument("Duplicate server name: " + server_config.server_name);
-        
+
         global_config_.servers[server_config.server_name] = server_config;
     }
 }
