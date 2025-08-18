@@ -2,7 +2,7 @@
 // #include "WebServ.hpp"
 #include "LogSys.hpp"
 #include "HttpRequests.hpp"
-
+#include "HttpResponse.hpp"
 int main(/*int argc, char **argv*/)
 {
 /*	if (argc != 2)
@@ -66,7 +66,11 @@ std::vector<char> request = {
     'H','o','s','t',':',' ','l','o','c','a','l','h','o','s','t',':','8','0','8','0','\r','\n',
 	'\r','\n',
 };
+	std::string file;
 	HttpRequests parser;
+	HttpResponse response;
+
 	parser.httpParser(request);
+	response.responseSerializer(parser, file );
 	return (0);
 }

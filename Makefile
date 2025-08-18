@@ -25,7 +25,7 @@ CXX = c++
 CXXFLAGS := -Wall -Wextra -Werror -std=c++20 $(DEPFLAGS)
 LDFLAGS =
 
-SRCS_FILES := main.cpp HttpRequests.cpp WebServErr.cpp #WebServ.cpp
+SRCS_FILES := main.cpp HttpRequests.cpp HttpResponse.cpp WebServErr.cpp #WebServ.cpp
 
 SRCS_DIR := srcs/
 OBJS_DIR := objs/

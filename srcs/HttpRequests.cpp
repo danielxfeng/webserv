@@ -449,3 +449,8 @@ std::unordered_map<std::string, std::string> HttpRequests::getrequestMap()
 {
 	return requestMap;
 }
+
+
+std::string HttpRequests::getHttpVersion(){
+	return (requestMap["HttpVersion"]);
+}

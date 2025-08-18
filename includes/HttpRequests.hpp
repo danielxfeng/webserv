@@ -7,8 +7,6 @@
 class HttpRequests{
 	private:
 		size_t upToBodyCounter;
-		
-		
 		std::unordered_map<std::string, std::string> requestMap;
 
 
@@ -41,5 +39,6 @@ class HttpRequests{
 		//getters
 		size_t getupToBodyCounter();
 		std::unordered_map<std::string, std::string> getrequestMap();
+		std::string getHttpVersion();
 		std::vector<std::string> stov(std::string &string, char c);
 	};
