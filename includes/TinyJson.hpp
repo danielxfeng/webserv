@@ -2,6 +2,7 @@
 
 #include <variant>
 #include <string>
+#include <cmath>
 #include <vector>
 #include <unordered_map>
 #include <string_view>
@@ -42,3 +43,5 @@ public:
     template <typename T>
     static T as(const JsonValue &jsonValue, T defaultValue);
 };
+
+#include "TinyJson.tpp" 

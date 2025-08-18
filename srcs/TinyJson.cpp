@@ -1,4 +1,6 @@
-#include "TinyJson.hpp"
+#include "../includes/TinyJson.hpp"
+
+std::pair<JsonValue, std::string_view> parseJson(const std::string_view sv);
 
 bool isJsonWhitespace(char c)
 {
@@ -12,30 +14,6 @@ std::string_view skipWhitespace(std::string_view sv)
         ++i;
     sv.remove_prefix(i);
     return sv;
-}
-
-std::pair<JsonValue, std::string_view> parseJson(const std::string_view sv)
-{
-    JsonValue value{};
-    std::string_view rest;
-
-    if (sv.empty())
-        throw std::runtime_error("Empty JSON string");
-
-    if (sv.front() == '{')
-        return parseObject(sv);
-    else if (sv.front() == '[')
-        return parseArray(sv);
-    else if (sv.front() == '"')
-        return parseString(sv);
-    else if (isdigit(sv.front()) || sv.front() == '-')
-        return parseNumber(sv);
-    else if (sv.front() == 't' || sv.front() == 'f')
-        return parseBool(sv);
-    else if (sv.front() == 'n')
-        return parseNull(sv);
-    else
-        throw std::runtime_error("Invalid JSON format");
 }
 
 std::pair<JsonValue, std::string_view> parseBool(const std::string_view sv)
@@ -261,6 +239,31 @@ std::pair<JsonValue, std::string_view> parseObject(const std::string_view sv)
             throw std::runtime_error("Invalid JSON object format");
     }
 }
+
+std::pair<JsonValue, std::string_view> parseJson(const std::string_view sv)
+{
+    JsonValue value{};
+    std::string_view rest;
+
+    if (sv.empty())
+        throw std::runtime_error("Empty JSON string");
+
+    if (sv.front() == '{')
+        return parseObject(sv);
+    else if (sv.front() == '[')
+        return parseArray(sv);
+    else if (sv.front() == '"')
+        return parseString(sv);
+    else if (isdigit(sv.front()) || sv.front() == '-')
+        return parseNumber(sv);
+    else if (sv.front() == 't' || sv.front() == 'f')
+        return parseBool(sv);
+    else if (sv.front() == 'n')
+        return parseNull(sv);
+    else
+        throw std::runtime_error("Invalid JSON format");
+}
+
 JsonValue TinyJson::parse(const std::string &jsonString)
 {
     std::string_view sv(jsonString);

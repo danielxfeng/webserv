@@ -7,6 +7,8 @@ T TinyJson::as(const JsonValue &jsonValue)
 {
     if constexpr (std::is_arithmetic_v<T>)
     {
+        if (std::holds_alternative<bool>(jsonValue))
+            return static_cast<T>(std::get<bool>(jsonValue));
         const double *ptr = std::get_if<double>(&jsonValue);
         if (ptr)
         {
@@ -28,11 +30,13 @@ T TinyJson::as(const JsonValue &jsonValue)
         }
         throw std::bad_variant_access();
     }
-
-    const T *ptr = std::get_if<T>(&jsonValue);
-    if (ptr)
-        return *ptr;
-    throw std::bad_variant_access();
+    else
+    {
+        const std::remove_cvref_t<T> *ptr = std::get_if<std::remove_cvref_t<T>>(&jsonValue);
+        if (ptr)
+            return *ptr;
+        throw std::bad_variant_access();
+    }
 }
 
 template <typename T>
