@@ -17,11 +17,6 @@ typedef enum	e_priority
 	FATAL,
 }	t_priority;
 
-// Checks if Args are types that can be streamed to std::cout
-template<typename T>
-concept Streamable = requires(std::ostream& os, T t) {
-    { os << t } -> std::same_as<std::ostream&>;
-};
 
 class LogSys{
 private:
@@ -38,7 +33,7 @@ private:
 		return (logger);
 	}
 
-	template<Streamable... Args>
+	template<typename... Args>
 	void	log(const char* msg_priority_str, t_priority message_priority,
 	  const char* function, const char* message, Args&&... args)
 	{

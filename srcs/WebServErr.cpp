@@ -1,7 +1,14 @@
-#include "WebServErr.hpp"
+#include "../includes/WebServErr.hpp"
+
+std::string myFormat(const std::string &prefix, const std::string &what_arg)
+{
+    std::ostringstream oss;
+    oss << prefix << " " << what_arg;
+    return oss.str();
+}
 
 WebServErr::SysCallErrException::SysCallErrException(const std::string &what_arg)
-    : what_(std::format("Syscall error: {}", what_arg)) {}
+    : what_(myFormat("Syscall error:", what_arg)) {}
 
 const char *WebServErr::SysCallErrException::what() const noexcept
 {
@@ -9,7 +16,7 @@ const char *WebServErr::SysCallErrException::what() const noexcept
 }
 
 WebServErr::ShouldNotBeHereException::ShouldNotBeHereException(const std::string &what_arg)
-    : what_(std::format("Should not be here: {}", what_arg)) {}
+    : what_(myFormat("Should not be here:", what_arg)) {}
 
 const char *WebServErr::ShouldNotBeHereException::what() const noexcept
 {
@@ -17,9 +24,30 @@ const char *WebServErr::ShouldNotBeHereException::what() const noexcept
 }
 
 WebServErr::BadRequestException::BadRequestException(const std::string &what_arg)
-    : what_(std::format("Bad request: {}", what_arg)) {}
+    : what_(myFormat("Bad request:", what_arg)) {}
+
+
+
+WebServErr::MethodException::MethodException(t_error_codes code, const std::string &what_arg)
+	: what_(myFormat("Bad request:", what_arg))
+{
+	(void)code;//TODO This needs to change
+}
 
 const char *WebServErr::BadRequestException::what() const noexcept
 {
     return what_.c_str();
 }
+
+// const char *WebServErr::MethodException::what() const noexcept
+// {
+// 	return what_.c_str();
+// }
+
+WebServErr::UtilsException::UtilsException(const std::string &what_arg)
+	: what_(myFormat("Bad request:", what_arg)) {}
+
+// const char *WebServErr::UtilsException::what() const noexcept
+// {
+// 	return what_.c_str();
+// }

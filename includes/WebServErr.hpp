@@ -2,7 +2,17 @@
 
 #include <string>
 #include <exception>
-#include <format>
+#include <sstream>
+
+typedef enum e_error_codes
+{
+	ERR_301,
+	ERR_401,
+	ERR_403,
+	ERR_404,
+	ERR_409,
+	ERR_500
+}	t_error_codes;
 
 class WebServErr
 {
@@ -56,4 +66,28 @@ public:
 
         const char *what() const noexcept override;
     };
+
+	class MethodException: public std::exception
+	{
+		private:
+			std::string what_;
+		public:
+			MethodException() = delete;
+			explicit MethodException(t_error_codes code, const std::string &what_arg);
+			MethodException(const MethodException &other) = default;
+			MethodException &operator=(const MethodException &other) = delete;
+			~MethodException() override = default;
+	};
+
+	class UtilsException: public std::exception
+	{
+		private:
+			std::string what_;
+		public:
+			UtilsException() = delete;
+			explicit UtilsException(const std::string &what_arg);
+			UtilsException(const UtilsException &other) = default;
+			UtilsException &operator=(const UtilsException &other) = delete;
+			~UtilsException() override = default;
+	};
 };
