@@ -17,7 +17,12 @@ t_method convertMethod(const std::string &method_str)
         return UNKNOWN;
 }
 
-t_global_config &Config::getGlobalConfig()
+const t_global_config &Config::getGlobalConfig() const
+{
+    return global_config_;
+}
+
+t_global_config Config::fetchGlobalConfig()
 {
     return global_config_;
 }
@@ -28,7 +33,6 @@ void Config::fromJson(const std::string &json_string)
     const JsonObject &json_obj = std::get<JsonObject>(json_value);
     global_config_.max_poll_events = TinyJson::as<unsigned int>(json_obj.at("max_poll_events"), MAX_POLL_EVENTS);
     global_config_.max_poll_timeout = TinyJson::as<unsigned int>(json_obj.at("max_poll_timeout"), MAX_POLL_TIMEOUT);
-    global_config_.max_connections = TinyJson::as<unsigned int>(json_obj.at("max_connections"), MAX_CONNECTIONS);
     global_config_.global_request_timeout = TinyJson::as<unsigned int>(json_obj.at("global_request_timeout"), GLOBAL_REQUEST_TIMEOUT);
     global_config_.max_request_size = TinyJson::as<unsigned int>(json_obj.at("max_request_size"), MAX_REQUEST_SIZE);
     global_config_.max_headers_size = TinyJson::as<unsigned int>(json_obj.at("max_headers_size"), MAX_HEADERS_SIZE);
@@ -85,4 +89,20 @@ void Config::fromJson(const std::string &json_string)
 
         global_config_.servers[server_config.server_name] = server_config;
     }
+}
+
+t_global_config Config::parseConfigFromFile(const std::string &conf_file_path)
+{
+    std::ifstream conf_file(conf_file_path);
+    if (!conf_file.is_open())
+        throw std::runtime_error("Failed to open config file: " + conf_file_path);
+
+    const std::string json{
+        std::istreambuf_iterator<char>(conf_file),
+        std::istreambuf_iterator<char>()};
+
+    Config config;
+
+    config.fromJson(json);
+    return config.fetchGlobalConfig();
 }
