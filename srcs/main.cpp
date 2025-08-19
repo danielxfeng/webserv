@@ -59,18 +59,31 @@ int main(/*int argc, char **argv*/)
 // };
 
 
+std::string request="POST /upload HTTP/1.1\r\n"
+					"Host: example.com\r\n"
+					"User-Agent: MyUploader/1.0\r\n"
+					"Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n"
+					"Content-Length: 213\r\n"
+					"\r\n"
+					"------WebKitFormBoundary7MA4YWxkTrZu0gW\r\n"
+					"Content-Disposition: form-data; name=\"file\"; filename=\"example.png\"\r\n"
+					"Content-Type: image/png\r\n"
+					"\r\n"
+					"\x89""PNG\r\n\x1a\n"  // start of PNG header bytes
+					"\x00\x00\x00\x0DIHDR\x00\x00\x00\x10..."  // placeholder for rest of binary data
+					"\r\n"
+					"------WebKitFormBoundary7MA4YWxkTrZu0gW--\r\n";; 
 
-
-std::vector<char> request = {
-    'G','E','T',' ','/','u','p','l','o','a','d',' ','H','T','T','P','/','1','.','1','\r','\n',
-    'H','o','s','t',':',' ','l','o','c','a','l','h','o','s','t',':','8','0','8','0','\r','\n',
-	'\r','\n',
-};
+// std::vector<char> request = {
+//     'G','E','T',' ','/','u','p','l','o','a','d',' ','H','T','T','P','/','1','.','1','\r','\n',
+//     'H','o','s','t',':',' ','l','o','c','a','l','h','o','s','t',':','8','0','8','0','\r','\n',
+// 	'\r','\n',
+// };
 	std::string file;
 	HttpRequests parser;
 	HttpResponse response;
 
 	parser.httpParser(request);
-	response.responseSerializer(parser, file );
+	// response.responseSerializer(parser, file );
 	return (0);
 }

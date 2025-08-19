@@ -16,13 +16,13 @@ class HttpRequests{
 		HttpRequests operator=(const HttpRequests &obj);
 		~HttpRequests();
 
-		HttpRequests &httpParser(const std::vector<char> &request);
+		HttpRequests &httpParser(const std::string &request);
 
-		void tillBodyCounter(size_t &i, size_t requestLength, const std::vector<char> &request);
+		void tillBodyCounter(size_t &i, size_t requestLength, const std::string &request);
 
-		bool extractRequestLine(size_t &i, size_t requestLength, const std::vector<char> &request);
-		bool extractRequestHeader(size_t &i, size_t requestLength, const std::vector<char> &request);
-
+		bool extractRequestLine(size_t &i, size_t requestLength, const std::string &request);
+		bool extractRequestHeader(size_t &i, size_t requestLength, const std::string &request);
+		bool extractRequestBody(size_t &i, size_t requestLength, const std::string &request);
 		void validateRequestLine();
 		void validateMethod();
 		void validateTarget();
@@ -34,7 +34,7 @@ class HttpRequests{
 		void header_connection_validator(void);
 		void header_accept_validator();
 		void header_contenttype_validator();
-		void pre_validator(size_t requestLength, const std::vector<char> &request);
+		void pre_validator(size_t requestLength, const std::string &request);
 
 		//getters
 		size_t getupToBodyCounter();

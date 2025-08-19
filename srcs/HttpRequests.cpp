@@ -7,7 +7,6 @@ std::string_view sv = string;
 sv.substr()
 */
 
-
 HttpRequests::HttpRequests(const HttpRequests &obj)
 {
 	if (this != &obj)
@@ -33,10 +32,10 @@ HttpRequests::~HttpRequests() {
 
 /**
  * @brief extract the requestline from the request, then stores them into the map.
- * @param (size_t &i, size_t requestLength, const std::vector<char> &request)
+ * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing
  */
-bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std::vector<char> &request)
+bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std::string &request)
 {
 	std::string method;
 	std::string target;
@@ -114,7 +113,7 @@ void HttpRequests::validateTarget()
 }
 /**
  * @brief validate the method it must be get, post and delete.
- * @param (size_t &i, size_t requestLength, const std::vector<char> &request)
+ * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing
  */
 void HttpRequests::validateMethod()
@@ -129,7 +128,6 @@ void HttpRequests::validateMethod()
 	if (!valid_method)
 		throw WebServErr::BadRequestException("Invalid method only GET, POST and DELETE are allowed");
 }
-
 
 /**
  * @brief vaalidate the request line  from the request.
@@ -148,10 +146,10 @@ void HttpRequests::validateRequestLine()
 
 /**
  * @brief extract the request body from the request.
- * @param (size_t &i, size_t requestLength, const std::vector<char> &request)
+ * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing
  */
-bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const std::vector<char> &request)
+bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const std::string &request)
 {
 
 	std::string firstPart;
@@ -173,7 +171,7 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 
 	for (; j < requestHeader.length(); j++)
 	{
-		//TODO : u can use std::find and others and read bout it.
+		// TODO : u can use std::find and others and read bout it.
 		if (requestHeader[j] == '\r' && requestHeader[j + 1] && requestHeader[j + 1] == '\n')
 		{
 			j += 2;
@@ -233,10 +231,12 @@ void HttpRequests::host_validator(void)
 	requestMap["servername"] = firstPart;
 	// TODO check if the ServerName is valid from the list.
 	// validate Port
-
-	if (std::stoi(secondPart) < 1 || std::stoi(secondPart) > 65535)
-		throw WebServErr::BadRequestException("post is out of allowed range from 1 to 655535");
-	requestMap["requestport"] = secondPart;
+	if (secondPartBool)
+	{
+		if ((std::stoi(secondPart) < 1 || std::stoi(secondPart) > 65535))
+			throw WebServErr::BadRequestException("post is out of allowed range from 1 to 655535");
+		requestMap["requestport"] = secondPart;
+	}
 }
 
 /**
@@ -366,10 +366,10 @@ void HttpRequests::validateRequestHeader(void)
 
 /**
  * @brief count the characters till the body part.
- * @param (size_t &i, size_t requestLength, const std::vector<char> &request)
+ * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing it store in the variable.
  */
-void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength, const std::vector<char> &request)
+void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength, const std::string &request)
 {
 
 	for (; i <= requestLength; i++)
@@ -378,21 +378,22 @@ void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength, const std::v
 		{
 			break;
 		}
-		if(upToBodyCounter > 8192){//8KB max size of the requestline + request header
+		if (upToBodyCounter > 8192)
+		{ // 8KB max size of the requestline + request header
 			throw WebServErr::BadRequestException("403 Long request");
-		} 	
+		}
 		upToBodyCounter++;
 	}
 }
 /**
  * @brief validate the reauest before start extraction.
- * @param (size_t requestLength, const std::vector<char> &request)
+ * @param (size_t requestLength, const std::string &request)
  * @return nothing it store in the variable.
  */
-void HttpRequests::pre_validator(size_t requestLength, const std::vector<char> &request)
+void HttpRequests::pre_validator(size_t requestLength, const std::string &request)
 {
 
-	(void) requestLength;
+	(void)requestLength;
 	for (size_t i = 0; i <= upToBodyCounter; i++)
 	{
 		if (request[i] == ',' && request[i + 1] && request[i + 1] == ',')
@@ -400,17 +401,36 @@ void HttpRequests::pre_validator(size_t requestLength, const std::vector<char> &
 	}
 }
 
+bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength, const std::string &request)
+{
+	// size_t pos = 0;
+	(void) requestLength;
+	std::string_view sv(request);
+	std::string_view requestBody;
+	// std::string_view requestBodyHeader;
+	// size_t boundarySize;
+
+	requestBody = sv.substr(i, sv.size());
+	std::cout << "requestBody :" << requestBody << std::endl;
+
+	// boundarySize = requestMap.contains("boundary") ? requestMap["boundary"].size() : 0;
+	// if (boundarySize == 0 || boundarySize > requestBody.size())
+	// 	throw WebServErr::BadRequestException("must have boundary");
+	// pos = requestBody.find("\r\n\r\n");
+	// requestBodyHeader = requestBody.substr(boundarySize + 4, requestLength);
+	// std::cout << "requestBodyHeader :" << requestBodyHeader << std::endl;
+	return (true);
+}
+
 /**
  * @brief Parsing the request.
- * @param std::vector<char>.
+ * @param std::string.
  * @return HttpRequests&;
  */
-HttpRequests &HttpRequests::httpParser(const std::vector<char> &request)
+HttpRequests &HttpRequests::httpParser(const std::string &request)
 {
-
-	size_t requestLength = request.size();
-
 	size_t i = 0;
+	size_t requestLength = request.size();
 
 	tillBodyCounter(i, requestLength, request);
 	i = 0;
@@ -425,8 +445,12 @@ HttpRequests &HttpRequests::httpParser(const std::vector<char> &request)
 	if (!extractRequestHeader(i, requestLength, request))
 		std::cerr << "extractRequestHeader";
 	validateRequestHeader();
-	for (const auto &pair : requestMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;	
+
+	if (!extractRequestBody(i, requestLength, request))
+		std::cerr << "extractRequestHeader";
+	// validateRequestBody();
+	// for (const auto &pair : requestMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
 	return (*this);
 }
 
@@ -450,7 +474,7 @@ std::unordered_map<std::string, std::string> HttpRequests::getrequestMap()
 	return requestMap;
 }
 
-
-std::string HttpRequests::getHttpVersion(){
+std::string HttpRequests::getHttpVersion()
+{
 	return (requestMap["HttpVersion"]);
 }

@@ -18,4 +18,3 @@ std::string HttpResponse::getTime()
     oss << std::asctime(std::localtime(&result));
     return (oss.str()); // return oss.str().
 }
-GIT 
