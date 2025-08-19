@@ -15,4 +15,7 @@ class HttpResponse{
     public:
         std::vector<char> responseSerializer(HttpRequests request, std::string &page);
         std::string getTime();
+
+
+
 };
