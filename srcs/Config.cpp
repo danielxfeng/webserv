@@ -39,8 +39,6 @@ void Config::fromJson(const std::string &json_string)
         const JsonObject &server_obj = std::get<JsonObject>(server_value);
         t_server_config server_config;
         server_config.server_name = TinyJson::as<std::string>(server_obj.at("server_name"));
-        server_config.root = server_obj.contains("root") ? TinyJson::as<std::string>(server_obj.at("root")) : "";
-        server_config.index = server_obj.contains("index") ? TinyJson::as<std::string>(server_obj.at("index")) : "";
         server_config.port = TinyJson::as<unsigned int>(server_obj.at("port"));
 
         const unsigned int max_request_timeout = server_obj.contains("max_request_timeout") ? TinyJson::as<unsigned int>(server_obj.at("max_request_timeout")) : global_config_.global_request_timeout;
@@ -66,14 +64,20 @@ void Config::fromJson(const std::string &json_string)
             for (const auto &location_pair : locations_obj)
             {
                 const std::string &location_path = location_pair.first;
-                const JsonArray &methods_array = std::get<JsonArray>(location_pair.second);
+                const JsonObject &location_obj = std::get<JsonObject>(location_pair.second);
+                t_location_config location_config;
+                location_config.root = TinyJson::as<std::string>(location_obj.at("root"));
+                location_config.index = location_obj.contains("index") ? TinyJson::as<std::string>(location_obj.at("index")) : "";
+
+                const JsonArray &methods_array = std::get<JsonArray>(location_obj.at("methods"));
                 for (const JsonValue &method_value : methods_array)
                 {
                     t_method method = convertMethod(TinyJson::as<std::string>(method_value));
                     if (method == CGI || method == UNKNOWN)
                         throw std::invalid_argument("invalid method in locations: " + location_path);
-                    server_config.locations[location_path].push_back(method);
+                    location_config.methods.push_back(method);
                 }
+                server_config.locations[location_path] = location_config;
             }
         }
         if (global_config_.servers.contains(server_config.server_name))
