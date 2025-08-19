@@ -72,7 +72,8 @@
       "ranges": "cpp",
       "semaphore": "cpp",
       "stop_token": "cpp",
-      "thread": "cpp"
+      "thread": "cpp",
+      "*.tpp": "cpp"
     },
     "cmake.sourceDirectory": "/home/xifeng/webserv/",
   "cmake.buildDirectory": "${workspaceFolder}/build",
