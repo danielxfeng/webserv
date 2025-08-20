@@ -36,7 +36,7 @@ MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
  *
  */
 
-int		MethodHandler::handleMethod(t_method method, std::unordered_map<std::string, std::string> headers)
+int		MethodHandler::handleMethod(t_method method, t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
 	std::string &pathRef = headers["Path"];
 	switch (method)

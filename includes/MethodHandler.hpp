@@ -2,6 +2,7 @@
 
 #include "LogSys.hpp"
 #include "WebServErr.hpp"
+#include "Config.hpp"
 
 #include <unordered_map>
 #include <vector>
@@ -50,5 +51,5 @@ public:
     ~MethodHandler();
     MethodHandler &operator=(const MethodHandler &copy);
 
-	int	handleMethod(t_method method, std::unordered_map<std::string, std::string> headers);
+	int	handleMethod(t_method method, t_server_config server, std::unordered_map<std::string, std::string> headers);
 };
