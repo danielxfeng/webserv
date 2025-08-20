@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "Buffer.hpp"
 #include "MethodHandler.hpp"
+#include "Config.hpp"
 
 typedef enum e_direction
 {
@@ -65,24 +66,27 @@ typedef struct s_msg_from_serv
 
 t_method convertMethod(const std::string &method_str);
 
-// TODO: to be implemented
 class Server
 {
 private:
-    unsigned int port_;
-    std::string name_;
-    unsigned int max_header_size_;
+    const t_server_config &config_; // Server configuration
     std::vector<t_conn> conn_vec_;
     std::unordered_map<int, t_conn *> conn_map_;
 
 public:
-    unsigned int port() const { return port_; }
+    Server() = delete;
+    Server(const t_server_config &config) {};
+    Server(const Server &) = delete;
+    Server &operator=(const Server &) = delete;
+    ~Server() = default;
 
-    void addConn(int fd) { /* TODO: implement */ }
-    void handleDataEnd(int fd) { /* TODO: implement */ }
-    void handleReadEnd(int fd) { /* TODO: implement */ }
+    const t_server_config &getConfig() const;
+
+    void addConn(int fd);
+    void handleDataEnd(int fd);
+    void handleReadEnd(int fd);
     t_msg_from_serv handleDataIn(int fd);
     t_msg_from_serv handleDataOut(int fd);
     t_msg_from_serv handleError(t_conn *conn, t_error_code error_code, const std::string &error_message);
-    void timeoutKiller() { /* TODO: implement */ }
+    void timeoutKiller();
 };

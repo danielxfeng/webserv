@@ -4,13 +4,13 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <fstream>
 #include "TinyJson.hpp"
 #include "TinyJsonSerializable.hpp"
 // #include "Server.hpp" // TODO: remove this after we can include server.hpp
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
 constexpr unsigned int MAX_POLL_TIMEOUT = 1000u; // in milliseconds
-constexpr unsigned int MAX_CONNECTIONS = 1024u;
 constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 5000u; // in milliseconds
 constexpr unsigned int MAX_REQUEST_SIZE = 1048576u;    // 1 MB
 constexpr unsigned int MAX_HEADERS_SIZE = 8192u;       // 8 KB
@@ -48,7 +48,6 @@ typedef struct s_global_config
 {
     unsigned int max_poll_events;                             // Maximum number of events to poll
     unsigned int max_poll_timeout;                            // Maximum timeout for polling events in milliseconds
-    unsigned int max_connections;                             // Maximum size of a request in bytes
     unsigned int global_request_timeout;                      // Global request timeout in milliseconds
     unsigned int max_request_size;                            // Maximum size of a request in bytes
     unsigned int max_headers_size;                            // Maximum size of headers in bytes
@@ -66,6 +65,9 @@ public:
     Config &operator=(const Config &other) = default;
     ~Config() = default;
 
-    void fromJson(const std::string &jsonString) override;
-    t_global_config &getGlobalConfig();
+    void fromJson(const std::string &json_string) override;
+    const t_global_config &getGlobalConfig() const;
+    t_global_config fetchGlobalConfig();
+
+    static t_global_config parseConfigFromFile(const std::string &conf_file_path);
 };

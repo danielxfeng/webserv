@@ -16,12 +16,15 @@ t_method convertMethod(const std::string &method_str)
         return UNKNOWN;
 }
 
+Server::Server(const t_server_config &config) : config_(config) {}
+
+const t_server_config &Server::getConfig() const { return config_; }
+
 void Server::addConn(int fd)
 {
     auto now = time(NULL);
 
-    // TODO: replace the hardcoded values with actual configuration values.
-    t_conn conn = {fd, -1, -1, "", UNKNOWN, HEADER_PARSING, now, now, 0, 999999999, Buffer(1024, 256), Buffer(1024, 256), std::unordered_map<std::string, std::string>()};
+    t_conn conn = {fd, -1, -1, "", UNKNOWN, HEADER_PARSING, now, now, config_.max_request_size, 0, Buffer(1024, 256), Buffer(1024, 256), std::unordered_map<std::string, std::string>()};
 
     conn_vec_.push_back(conn);
     conn_map_.emplace(fd, &conn_vec_.back());
@@ -49,28 +52,38 @@ t_msg_from_serv Server::handleDataIn(int fd)
             // Assign the value to header.
         }
 
-        const bool is_max_length_exceeded = (conn->headers.contains("Content-Length") && conn->bytes_received > std::stoul(conn->headers.at("Content-Length")));
+        const bool is_max_length_reached = (conn->bytes_received == conn->content_length);
 
-        const bool is_eof = (bytes_read == EOF_REACHED || is_max_length_exceeded);
+        if (bytes_read == EOF_REACHED && !is_max_length_reached)
+        {
+            LOG_ERROR("EOF reached but content length not reached");
+            return handleError(conn, BAD_REQUEST, "EOF reached but content length not reached");
+        }
+
+        if (conn->bytes_received > config_.max_request_size)
+        {
+            LOG_ERROR("Request size exceeded");
+            return handleError(conn, BAD_REQUEST, "Request size exceeded");
+        }
 
         switch (conn->status)
         {
         case HEADER_PARSING:
-            if (conn->bytes_received >= max_header_size_)
+            if (conn->bytes_received >= config_.max_headers_size)
                 return handleError(conn, BAD_REQUEST, "Header size exceeded");
-            if (is_eof)
+            if (is_max_length_reached)
                 return handleError(conn, BAD_REQUEST, "Header not found");
             break;
         case READING:
-			// TODO: Construct full path fron Config + Path
-                        // TODO: Handle the methods.
-			// TODO: Generate Header
+            // TODO: Construct full path fron Config + Path
+            // TODO: Handle the methods.
+            // TODO: Generate Header
             break;
         default:
             return {false, -1, IN, -1}; // Just skip for now.
         }
 
-        if (is_eof)
+        if (is_max_length_reached)
         {
             conn->status = WRITING;
             const bool keep_alive = conn->headers.contains("Connection") && conn->headers.at("Connection") == "keep-alive";
