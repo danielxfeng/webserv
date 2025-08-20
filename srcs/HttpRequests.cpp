@@ -1,6 +1,10 @@
 #include "../includes/HttpRequests.hpp"
+
 // default
-HttpRequests::HttpRequests() : upToBodyCounter(0), requestHeaderMap(), requestLineMap(), requestBodyMap(){}
+HttpRequests::HttpRequests() : upToBodyCounter(0), requestHeaderMap(),
+							   requestLineMap(), requestBodyMap()
+{
+}
 /*
 std::string_view sv = string;
 sv.substr()
@@ -16,7 +20,6 @@ HttpRequests::HttpRequests(const HttpRequests &obj)
 		requestBodyMap = obj.requestBodyMap;
 	}
 };
-
 HttpRequests HttpRequests::operator=(const HttpRequests &obj)
 {
 	if (this != &obj)
@@ -28,23 +31,22 @@ HttpRequests HttpRequests::operator=(const HttpRequests &obj)
 	}
 	return (*this);
 };
-
 HttpRequests::~HttpRequests() {
-
 };
-
 /**
- * @brief extract the requestline from the request, then stores them into the map.
+ * @brief extract the requestline from the request,
+	then stores them into the map.
  * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing
  */
-bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std::string &request)
+bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength,
+									  const std::string &request)
 {
 	std::string method;
 	std::string target;
 	std::string httpVersion;
 	std::string requestLine;
-
+	size_t j = 0;
 	for (; i <= requestLength; i++)
 	{
 		if (request[i] == '\r' && request[i + 1] == '\n')
@@ -54,8 +56,7 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std
 		}
 		requestLine += request[i];
 	}
-
-	size_t j = 0;
+	j = 0;
 	for (; j < requestLine.size(); j++)
 	{
 		if (requestLine[j] == ' ')
@@ -74,7 +75,6 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std
 		}
 		target += requestLine[j];
 	}
-
 	for (; j < requestLine.size(); j++)
 	{
 		httpVersion += requestLine[j];
@@ -82,7 +82,6 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength, const std
 	requestLineMap["Method"] = method;
 	requestLineMap["Target"] = target;
 	requestLineMap["HttpVersion"] = httpVersion;
-
 	return (true);
 }
 
@@ -103,7 +102,6 @@ void HttpRequests::validateTarget()
 {
 	if (requestLineMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
-
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
 	for (char j : requestLineMap["Target"])
 	{
@@ -121,7 +119,9 @@ void HttpRequests::validateTarget()
  */
 void HttpRequests::validateMethod()
 {
-	bool valid_method = false;
+	bool valid_method;
+
+	valid_method = false;
 	std::vector<std::string> validMethods = {"GET", "POST", "DELETE"};
 	for (std::string im : validMethods)
 	{
@@ -129,7 +129,7 @@ void HttpRequests::validateMethod()
 			valid_method = true;
 	}
 	if (!valid_method)
-		throw WebServErr::BadRequestException("Invalid method only GET, POST and DELETE are allowed");
+		throw WebServErr::BadRequestException("Invalid method only GET,	POST and DELETE are allowed");
 }
 
 /**
@@ -152,14 +152,16 @@ void HttpRequests::validateRequestLine()
  * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing
  */
-bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const std::string &request)
+bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength,
+										const std::string &request)
 {
+	bool secondPartBool;
+	size_t j;
 
 	std::string firstPart;
 	std::string secondPart;
 	std::string requestHeader;
-
-	bool secondPartBool = false;
+	secondPartBool = false;
 	for (; i <= requestLength; i++)
 	{
 		if (request[i] == '\r' && request[i + 1] && request[i + 1] == '\n' && request[i + 2] && request[i + 2] == '\r' && request[i + 3] && request[i + 3] == '\n')
@@ -170,8 +172,7 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 		requestHeader += request[i];
 	}
 	requestHeader.append("\r\n");
-	size_t j = 0;
-
+	j = 0;
 	for (; j < requestHeader.length(); j++)
 	{
 		// TODO : u can use std::find and others and read bout it.
@@ -179,7 +180,7 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 		{
 			j += 2;
 			secondPartBool = false;
-			// to make sure that Host and content-length has only one value, it is not allowed to be duplicated.
+			// to make sure that Host and content-length has only one value,it is not allowed to be duplicated.
 			if ((requestHeaderMap.contains("host") && firstPart == "host") || (requestHeaderMap.contains("content-length") && firstPart == "content-length"))
 			{
 				std::cerr << "Error: we have host before" << std::endl;
@@ -189,13 +190,11 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
 			firstPart = "";
 			secondPart = "";
 		}
-
 		if (requestHeader[j] == ':' && requestHeader[j + 1] && requestHeader[j + 1] == ' ')
 		{
 			secondPartBool = true;
 			j += 2;
 		}
-
 		if (!secondPartBool)
 			firstPart += std::tolower(requestHeader[j]);
 		if (secondPartBool)
@@ -211,11 +210,12 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength, const s
  */
 void HttpRequests::host_validator(void)
 {
+	bool secondPartBool;
+
 	std::string host_str;
 	std::string firstPart;
 	std::string secondPart;
-	bool secondPartBool = false;
-
+	secondPartBool = false;
 	if (!requestHeaderMap.contains("host"))
 		throw WebServErr::BadRequestException("host is required");
 	host_str = requestHeaderMap["host"];
@@ -249,7 +249,9 @@ void HttpRequests::host_validator(void)
  */
 void HttpRequests::content_length_validator(void)
 {
-	size_t content_length_var = 0;
+	size_t content_length_var;
+
+	content_length_var = 0;
 	if (requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
 	{
 		if (!requestHeaderMap.contains("content-length") && !requestHeaderMap.contains("transfer-encoding"))
@@ -281,7 +283,7 @@ void HttpRequests::header_connection_validator(void)
 	if (requestHeaderMap.contains("connection"))
 	{
 		if (!(requestHeaderMap["connection"] == "keep-alive" || requestHeaderMap["connection"] == "close"))
-			throw WebServErr::BadRequestException("Incrorrect connection value, must be keep-alive or close");
+			throw WebServErr::BadRequestException("Incrorrect connection value,	must be keep-alive or close");
 	}
 	else
 	{
@@ -321,11 +323,12 @@ std::vector<std::string> HttpRequests::stov(std::string &string, char c)
  */
 void HttpRequests::header_contenttype_validator()
 {
+	bool has_semicolon;
+	bool valid_types;
+
 	if (requestLineMap["Method"] == "POST")
 	{
-
-		bool has_semicolon = false;
-		
+		has_semicolon = false;
 		std::string type = requestHeaderMap["content-type"];
 		for (size_t i = 0; i < type.length(); i++)
 		{
@@ -336,16 +339,15 @@ void HttpRequests::header_contenttype_validator()
 		}
 		if (has_semicolon)
 		{
-			std::vector<std::string> type = stov(requestHeaderMap["content-type"], ';');
+			std::vector<std::string> type = stov(requestHeaderMap["content-type"],';');
 			requestHeaderMap["content-type"] = type[0];
 			requestHeaderMap["boundary"] = type[1].substr(9);
 		}
-
-		bool valid_types = false;
+		valid_types = false;
 		if (!requestHeaderMap.contains("content-type") || requestHeaderMap["content-type"].empty())
 			throw WebServErr::BadRequestException("POST must have content-type value");
-		
-		std::vector<std::string> validAccepts = {"image/png", "multipart/form-data"};
+		std::vector<std::string> validAccepts = {"image/png",
+												 "multipart/form-data"};
 		for (std::string im : validAccepts)
 		{
 			if (requestHeaderMap["content-type"] == im)
@@ -374,9 +376,9 @@ void HttpRequests::validateRequestHeader(void)
  * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing it store in the variable.
  */
-void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength, const std::string &request)
+void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength,
+								   const std::string &request)
 {
-
 	for (; i <= requestLength; i++)
 	{
 		if (request[i] == '\r' && request[i + 1] && request[i + 1] == '\n' && request[i + 2] && request[i + 2] == '\r' && request[i + 3] && request[i + 3] == '\n')
@@ -395,70 +397,76 @@ void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength, const std::s
  * @param (size_t requestLength, const std::string &request)
  * @return nothing it store in the variable.
  */
-void HttpRequests::pre_validator(size_t requestLength, const std::string &request)
+void HttpRequests::pre_validator(size_t requestLength,
+								 const std::string &request)
 {
-
 	(void)requestLength;
 	for (size_t i = 0; i <= upToBodyCounter; i++)
 	{
 		if (request[i] == ',' && request[i + 1] && request[i + 1] == ',')
-			throw WebServErr::BadRequestException("Invalid Http request, it has extra (,).");
+			throw WebServErr::BadRequestException("Invalid Http request,it has extra (,).");
 	}
 }
 
+void HttpRequests::parse_body_header(std::string_view requestBodyHeader)
+{
+	bool colonFind;
+	bool endofLine;
 
-void HttpRequests::parse_body_header(std::string_view requestBodyHeader){
 	std::string firstPart;
 	std::string secondPart;
-	size_t found;
-	size_t endl_found;
-	// while(!requestBodyHeader.empty()){
-		found = requestBodyHeader.find(":");
-		if (found == std::string::npos)
-			throw WebServErr::BadRequestException("Body header the data is incorrect.");
-		endl_found = requestBodyHeader.find("\r\n");
-		if (endl_found == std::string::npos)
-			throw WebServErr::BadRequestException("Body header the data is incorrect.");
 
-		firstPart = requestBodyHeader.substr(0,found);
-	
-		secondPart = requestBodyHeader.substr(found + 2,endl_found);
-		requestBodyMap[firstPart] = secondPart;
-		firstPart = "";
-		secondPart = "";
-		requestBodyHeader.remove_prefix(endl_found + 2);
-	// }
-	
-
+	for (size_t i=0; i < requestBodyHeader.size(); i++)
+	{
+		colonFind = false;
+		endofLine = false;
+		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i + 1] == '\n' && requestBodyHeader[i + 2] == '\r' && requestBodyHeader[i + 3] == '\n')
+		{
+			break;
+		}
+		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i] == '\n')
+		{
+			endofLine = true;
+			requestBodyMap[firstPart] = secondPart;
+			firstPart = "";
+			secondPart = "";
+		}
+		if (requestBodyHeader[i] == ':')
+		{
+			i++;
+			colonFind = true;
+		}
+		if (!colonFind)
+			firstPart += std::tolower(requestBodyHeader[i]);
+		if (colonFind && !endofLine)
+			secondPart += std::tolower(requestBodyHeader[i]);
+	}
 }
 
-bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength, const std::string &request)
+bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
+									  const std::string &request)
 {
-	size_t pos = 0;
-	(void) requestLength;
+	size_t pos;
+	size_t boundarySize;
+
+	pos = 0;
+	(void)requestLength;
 	std::string_view sv(request);
 	std::string_view requestBody;
 	std::string_view requestBodyHeader;
-	size_t boundarySize;
-
 	requestBody = sv.substr(i, request.size());
 	boundarySize = requestHeaderMap.contains("boundary") ? requestHeaderMap["boundary"].size() : 0;
 	if (boundarySize == 0 || boundarySize > requestBody.size())
 		throw WebServErr::BadRequestException("must have boundary");
-	
 	// extract the first boundary line
 	requestBodyHeader = requestBody.substr(boundarySize + 4, requestLength);
-	
 	// find end of the header part of the body
 	pos = requestBodyHeader.find("\r\n\r\n");
-	if(pos == std::string::npos)
+	if (pos == std::string::npos)
 		throw WebServErr::BadRequestException("no file part found.");
-	
 	// extract the body header part
 	requestBodyHeader = requestBodyHeader.substr(0, pos);
-	
 	parse_body_header(requestBodyHeader);
-
 	std::cout << "requestBodyHeader :" << requestBodyHeader << std::endl;
 	return (true);
 }
@@ -466,32 +474,35 @@ bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength, const std
 /**
  * @brief Parsing the request.
  * @param std::string.
- * @return HttpRequests&;
+ * @return (HttpRequests&);
  */
 HttpRequests &HttpRequests::httpParser(const std::string &request)
 {
-	size_t i = 0;
-	size_t requestLength = request.size();
+	size_t i;
+	size_t requestLength;
 
+	i = 0;
+	requestLength = request.size();
 	tillBodyCounter(i, requestLength, request);
 	i = 0;
 	// will extract the first line as a request line.
 	pre_validator(requestLength, request);
-
 	if (!extractRequestLine(i, requestLength, request))
 		std::cerr << "extractRequestLine";
 	validateRequestLine();
-
 	// will extract the request header part as a request line.
 	if (!extractRequestHeader(i, requestLength, request))
 		std::cerr << "extractRequestHeader";
 	validateRequestHeader();
-
 	if (!extractRequestBody(i, requestLength, request))
 		std::cerr << "extractRequestHeader";
 	// validateRequestBody();
+	// for (const auto &pair : requestLineMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
 	// for (const auto &pair : requestHeaderMap)
 	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	for (const auto &pair : requestBodyMap)
+		std::cout << pair.first << ": " << pair.second << std::endl;
 	return (*this);
 }
 
@@ -502,7 +513,7 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
  */
 size_t HttpRequests::getupToBodyCounter()
 {
-	return upToBodyCounter;
+	return (upToBodyCounter);
 }
 
 /**
@@ -512,20 +523,18 @@ size_t HttpRequests::getupToBodyCounter()
  */
 std::unordered_map<std::string, std::string> HttpRequests::getrequestHeaderMap()
 {
-	return requestHeaderMap;
+	return (requestHeaderMap);
 }
-
 
 std::unordered_map<std::string, std::string> HttpRequests::getrequestLineMap()
 {
-	return requestLineMap;
+	return (requestLineMap);
 }
 
 std::unordered_map<std::string, std::string> HttpRequests::getrequestBodyMap()
 {
-	return requestBodyMap;
+	return (requestBodyMap);
 }
-
 
 std::string HttpRequests::getHttpVersion()
 {
