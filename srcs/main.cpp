@@ -72,7 +72,7 @@ std::string request="POST /upload HTTP/1.1\r\n"
 					"\x89""PNG\r\n\x1a\n"  // start of PNG header bytes
 					"\x00\x00\x00\x0DIHDR\x00\x00\x00\x10..."  // placeholder for rest of binary data
 					"\r\n"
-					"------WebKitFormBoundary7MA4YWxkTrZu0gW--\r\n";; 
+					"------WebKitFormBoundary7MA4YWxkTrZu0gW--\r\n";
 
 // std::vector<char> request = {
 //     'G','E','T',' ','/','u','p','l','o','a','d',' ','H','T','T','P','/','1','.','1','\r','\n',
