@@ -26,6 +26,13 @@ typedef struct	s_FormData
 	std::string	content_;
 }	t_FormData;
 
+typedef struct	s_FormData
+{
+	std::string	name_;
+	std::string	type_;
+	std::string	content_;
+}	t_FormData;
+
 class MethodHandler
 {
 private:
