@@ -6,6 +6,8 @@
 #include <iostream>
 #include <HttpRequests.hpp>
 
+
+
 class HttpResponse{
     private:
         std::string date;
@@ -13,7 +15,8 @@ class HttpResponse{
         std::string httpVersion;
 
     public:
-        std::vector<char> responseSerializer(HttpRequests request, std::string &page);
+        std::string successResponse(HttpRequests request, std::string &statusCode);
+        std::string successFailed(HttpRequests request, std::string &statusCode);
         std::string getTime();
 
 
