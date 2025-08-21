@@ -7,9 +7,9 @@
 class HttpRequests{
 	private:
 		size_t upToBodyCounter;
-		
-		
-		std::unordered_map<std::string, std::string> requestMap;
+		std::unordered_map<std::string, std::string> requestHeaderMap;
+		std::unordered_map<std::string, std::string> requestLineMap;
+		std::unordered_map<std::string, std::string> requestBodyMap;
 
 
 	public:
@@ -18,13 +18,13 @@ class HttpRequests{
 		HttpRequests operator=(const HttpRequests &obj);
 		~HttpRequests();
 
-		HttpRequests &httpParser(const std::vector<char> &request);
+		HttpRequests &httpParser(const std::string &request);
 
-		void tillBodyCounter(size_t &i, size_t requestLength, const std::vector<char> &request);
+		void tillBodyCounter(size_t &i, size_t requestLength, const std::string &request);
 
-		bool extractRequestLine(size_t &i, size_t requestLength, const std::vector<char> &request);
-		bool extractRequestHeader(size_t &i, size_t requestLength, const std::vector<char> &request);
-
+		bool extractRequestLine(size_t &i, size_t requestLength, const std::string &request);
+		bool extractRequestHeader(size_t &i, size_t requestLength, const std::string &request);
+		bool extractRequestBody(size_t &i, size_t requestLength, const std::string &request);
 		void validateRequestLine();
 		void validateMethod();
 		void validateTarget();
@@ -36,10 +36,18 @@ class HttpRequests{
 		void header_connection_validator(void);
 		void header_accept_validator();
 		void header_contenttype_validator();
-		void pre_validator(size_t requestLength, const std::vector<char> &request);
+		void pre_validator(size_t requestLength, const std::string &request);
 
+
+		void parse_body_header(std::string_view requestBodyHeader);
 		//getters
 		size_t getupToBodyCounter();
-		std::unordered_map<std::string, std::string> getrequestMap();
+
+		std::unordered_map<std::string, std::string> getrequestHeaderMap();
+		std::unordered_map<std::string, std::string> getrequestLineMap();
+		std::unordered_map<std::string, std::string> getrequestBodyMap();
+
+
+		std::string getHttpVersion();
 		std::vector<std::string> stov(std::string &string, char c);
 	};

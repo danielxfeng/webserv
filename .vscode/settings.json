@@ -75,7 +75,7 @@
       "thread": "cpp",
       "*.tpp": "cpp"
     },
-    "cmake.sourceDirectory": "/home/xifeng/webserv/",
+    "cmake.sourceDirectory": "/home/mohammad/webserv/googletest/googlemock",
   "cmake.buildDirectory": "${workspaceFolder}/build",
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "cmake.configureArgs": [
