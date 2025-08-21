@@ -40,6 +40,10 @@ class HttpRequests{
 
 
 		void parse_body_header(std::string_view requestBodyHeader);
+		void validateRequestBody(void);
+		void validateFileName(void);
+		void validateContentType(void);
+
 		//getters
 		size_t getupToBodyCounter();
 

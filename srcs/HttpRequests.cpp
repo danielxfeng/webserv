@@ -476,6 +476,56 @@ bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 	return (true);
 }
 
+
+void HttpRequests::validateFileName(){
+	if(!requestBodyMap.contains("filename"))
+		throw WebServErr::BadRequestException("the body header must have filename keyword");
+	if(requestBodyMap["filename"].empty())
+		throw WebServErr::BadRequestException("the body header must have filename value");
+}
+
+void HttpRequests::validateContentType(){
+	if(!requestBodyMap.contains("content-type"))
+		throw WebServErr::BadRequestException("the body header must have filename keyword");
+	if(requestBodyMap["content-type"].empty())
+		throw WebServErr::BadRequestException("the body header must have filename value");
+}
+
+
+void HttpRequests::validateRequestBody(void){
+	/*
+	content-type:image/png
+content-disposition:form-data; name="file"; filename="example.png"*/
+
+	std::string firstPart;
+	std::string secondPart;
+	bool equalSignFound = false;
+
+	std::vector<std::string> content;
+
+	content = stov(requestBodyMap["content-disposition"], ';');
+	requestBodyMap["disposition-type"] = content[0];
+	for(size_t j = 1; j<content.size(); j++){
+		equalSignFound = false;
+		for(size_t i = 0; i < content[j].size();i++){
+			if(content[j][i] == '='){
+				equalSignFound = true;
+				i++;
+			}
+			if(!equalSignFound)
+				firstPart+=content[j][i];
+			else
+				secondPart+=content[j][i];
+		}
+		requestBodyMap[firstPart] = secondPart;
+		firstPart = "";
+		secondPart = "";
+	}
+	validateFileName();
+	validateContentType();
+}
+
+
 /**
  * @brief Parsing the request.
  * @param std::string.
@@ -502,11 +552,11 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 
 	if (!extractRequestBody(i, requestLength, request))
 		std::cerr << "extractRequestHeader";
-	// validateRequestBody();
-	for (const auto &pair : requestLineMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
-	for (const auto &pair : requestHeaderMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
+	validateRequestBody();
+	// for (const auto &pair : requestLineMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	// for (const auto &pair : requestHeaderMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
 	for (const auto &pair : requestBodyMap)
 		std::cout << pair.first << ":" << pair.second << std::endl;
 	return (*this);
