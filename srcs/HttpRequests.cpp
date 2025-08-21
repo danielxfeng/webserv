@@ -155,13 +155,12 @@ void HttpRequests::validateRequestLine()
 bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength,
 										const std::string &request)
 {
-	bool secondPartBool;
+	bool secondPartBool = false;
 	size_t j;
 
 	std::string firstPart;
 	std::string secondPart;
 	std::string requestHeader;
-	secondPartBool = false;
 	for (; i <= requestLength; i++)
 	{
 		if (request[i] == '\r' && request[i + 1] && request[i + 1] == '\n' && request[i + 2] && request[i + 2] == '\r' && request[i + 3] && request[i + 3] == '\n')
@@ -410,35 +409,35 @@ void HttpRequests::pre_validator(size_t requestLength,
 
 void HttpRequests::parse_body_header(std::string_view requestBodyHeader)
 {
-	bool colonFind;
-	bool endofLine;
+	bool colonFind = false;
 
 	std::string firstPart;
 	std::string secondPart;
 
 	for (size_t i=0; i < requestBodyHeader.size(); i++)
 	{
-		colonFind = false;
-		endofLine = false;
+		
 		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i + 1] == '\n' && requestBodyHeader[i + 2] == '\r' && requestBodyHeader[i + 3] == '\n')
 		{
+			requestBodyMap[firstPart] = secondPart;
 			break;
 		}
-		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i] == '\n')
+		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i+1] == '\n')
 		{
-			endofLine = true;
 			requestBodyMap[firstPart] = secondPart;
 			firstPart = "";
 			secondPart = "";
+			colonFind = false;
+			i+=2;
 		}
 		if (requestBodyHeader[i] == ':')
 		{
-			i++;
+			i+=2;
 			colonFind = true;
 		}
 		if (!colonFind)
 			firstPart += std::tolower(requestBodyHeader[i]);
-		if (colonFind && !endofLine)
+		if (colonFind)
 			secondPart += std::tolower(requestBodyHeader[i]);
 	}
 }
@@ -448,13 +447,19 @@ bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 {
 	size_t pos;
 	size_t boundarySize;
+	size_t posToRawFile;
 
 	pos = 0;
 	(void)requestLength;
 	std::string_view sv(request);
 	std::string_view requestBody;
 	std::string_view requestBodyHeader;
+	
+	
 	requestBody = sv.substr(i, request.size());
+	posToRawFile = request.find("\r\n\r\n");
+	if (posToRawFile == std::string::npos)
+		throw WebServErr::BadRequestException("no end for the deader part of the body");
 	boundarySize = requestHeaderMap.contains("boundary") ? requestHeaderMap["boundary"].size() : 0;
 	if (boundarySize == 0 || boundarySize > requestBody.size())
 		throw WebServErr::BadRequestException("must have boundary");
@@ -465,9 +470,9 @@ bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 	if (pos == std::string::npos)
 		throw WebServErr::BadRequestException("no file part found.");
 	// extract the body header part
-	requestBodyHeader = requestBodyHeader.substr(0, pos);
+	requestBodyHeader = requestBodyHeader.substr(0, pos+4);
+	upToBodyCounter+=posToRawFile +4;
 	parse_body_header(requestBodyHeader);
-	std::cout << "requestBodyHeader :" << requestBodyHeader << std::endl;
 	return (true);
 }
 
@@ -494,15 +499,16 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 	if (!extractRequestHeader(i, requestLength, request))
 		std::cerr << "extractRequestHeader";
 	validateRequestHeader();
+
 	if (!extractRequestBody(i, requestLength, request))
 		std::cerr << "extractRequestHeader";
 	// validateRequestBody();
-	// for (const auto &pair : requestLineMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
-	// for (const auto &pair : requestHeaderMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
-	for (const auto &pair : requestBodyMap)
+	for (const auto &pair : requestLineMap)
 		std::cout << pair.first << ": " << pair.second << std::endl;
+	for (const auto &pair : requestHeaderMap)
+		std::cout << pair.first << ": " << pair.second << std::endl;
+	for (const auto &pair : requestBodyMap)
+		std::cout << pair.first << ":" << pair.second << std::endl;
 	return (*this);
 }
 
