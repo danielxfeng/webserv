@@ -4,7 +4,7 @@
 #include <exception>
 #include <sstream>
 
-typedef enum e_error_codes
+typedef enum e_status_error_codes
 {
 	ERR_301,
 	ERR_401,
@@ -12,7 +12,7 @@ typedef enum e_error_codes
 	ERR_404,
 	ERR_409,
 	ERR_500
-}	t_error_codes;
+}	t_status_error_codes;
 
 class WebServErr
 {
@@ -73,7 +73,7 @@ public:
 			std::string what_;
 		public:
 			MethodException() = delete;
-			explicit MethodException(t_error_codes code, const std::string &what_arg);
+			explicit MethodException(t_status_error_codes code, const std::string &what_arg);
 			MethodException(const MethodException &other) = default;
 			MethodException &operator=(const MethodException &other) = delete;
 			~MethodException() override = default;

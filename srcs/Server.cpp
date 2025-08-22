@@ -41,7 +41,7 @@ t_msg_from_serv Server::handleDataIn(int fd)
 
         size_t bytes_read = conn->read_buf.readFd(fd);
 
-        if (bytes_read == ERROR || bytes_read == BUFFER_FULL)
+        if (bytes_read == SRV_ERROR || bytes_read == BUFFER_FULL)
             return {false, -1, IN, -1}; // Just skip for now.
 
         conn->bytes_received += bytes_read;
@@ -99,7 +99,7 @@ t_msg_from_serv Server::handleDataIn(int fd)
             return handleError(conn, INTERNAL_SERVER_ERROR, "Connection not in writing state");
 
         size_t bytes_read = conn->read_buf.readFd(fd);
-        if (bytes_read == ERROR)
+        if (bytes_read == SRV_ERROR)
             return handleError(conn, INTERNAL_SERVER_ERROR, "Read error.");
 
         if (bytes_read == BUFFER_FULL)

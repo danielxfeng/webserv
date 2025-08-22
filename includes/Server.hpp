@@ -6,6 +6,7 @@
 #include "Buffer.hpp"
 #include "MethodHandler.hpp"
 #include "Config.hpp"
+#include "SharedEnums.hpp"
 
 typedef enum e_direction
 {
@@ -13,14 +14,7 @@ typedef enum e_direction
     OUT
 } t_direction;
 
-typedef enum e_method
-{
-    GET,
-    POST,
-    DELETE,
-    CGI,
-    UNKNOWN,
-} t_method;
+
 
 typedef enum e_status
 {
@@ -28,7 +22,7 @@ typedef enum e_status
     READING,
     WRITING,
     DONE,
-    ERROR
+    SRV_ERROR
 } t_status;
 
 typedef enum e_error_codes
@@ -75,7 +69,7 @@ private:
 
 public:
     Server() = delete;
-    Server(const t_server_config &config) {};
+    Server(const t_server_config &config);
     Server(const Server &) = delete;
     Server &operator=(const Server &) = delete;
     ~Server() = default;

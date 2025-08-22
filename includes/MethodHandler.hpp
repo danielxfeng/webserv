@@ -8,19 +8,13 @@
 #include <vector>
 #include <string>
 #include <fcntl.h>
-#include <sys/stat>
+#include <sys/stat.h>
 #include <filesystem>
 #include <cstdio>
 #include <unistd.h>
+#include "SharedEnums.hpp"
 
-typedef enum e_method
-{
-    GET,
-    POST,
-    DELETE,
-    CGI,
-    UNKNOWN,
-} t_method;
+
 
 class MethodHandler
 {

@@ -5,7 +5,7 @@
 #include <ctime>
 #include <iostream>
 #include <HttpRequests.hpp>
-
+#include "Server.hpp"
 
 
 class HttpResponse{
@@ -15,9 +15,9 @@ class HttpResponse{
         std::string httpVersion;
 
     public:
-        std::string successResponse(HttpRequests request, std::string &statusCode);
-        std::string successFailed(HttpRequests request, std::string &statusCode);
-        std::string getTime();
+        void successResponse(t_conn conn, HttpRequests request, std::string &statusCode);
+        void faildResponse(t_conn conn, HttpRequests request, std::string &statusCode);
+
 
 
 

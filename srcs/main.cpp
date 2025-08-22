@@ -84,6 +84,6 @@ std::string request="POST /upload HTTP/1.1\r\n"
 	HttpResponse response;
 
 	parser.httpParser(request);
-	response.responseSerializer(parser, file );
+	// response.successResponse(conn, parser, file );
 	return (0);
 }

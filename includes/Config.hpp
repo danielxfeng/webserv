@@ -7,6 +7,8 @@
 #include <fstream>
 #include "TinyJson.hpp"
 #include "TinyJsonSerializable.hpp"
+#include "SharedEnums.hpp"
+
 // #include "Server.hpp" // TODO: remove this after we can include server.hpp
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
@@ -16,14 +18,14 @@ constexpr unsigned int MAX_REQUEST_SIZE = 1048576u;    // 1 MB
 constexpr unsigned int MAX_HEADERS_SIZE = 8192u;       // 8 KB
 
 // TODO: remove this after we can include server.hpp
-typedef enum e_method
-{
-    GET,
-    POST,
-    DELETE,
-    CGI,
-    UNKNOWN,
-} t_method;
+// typedef enum e_method
+// {
+//     GET,
+//     POST,
+//     DELETE,
+//     CGI,
+//     UNKNOWN,
+// } t_method;
 
 typedef struct s_location_config
 {

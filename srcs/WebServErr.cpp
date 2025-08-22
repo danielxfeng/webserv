@@ -28,7 +28,7 @@ WebServErr::BadRequestException::BadRequestException(const std::string &what_arg
 
 
 
-WebServErr::MethodException::MethodException(t_error_codes code, const std::string &what_arg)
+WebServErr::MethodException::MethodException(t_status_error_codes code, const std::string &what_arg)
 	: what_(myFormat("Bad request:", what_arg))
 {
 	(void)code;//TODO This needs to change
