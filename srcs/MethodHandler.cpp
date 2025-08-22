@@ -25,9 +25,12 @@ MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
     return (*this);
 }
 
+//TODO remove method enum param
+//TODO create struct to return including FD, file size, string for dynamic page, bool for dynamic page, 
 int*		MethodHandler::handleMethod(t_method method, t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
 	std::string &pathRef = headers["Path"];
+	//TODO figure out method of path
 	switch (method)
 	{
 		case GET:
@@ -54,8 +57,7 @@ int*		MethodHandler::callGetMethod(std::string &path, t_server_config server)
 	checkIfLocExists(path);
 	if (std::filesystem::is_directory(path))
 	{
-		//TODO Check if is index or auto index
-		std::string index_path = server.locations[/*TODO*/].index;
+		std::string index_path = server.locations[path].index;//key is the path
 		file_details_[0] = open("../index/index.html", O_RDONLY | O_NONBLOCK);
 		if (file_details_[0] == -1)
 		{
@@ -204,7 +206,7 @@ void	MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_F
 
 void    MethodHandler::checkIfRegFile(const std::string &path)
 {
-    if (!std::filesystem::is_regular_file(path) && !std::filesystem::is_symlink(path))
+    if (!std::filesystem::is_regular_file(path) && std::filesystem::is_symlink(path))
 	{
 		LOG_ERROR("File is not a regular file or is a symlink: ", path);
 		throw WebServErr::MethodException(ERR_500, "File is not a regular file or is a symlink");
