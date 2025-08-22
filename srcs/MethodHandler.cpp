@@ -204,10 +204,10 @@ void	MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_F
 
 void    MethodHandler::checkIfRegFile(const std::string &path)
 {
-    if (!std::filesystem::is_regular_file(path))
+    if (!std::filesystem::is_regular_file(path) && !std::filesystem::is_symlink(path))
 	{
-		LOG_ERROR("File is not a regular file: ", path);
-		throw WebServErr::MethodException(ERR_500, "File is not a regular file");
+		LOG_ERROR("File is not a regular file or is a symlink: ", path);
+		throw WebServErr::MethodException(ERR_500, "File is not a regular file or is a symlink");
 	}
 }
 
