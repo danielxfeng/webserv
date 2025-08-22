@@ -1,7 +1,7 @@
 #include "../includes/MethodHandler.hpp"
 
 MethodHandler::MethodHandler()
-	: fd_(-1), expectedLength_(0)
+	: file_details_({-1, -1}), expectedLength_(0)
 {
 	LOG_TRACE("Method Handler created", (void));
 }
@@ -25,25 +25,14 @@ MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
     return (*this);
 }
 
-/* Notes:
- * Headers includes 3 strings:
- *  Path
- *  Method
- *	Http Version
- *
- *	Request Header
- * 		Request length (how many
- *
- */
-
-int		MethodHandler::handleMethod(t_method method, t_server_config server, std::unordered_map<std::string, std::string> headers)
+int*		MethodHandler::handleMethod(t_method method, t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
 	std::string &pathRef = headers["Path"];
 	switch (method)
 	{
 		case GET:
 			LOG_TRACE("Calling GET: ", pathRef);
-			return (callGetMethod(pathRef));
+			return (callGetMethod(pathRef, server));
 		case POST:
 			LOG_TRACE("Calling POST: ", pathRef);
 			return (callPostMethod(pathRef, headers));
@@ -60,36 +49,39 @@ int		MethodHandler::handleMethod(t_method method, t_server_config server, std::u
 	}
 }
 
-int		MethodHandler::callGetMethod(std::string &path)
+int*		MethodHandler::callGetMethod(std::string &path, t_server_config server)
 {
 	checkIfLocExists(path);
 	if (std::filesystem::is_directory(path))
 	{
-		fd_ = open("../index/index.html", O_RDONLY | O_NONBLOCK);
-		if (fd_ == -1)
+		//TODO Check if is index or auto index
+		std::string index_path = server.locations[/*TODO*/].index;
+		file_details_[0] = open("../index/index.html", O_RDONLY | O_NONBLOCK);
+		if (file_details_[0] == -1)
 		{
 			LOG_FATAL("Failed to open file with permission: ", path);
 			throw WebServErr::SysCallErrException("Failed to open file with permission");
 		}
-		return (fd_);
+		file_details_[1] = static_cast<int>(std::filesystem::file_size(index_path));
+		return (file_details_);
 	}
 	checkIfRegFile(path);
-	//TODO Check if is index or auto index
 	if (!access(path, R_OK))
 	{
 		LOG_INFO("Permission Denied, cannot access: ", path);
 		throw WebServErr::MethodException(ERR_404, "Permission denied to file");
 	}
-	fd_ = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-	if (fd_ == -1)
+	file_details_[0] = open(path.c_str(), O_RDONLY | O_NONBLOCK);
+	if (file_details_[0] == -1)
 	{
 		LOG_FATAL("Failed to open file with permission: ", path);
 		throw WebServErr::SysCallErrException("Failed to open file with permission");
 	}
-	return (fd_);
+	file_details_[1] = static_cast<int>(std::filesystem::file_size(path));
+	return (file_details_);
 }
 
-int		MethodHandler::callPostMethod(std::string &path, std::unordered_map<std::string, std::string> headers)
+int*		MethodHandler::callPostMethod(std::string &path, t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
 	checkIfLocExists(path);
 	checkIfDirectory(path);
@@ -120,13 +112,14 @@ int		MethodHandler::callPostMethod(std::string &path, std::unordered_map<std::st
 	checkContentType(headers);
 	//TODO get file name from headers
 	std::string filename = createFileName(path);
-	fd_ = open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);
-	if (fd_ == -1)
+	file_details_[0] = open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);
+	if (file_details_[0] == -1)
 	{
 		LOG_FATAL("Failed to create: ", filename);
 		throw WebServErr::SysCallErrException("Failed to create file");
 	}
-	return (fd_);
+	file_details_[1] = static_cast<int>(std::filesystem::file_size(filename));
+	return (file_details_);
 }
 
 //Only throw if something is wrong, otherwise success is assumed
@@ -147,10 +140,10 @@ void	MethodHandler::callDeleteMethod(std::string &path)
 	}
 }
 
-int		MethodHandler::callCGIMethod(std::string &path)
+int*		MethodHandler::callCGIMethod(std::string &path)
 {
 	//TODO
-	return (fd_);
+	return (file_details_);
 }
 
 void	MethodHandler::setContentLength(std::unordered_map<std::string, std::string> headers)
