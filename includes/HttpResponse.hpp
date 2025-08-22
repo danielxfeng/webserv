@@ -16,9 +16,7 @@ class HttpResponse{
 
     public:
         void successResponse(t_conn conn, HttpRequests request, std::string &statusCode);
-        void faildResponse(t_conn conn, HttpRequests request, std::string &statusCode);
-
-
-
+        void badRequestResponse(t_conn conn, HttpRequests request);
+        void notFoundResponse(t_conn conn, HttpRequests request);
 
 };
