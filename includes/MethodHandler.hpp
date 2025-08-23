@@ -52,6 +52,7 @@ private:
 	void	checkContentType(std::unordered_map<std::string, std::string> headers) const;
 	void	parseBoundaries(const std::string &boundary, std::vector<t_FormData>& sections);
 	void	checkIfRegFile(const std::string &path);
+	void	checkIfSymlink(const std::string &path);
 	void	checkIfDirectory(const std::string &path);
 	void	checkIfLocExists(const std::string &path);
 	std::string	createFileName(const std::string &path);

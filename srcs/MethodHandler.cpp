@@ -12,7 +12,9 @@ MethodHandler::MethodHandler(const MethodHandler &copy)
 }
 
 MethodHandler::~MethodHandler()
-{}
+{
+	LOG_TRACE("Method Handler deconstructed", (void));
+}
 
 MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
 {
@@ -34,7 +36,6 @@ t_file	MethodHandler::handleMethod(t_server_config server, std::unordered_map<st
 	std::string &rootRef = server.locations.root;
 	std::string realPath = createRealPath(rootRef, pathRef);
 	std::string method = headers["Method"];
-	//TODO figure out method of path
 	if (method == "GET")
 	{
 		LOG_TRACE("Calling GET: ", realPath);
@@ -43,7 +44,7 @@ t_file	MethodHandler::handleMethod(t_server_config server, std::unordered_map<st
 	if (method == "POST")
 	{
 		LOG_TRACE("Calling POST: ", realPath);
-		return (callPostMethod(pathRef, headers));
+		return (callPostMethod(pathRef, server, headers));
 	}
 	if (method == "DELETE")
 	{
@@ -79,6 +80,7 @@ t_file	MethodHandler::callGetMethod(std::string &path, t_server_config server)
 		return (requested_);
 	}
 	checkIfRegFile(path);
+	checkIfSymlink(path);
 	if (!access(path, R_OK))
 	{
 		LOG_INFO("Permission Denied, cannot access: ", path);
@@ -91,13 +93,14 @@ t_file	MethodHandler::callGetMethod(std::string &path, t_server_config server)
 		throw WebServErr::SysCallErrException("Failed to open file with permission");
 	}
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
-	return (file_details_);
+	return (requested_);
 }
 
 t_file	MethodHandler::callPostMethod(std::string &path, t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
 	checkIfLocExists(path);
 	checkIfDirectory(path);
+	//TODO Check if location has permission for POST
 	auto typeCheck = headers.find("content-type");
 	setContentLength(headers);
 	if (typeCheck == headers.end())
@@ -141,6 +144,7 @@ void	MethodHandler::callDeleteMethod(std::string &path)
 	checkIfLocExists(path);
 	checkIfDirectory(path);
 	checkIfRegFile(path);
+	checkIfSymlink(path);
 	if (!access(path, X_OK))
 	{
 		LOG_INFO("Permission Denied, cannot access: ", path);
@@ -217,10 +221,19 @@ void	MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_F
 
 void    MethodHandler::checkIfRegFile(const std::string &path)
 {
-    if (!std::filesystem::is_regular_file(path) && std::filesystem::is_symlink(path))
+    if (!std::filesystem::is_regular_file(path))
 	{
-		LOG_ERROR("File is not a regular file or is a symlink: ", path);
-		throw WebServErr::MethodException(ERR_500, "File is not a regular file or is a symlink");
+		LOG_ERROR("File is not a regular file: ", path);
+		throw WebServErr::MethodException(ERR_500, "File is not a regular file");
+	}
+}
+
+void	MethodHandler::checkIfSymlink(const std::string &path)
+{
+	if (std::filesystem::is_symlink(path))
+	{
+		LOG_ERROR("File or Directory is a symlink: ", path);
+		throw WebServErr::MethodException(ERR_500, "File or Directory is a symlink");
 	}
 }
 
@@ -258,5 +271,8 @@ std::string	MethodHandler::createFileName(const std::string &path)
 
 std::string	MethodHandler::createRealPath(const std::string &root, const std::string &path)
 {
-
+	std::string	result;
+	if (path == "/")
+		return (result = root);
+	
 }
