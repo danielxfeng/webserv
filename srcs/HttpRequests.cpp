@@ -39,7 +39,7 @@ HttpRequests::~HttpRequests() {
  * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing
  */
-bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength,
+void HttpRequests::extractRequestLine(size_t &i, size_t requestLength,
 									  const std::string &request)
 {
 	std::string method;
@@ -82,7 +82,6 @@ bool HttpRequests::extractRequestLine(size_t &i, size_t requestLength,
 	requestLineMap["Method"] = method;
 	requestLineMap["Target"] = target;
 	requestLineMap["HttpVersion"] = httpVersion;
-	return (true);
 }
 
 /**
@@ -152,7 +151,7 @@ void HttpRequests::validateRequestLine()
  * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing
  */
-bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength,
+void HttpRequests::extractRequestHeader(size_t &i, size_t requestLength,
 										const std::string &request)
 {
 	bool secondPartBool = false;
@@ -199,7 +198,6 @@ bool HttpRequests::extractRequestHeader(size_t &i, size_t requestLength,
 		if (secondPartBool)
 			secondPart += std::tolower(requestHeader[j]);
 	}
-	return (true);
 }
 
 /**
@@ -442,7 +440,7 @@ void HttpRequests::parse_body_header(std::string_view requestBodyHeader)
 	}
 }
 
-bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
+void HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 									  const std::string &request)
 {
 	size_t pos;
@@ -473,8 +471,57 @@ bool HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 	requestBodyHeader = requestBodyHeader.substr(0, pos+4);
 	upToBodyCounter+=posToRawFile +4;
 	parse_body_header(requestBodyHeader);
-	return (true);
 }
+
+
+void HttpRequests::validateFileName(){
+	if(!requestBodyMap.contains("filename"))
+		throw WebServErr::BadRequestException("the body header must have filename keyword");
+	if(requestBodyMap["filename"].empty())
+		throw WebServErr::BadRequestException("the body header must have filename value");
+}
+
+void HttpRequests::validateContentType(){
+	if(!requestBodyMap.contains("content-type"))
+		throw WebServErr::BadRequestException("the body header must have filename keyword");
+	if(requestBodyMap["content-type"].empty())
+		throw WebServErr::BadRequestException("the body header must have filename value");
+}
+
+
+void HttpRequests::validateRequestBody(void){
+	/*
+	content-type:image/png
+content-disposition:form-data; name="file"; filename="example.png"*/
+
+	std::string firstPart;
+	std::string secondPart;
+	bool equalSignFound = false;
+
+	std::vector<std::string> content;
+
+	content = stov(requestBodyMap["content-disposition"], ';');
+	requestBodyMap["disposition-type"] = content[0];
+	for(size_t j = 1; j<content.size(); j++){
+		equalSignFound = false;
+		for(size_t i = 0; i < content[j].size();i++){
+			if(content[j][i] == '='){
+				equalSignFound = true;
+				i++;
+			}
+			if(!equalSignFound)
+				firstPart+=content[j][i];
+			else
+				secondPart+=content[j][i];
+		}
+		requestBodyMap[firstPart] = secondPart;
+		firstPart = "";
+		secondPart = "";
+	}
+	validateFileName();
+	validateContentType();
+}
+
 
 /**
  * @brief Parsing the request.
@@ -490,25 +537,19 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 	requestLength = request.size();
 	tillBodyCounter(i, requestLength, request);
 	i = 0;
-	// will extract the first line as a request line.
 	pre_validator(requestLength, request);
-	if (!extractRequestLine(i, requestLength, request))
-		std::cerr << "extractRequestLine";
+	extractRequestLine(i, requestLength, request);
 	validateRequestLine();
-	// will extract the request header part as a request line.
-	if (!extractRequestHeader(i, requestLength, request))
-		std::cerr << "extractRequestHeader";
+	extractRequestHeader(i, requestLength, request);;
 	validateRequestHeader();
-
-	if (!extractRequestBody(i, requestLength, request))
-		std::cerr << "extractRequestHeader";
-	// validateRequestBody();
-	for (const auto &pair : requestLineMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
-	for (const auto &pair : requestHeaderMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
-	for (const auto &pair : requestBodyMap)
-		std::cout << pair.first << ":" << pair.second << std::endl;
+	extractRequestBody(i, requestLength, request);
+	validateRequestBody();
+	// for (const auto &pair : requestLineMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	// for (const auto &pair : requestHeaderMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	// for (const auto &pair : requestBodyMap)
+	// 	std::cout << pair.first << ":" << pair.second << std::endl;
 	return (*this);
 }
 
@@ -545,4 +586,10 @@ std::unordered_map<std::string, std::string> HttpRequests::getrequestBodyMap()
 std::string HttpRequests::getHttpVersion()
 {
 	return (requestLineMap["HttpVersion"]);
+}
+
+
+std::string HttpRequests::getHttpRequestMethod()
+{
+	return (requestLineMap["Method"]);
 }

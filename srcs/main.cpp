@@ -79,11 +79,11 @@ std::string request="POST /upload HTTP/1.1\r\n"
 //     'H','o','s','t',':',' ','l','o','c','a','l','h','o','s','t',':','8','0','8','0','\r','\n',
 // 	'\r','\n',
 // };
-	std::string file;
+	std::string file = "202";
 	HttpRequests parser;
 	HttpResponse response;
 
 	parser.httpParser(request);
-	// response.responseSerializer(parser, file );
+	// response.successResponse(conn, parser, file );
 	return (0);
 }

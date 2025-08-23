@@ -19,7 +19,7 @@ size_t Buffer::readFd(int fd)
     ssize_t read_bytes = read(fd, &(buf.data()[readPos_]), read_size);
 
     if (read_bytes < 0)
-        return ERROR;
+        return BUFFER_ERROR;
 
     if (read_bytes == 0)
         return EOF_REACHED;

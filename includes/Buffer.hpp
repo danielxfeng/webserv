@@ -5,12 +5,12 @@
 #include <unistd.h>
 #include "WebServErr.hpp"
 
-typedef enum e_error_code
+typedef enum e_buff_error_code
 {
     EOF_REACHED = 0,
-    ERROR = -1,
+    BUFFER_ERROR = -1,
     BUFFER_FULL = -2
-} t_error_code;
+} t_buff_error_code;
 
 class Buffer
 {

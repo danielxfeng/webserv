@@ -22,9 +22,9 @@ class HttpRequests{
 
 		void tillBodyCounter(size_t &i, size_t requestLength, const std::string &request);
 
-		bool extractRequestLine(size_t &i, size_t requestLength, const std::string &request);
-		bool extractRequestHeader(size_t &i, size_t requestLength, const std::string &request);
-		bool extractRequestBody(size_t &i, size_t requestLength, const std::string &request);
+		void extractRequestLine(size_t &i, size_t requestLength, const std::string &request);
+		void extractRequestHeader(size_t &i, size_t requestLength, const std::string &request);
+		void extractRequestBody(size_t &i, size_t requestLength, const std::string &request);
 		void validateRequestLine();
 		void validateMethod();
 		void validateTarget();
@@ -40,6 +40,10 @@ class HttpRequests{
 
 
 		void parse_body_header(std::string_view requestBodyHeader);
+		void validateRequestBody(void);
+		void validateFileName(void);
+		void validateContentType(void);
+
 		//getters
 		size_t getupToBodyCounter();
 
@@ -49,5 +53,6 @@ class HttpRequests{
 
 
 		std::string getHttpVersion();
+		std::string getHttpRequestMethod();
 		std::vector<std::string> stov(std::string &string, char c);
 	};

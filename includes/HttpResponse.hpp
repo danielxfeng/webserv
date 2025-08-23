@@ -5,6 +5,8 @@
 #include <ctime>
 #include <iostream>
 #include <HttpRequests.hpp>
+#include "Server.hpp"
+
 
 class HttpResponse{
     private:
@@ -13,9 +15,8 @@ class HttpResponse{
         std::string httpVersion;
 
     public:
-        std::vector<char> responseSerializer(HttpRequests request, std::string &page);
-        std::string getTime();
-
-
+        void successResponse(t_conn conn, HttpRequests request, std::string &statusCode);
+        void badRequestResponse(t_conn conn, HttpRequests request);
+        void notFoundResponse(t_conn conn, HttpRequests request);
 
 };
