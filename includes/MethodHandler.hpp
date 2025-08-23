@@ -4,6 +4,8 @@
 #include "WebServErr.hpp"
 #include "Config.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 #include <string>
@@ -26,23 +28,24 @@ typedef struct	s_FormData
 	std::string	content_;
 }	t_FormData;
 
-typedef struct	s_FormData
+typedef struct	s_fileinfo
 {
-	std::string	name_;
-	std::string	type_;
-	std::string	content_;
-}	t_FormData;
+	int	fd;
+	size_t	expectedSize;
+	size_t	fileSize;
+	bool	isDynamic;
+	std::string	dynamicPage;
+}	t_file;
 
 class MethodHandler
 {
 private:
-	int		file_details_[2];//[0] = file descriptor, [1] = file size
-	size_t	expectedLength_;
+	t_file	requested_;
 
-	int*		callGetMethod(std::string &path, t_server_config server);
-	int*		callPostMethod(std::string &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
+	t_file		callGetMethod(std::string &path, t_server_config server);
+	t_file		callPostMethod(std::string &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
 	void	callDeleteMethod(std::string &path);
-	int*		callCGIMethod(std::string &path, std::unordered_map<std::string, std::string> headers);
+	t_file		callCGIMethod(std::string &path, std::unordered_map<std::string, std::string> headers);
 
 	void	setContentLength(std::unordered_map<std::string, std::string> headers);
 	void	checkContentLength(std::unordered_map<std::string, std::string> headers) const;
@@ -52,11 +55,12 @@ private:
 	void	checkIfDirectory(const std::string &path);
 	void	checkIfLocExists(const std::string &path);
 	std::string	createFileName(const std::string &path);
+	std::string	createRealPath(const std::string &root, const std::string &path);
 public:
     MethodHandler();
     MethodHandler(const MethodHandler &copy);
     ~MethodHandler();
     MethodHandler &operator=(const MethodHandler &copy);
 
-	int*	handleMethod(t_method method, t_server_config server, std::unordered_map<std::string, std::string> headers);
+	t_file	handleMethod(t_server_config server, std::unordered_map<std::string, std::string> headers);
 };
