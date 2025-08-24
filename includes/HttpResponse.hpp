@@ -9,12 +9,13 @@
 #include "WebServErr.hpp"
 
 class HttpResponse{
-    private:
-        std::string date;
-        std::string contentLength;
-        std::string httpVersion;
 
     public:
+        void HttpResponse();
+        void HttpResponse(const HttpResponse &obj);
+        HttpResponse& operator=(const HttpResponse &obj);
+        void ~HttpResponse();
+
         void successResponse(t_conn conn, HttpRequests request, std::string &statusCode);
         void badRequestResponse(t_conn conn, HttpRequests request);
         void notFoundResponse(t_conn conn, HttpRequests request);
