@@ -42,26 +42,26 @@ class MethodHandler
 private:
 	t_file	requested_;
 
-	t_file		callGetMethod(std::string &path, t_server_config server);
-	t_file		callPostMethod(std::string &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
-	void	callDeleteMethod(std::string &path);
-	t_file		callCGIMethod(std::string &path, std::unordered_map<std::string, std::string> headers);
+	t_file		callGetMethod(std::filesystem::path &path, t_server_config server);
+	t_file		callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
+	void	callDeleteMethod(std::filesystem::path &path);
+	t_file		callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> headers);
 
 	void	setContentLength(std::unordered_map<std::string, std::string> headers);
 	void	checkContentLength(std::unordered_map<std::string, std::string> headers) const;
 	void	checkContentType(std::unordered_map<std::string, std::string> headers) const;
 	void	parseBoundaries(const std::string &boundary, std::vector<t_FormData>& sections);
-	void	checkIfRegFile(const std::string &path);
-	void	checkIfSymlink(const std::string &path);
-	void	checkIfDirectory(const std::string &path);
-	void	checkIfLocExists(const std::string &path);
-	std::string	createFileName(const std::string &path);
-	std::string	createRealPath(const std::string &root, const std::string &path);
+	void	checkIfRegFile(const std::filesystem::path &path);
+	void	checkIfSymlink(const std::filesystem::path &path);
+	void	checkIfDirectory(const std::filesystem::path &path);
+	void	checkIfLocExists(const std::filesystem::path &path);
+	std::filesystem::path	createFileName(const std::string &path);
+	std::filesystem::path	createRealPath(const std::string &server, const std::string &target);
 public:
     MethodHandler();
     MethodHandler(const MethodHandler &copy);
     ~MethodHandler();
     MethodHandler &operator=(const MethodHandler &copy);
 
-	t_file	handleMethod(t_server_config server, std::unordered_map<std::string, std::string> headers);
+	t_file	handleRequest(t_server_config server, std::unordered_map<std::string, std::string> headers);
 };

@@ -30,41 +30,42 @@ MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
     return (*this);
 }
 
-t_file	MethodHandler::handleMethod(t_server_config server, std::unordered_map<std::string, std::string> headers)
+t_file	MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
-	std::string &pathRef = headers["Target"];
-	std::string &rootRef = server.locations.root;
-	std::string realPath = createRealPath(rootRef, pathRef);
-	std::string method = headers["Method"];
-	if (method == "GET")
+	std::filesystem::path realPath = createRealPath(server.locations.root, headers.find("Target")->second);
+	std::string chosenMethod = headers["Method"];
+	if (server.locations.methods.find(chosenMethod) != server.locations.method.end())
 	{
-		LOG_TRACE("Calling GET: ", realPath);
-		return (callGetMethod(pathRef, server));
-	}
-	if (method == "POST")
-	{
-		LOG_TRACE("Calling POST: ", realPath);
-		return (callPostMethod(pathRef, server, headers));
-	}
-	if (method == "DELETE")
-	{
-		LOG_TRACE("Calling DELETE: ", realPath);
-		callDeleteMethod(pathRef);
-		return (requested_);
-	}
-	if (method == "CGI")
-	{
-		LOG_TRACE("Calling CGI: ", realPath);
-		return (callCGIMethod(pathRef, headers));
+		if (chosenMethod == "GET")
+		{
+			LOG_TRACE("Calling GET: ", realPath);
+			return (callGetMethod(realPath, server));
+		}
+		if (chosenMethod == "POST")
+		{
+			LOG_TRACE("Calling POST: ", realPath);
+			return (callPostMethod(realPath, server, headers));
+		}
+		if (chosenMethod == "DELETE")
+		{
+			LOG_TRACE("Calling DELETE: ", realPath);
+			callDeleteMethod(realPath);
+			return (requested_);
+		}
+		if (chosenMethod == "CGI")
+		{
+			LOG_TRACE("Calling CGI: ", realPath);
+			return (callCGIMethod(realPath, headers));
+		}
 	}
 	else
 	{
-		LOG_WARN("Method is unknown: ", headers);
-		throw WebServErr::MethodException(ERR_500, "Unknown Method");
+		LOG_WARN("Requested Method is not allowed: ", chosenMethod);
+		throw WebServErr::MethodException(ERR_500, "Method not allowed or is unknown");
 	}
 }
 
-t_file	MethodHandler::callGetMethod(std::string &path, t_server_config server)
+t_file	MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config server)
 {
 	checkIfLocExists(path);
 	if (std::filesystem::is_directory(path))
@@ -81,7 +82,7 @@ t_file	MethodHandler::callGetMethod(std::string &path, t_server_config server)
 	}
 	checkIfRegFile(path);
 	checkIfSymlink(path);
-	if (!access(path, R_OK))
+	if (!access(path.c_str(), R_OK))
 	{
 		LOG_INFO("Permission Denied, cannot access: ", path);
 		throw WebServErr::MethodException(ERR_404, "Permission denied to file");
@@ -96,7 +97,7 @@ t_file	MethodHandler::callGetMethod(std::string &path, t_server_config server)
 	return (requested_);
 }
 
-t_file	MethodHandler::callPostMethod(std::string &path, t_server_config server, std::unordered_map<std::string, std::string> headers)
+t_file	MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
 	checkIfLocExists(path);
 	checkIfDirectory(path);
@@ -127,7 +128,7 @@ t_file	MethodHandler::callPostMethod(std::string &path, t_server_config server, 
 	}
 	checkContentType(headers);
 	//TODO get file name from headers
-	std::string filename = createFileName(path);
+	std::string filename = createFileName(path.c_str());
 	requested_.fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);
 	if (requested_.fd == -1)
 	{
@@ -139,13 +140,13 @@ t_file	MethodHandler::callPostMethod(std::string &path, t_server_config server, 
 }
 
 //Only throw if something is wrong, otherwise success is assumed
-void	MethodHandler::callDeleteMethod(std::string &path)
+void	MethodHandler::callDeleteMethod(std::filesystem::path &path)
 {
 	checkIfLocExists(path);
 	checkIfDirectory(path);
 	checkIfRegFile(path);
 	checkIfSymlink(path);
-	if (!access(path, X_OK))
+	if (!access(path.c_str(), X_OK))
 	{
 		LOG_INFO("Permission Denied, cannot access: ", path);
 		throw WebServErr::MethodException(ERR_404, "Permission denied to file");
@@ -157,7 +158,7 @@ void	MethodHandler::callDeleteMethod(std::string &path)
 	}
 }
 
-t_file	MethodHandler::callCGIMethod(std::string &path)
+t_file	MethodHandler::callCGIMethod(std::filesystem::path &path)
 {
 	//TODO
 	return (requested_);
@@ -219,7 +220,7 @@ void	MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_F
 
 }
 
-void    MethodHandler::checkIfRegFile(const std::string &path)
+void    MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 {
     if (!std::filesystem::is_regular_file(path))
 	{
@@ -228,7 +229,7 @@ void    MethodHandler::checkIfRegFile(const std::string &path)
 	}
 }
 
-void	MethodHandler::checkIfSymlink(const std::string &path)
+void	MethodHandler::checkIfSymlink(const std::filesystem::path &path)
 {
 	if (std::filesystem::is_symlink(path))
 	{
@@ -237,7 +238,7 @@ void	MethodHandler::checkIfSymlink(const std::string &path)
 	}
 }
 
-void    MethodHandler::checkIfDirectory(const std::string &path)
+void    MethodHandler::checkIfDirectory(const std::filesystem::path &path)
 {
     if (std::filesystem::is_directory(path))
 	{
@@ -246,7 +247,7 @@ void    MethodHandler::checkIfDirectory(const std::string &path)
 	}
 }
 
-void    MethodHandler::checkIfLocExists(const std::string &path)
+void    MethodHandler::checkIfLocExists(const std::filesystem::path &path)
 {
     if (!std::filesystem::exists(path))
 	{
@@ -255,7 +256,7 @@ void    MethodHandler::checkIfLocExists(const std::string &path)
 	}
 }
 
-std::string	MethodHandler::createFileName(const std::string &path)
+std::filesystem::path	MethodHandler::createFileName(const std::string &path)
 {
 	//TODO trim .png
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -264,15 +265,20 @@ std::string	MethodHandler::createFileName(const std::string &path)
 	std::string year = std::to_string(local_tm.tm_year + 1900);
 	std::string month = std::to_string(local_tm.tm_mon + 1);
 	std::string day = std::to_string(local_tm.tm_mday);
-	std::string filename = /*TODO directory*/ path + '_' + year + '_' + month + '_' + day + '.png';
+	std::filesystem::path filename = /*TODO directory*/ path + '_' + year + '_' + month + '_' + day + '.png';
 	checkIfLocExists(filename);
 	return (filename);
 }
 
-std::string	MethodHandler::createRealPath(const std::string &root, const std::string &path)
+
+std::filesystem::path	MethodHandler::createRealPath(const std::string &server, const std::string &target)
 {
-	std::string	result;
-	if (path == "/")
-		return (result = root);
-	
+	std::filesystem::path root = server.locations.root;
+	std::filesystem::path sought = headers.find("Target");
+	std::filesystem::path realPath;
+	if (sought.is_absolute())
+		realPath = sought;
+	else
+		realPath = root / sought;
+
 }
