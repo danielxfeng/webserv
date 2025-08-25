@@ -101,6 +101,7 @@ void HttpRequests::validateHttpVersion()
 
 void HttpRequests::validateTarget()
 {
+	size_t pos;
 	if (requestLineMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
@@ -112,6 +113,11 @@ void HttpRequests::validateTarget()
 				throw WebServErr::BadRequestException("target cannot has invalid characters");
 		}
 	}
+	pos = requestLineMap["Target"].find("%20");
+		if(pos != std::string::npos){
+			std::replace(requestLineMap["Target"].begin(),requestLineMap["Target"].end(),"%20", " ");
+			
+		}
 }
 /**
  * @brief validate the method it must be get, post and delete.
@@ -254,14 +260,14 @@ void HttpRequests::content_length_validator(void)
 	if (requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
 	{
 		if (!requestHeaderMap.contains("content-length") && !requestHeaderMap.contains("transfer-encoding"))
-			throw WebServErr::BadRequestException("content-length must bee number only");
+			throw WebServErr::BadRequestException("content-length is needed");
 		if (requestHeaderMap.contains("content-length"))
 		{
 			if (requestHeaderMap["content-length"].empty() || !is_digit_str(requestHeaderMap["content-length"]))
-				throw WebServErr::BadRequestException("POST and DELETE must have content-length value");
+				throw WebServErr::BadRequestException("content-length must bee number only");
 			else
 			{
-				content_length_var = static_cast<size_t>(stoull(requestHeaderMap["content-length"])); // it throw exception when there is 
+				content_length_var = static_cast<size_t>(stoull(requestHeaderMap["content-length"])); 
 				if (content_length_var > 1073741824)
 					throw WebServErr::BadRequestException("Bad content-length less than 1GB are allowed");
 			}

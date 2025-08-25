@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 #include "../includes/WebServErr.hpp"
 
 class HttpRequests{
