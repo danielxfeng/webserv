@@ -254,14 +254,14 @@ void HttpRequests::content_length_validator(void)
 	if (requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
 	{
 		if (!requestHeaderMap.contains("content-length") && !requestHeaderMap.contains("transfer-encoding"))
-			throw WebServErr::BadRequestException("POST must have content-length or transfer-encoding");
+			throw WebServErr::BadRequestException("content-length must bee number only");
 		if (requestHeaderMap.contains("content-length"))
 		{
-			if (requestHeaderMap["content-length"].empty())
+			if (requestHeaderMap["content-length"].empty() || !is_digit_str(requestHeaderMap["content-length"]))
 				throw WebServErr::BadRequestException("POST and DELETE must have content-length value");
 			else
 			{
-				content_length_var = static_cast<size_t>(stoull(requestHeaderMap["content-length"]));
+				content_length_var = static_cast<size_t>(stoull(requestHeaderMap["content-length"])); // it throw exception when there is 
 				if (content_length_var > 1073741824)
 					throw WebServErr::BadRequestException("Bad content-length less than 1GB are allowed");
 			}
@@ -365,18 +365,11 @@ bool HttpRequests::is_digit_str(std::string &str){
 	return (true);
 }
 
-void HttpRequests::header_content_length_validator(){
+void HttpRequests::header_transfer_encoding_validator(){
 	if(requestLineMap["Method"] == "POST"){
 		if(requestHeaderMap.contains("content-length") && requestHeaderMap.contains("transfer-encoding")){
 			throw WebServErr::BadRequestException("content-type & transfer-encoding in the same request.");
 		}
-		else if (requestHeaderMap.contains("content-length")){
-				if (requestHeaderMap["content-length"].empty() || !is_digit_str(requestHeaderMap["content-length"]))
-					throw WebServErr::BadRequestException("content-length must be numbers only");
-				long long content_length = std::stoi(requestHeaderMap["content-length"]);
-				if(content_length <= 0)
-					throw WebServErr::BadRequestException("content-length is negative or zero");
-			}
 		else if (requestHeaderMap.contains("transfer-encoding")){
 				if(requestHeaderMap["transfer-encoding"] == "chunked")
 					is_chunked = true;
@@ -401,7 +394,9 @@ void HttpRequests::validateRequestHeader(void)
 	content_length_validator();
 	header_connection_validator();
 	header_contenttype_validator();
-	header_content_length_validator();
+	header_transfer_encoding_validator();
+	content_length_validator();
+
 
 }
 
