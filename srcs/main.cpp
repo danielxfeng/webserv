@@ -3,14 +3,40 @@
 #include "LogSys.hpp"
 #include "HttpRequests.hpp"
 #include "HttpResponse.hpp"
-int main(/*int argc, char **argv*/)
+
+
+
+bool validateConfigFile(std::string_view &fileName){
+	size_t found;
+
+	found = fileName.find(".json");
+	if(found == std::string::npos){
+		std::cerr<<"Error, you have to include the config file.";
+		return (false);
+	}
+	if (found != (fileName.size() - 5)){
+		std::cerr<<"Error, file name is not correct.";
+		return (false);
+	}
+
+	return (true);
+}
+
+
+int main(int argc, char **argv)
 {
-/*	if (argc != 2)
+	if (argc != 2)
 	{
-		//TODO error and log
+		std::cerr<<"Error, you have to include the config file.";
 		return (1);
 	}
-*/
+	std::string_view fileName= argv[1];
+	if(!validateConfigFile(fileName)){
+		return (1);
+		
+	}
+
+
 	std::string	test = "Testing this string,";
 	LOG_TRACE("Trace", test, __FUNCTION__);
 	LOG_DEBUG("Debug", test);
