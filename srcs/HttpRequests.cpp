@@ -2,7 +2,7 @@
 
 // default
 HttpRequests::HttpRequests() : upToBodyCounter(0), requestHeaderMap(),
-							   requestLineMap(), requestBodyMap()
+							   requestLineMap(), requestBodyMap(), is_chunked(false)
 {
 }
 /*
@@ -18,6 +18,7 @@ HttpRequests::HttpRequests(const HttpRequests &obj)
 		requestHeaderMap = obj.requestHeaderMap;
 		requestLineMap = obj.requestLineMap;
 		requestBodyMap = obj.requestBodyMap;
+		is_chunked = obj.is_chunked;
 	}
 };
 HttpRequests HttpRequests::operator=(const HttpRequests &obj)
@@ -28,6 +29,7 @@ HttpRequests HttpRequests::operator=(const HttpRequests &obj)
 		requestHeaderMap = obj.requestHeaderMap;
 		requestLineMap = obj.requestLineMap;
 		requestBodyMap = obj.requestBodyMap;
+		is_chunked = obj.is_chunked;
 	}
 	return (*this);
 };
@@ -355,6 +357,22 @@ void HttpRequests::header_contenttype_validator()
 	}
 }
 
+
+void HttpRequests::header_content_length_validator(){
+	if(requestLineMap["Method"] == "POST"){
+		if(requestHeaderMap.contains("content-length")){
+			if(requestHeaderMap.contains("transfer-encoding")){
+				throw WebServErr::BadRequestException("content-type & transfer-encoding in the same request.");
+			}
+			else{
+
+			}
+
+		}
+	}
+}
+
+
 /**
  * @brief validate the request line part
  * @param nothing
@@ -366,6 +384,8 @@ void HttpRequests::validateRequestHeader(void)
 	content_length_validator();
 	header_connection_validator();
 	header_contenttype_validator();
+	header_content_length_validator();
+
 }
 
 /**

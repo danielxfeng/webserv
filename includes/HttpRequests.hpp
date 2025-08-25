@@ -10,7 +10,7 @@ class HttpRequests{
 		std::unordered_map<std::string, std::string> requestHeaderMap;
 		std::unordered_map<std::string, std::string> requestLineMap;
 		std::unordered_map<std::string, std::string> requestBodyMap;
-
+		bool is_chunked;
 
 	public:
 		HttpRequests();
@@ -36,6 +36,7 @@ class HttpRequests{
 		void header_connection_validator(void);
 		void header_accept_validator();
 		void header_contenttype_validator();
+		void header_content_length_validator();
 		void pre_validator(size_t requestLength, const std::string &request);
 
 
