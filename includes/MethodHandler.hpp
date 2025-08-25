@@ -2,8 +2,10 @@
 
 #include "LogSys.hpp"
 #include "WebServErr.hpp"
-#include "utils.hpp"
+#include "Config.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 #include <string>
@@ -13,23 +15,53 @@
 #include <cstdio>
 #include <unistd.h>
 #include "SharedEnums.hpp"
+#include <chrono>
+#include <ctime>
+
+#define MAX_BODY_SIZE	1024
 
 
+typedef struct	s_FormData
+{
+	std::string	name_;
+	std::string	type_;
+	std::string	content_;
+}	t_FormData;
+
+typedef struct	s_fileinfo
+{
+	int	fd;
+	size_t	expectedSize;
+	size_t	fileSize;
+	bool	isDynamic;
+	std::string	dynamicPage;
+}	t_file;
 
 class MethodHandler
 {
 private:
-	int		fd_;
+	t_file	requested_;
 
-	int		callGetMethod(std::string &path);
-	int		callPostMethod(std::string &path);
-	void	callDeleteMethod(std::string &path);
-	int		callCGIMethod(std::string &path, std::unordered_map<std::string, std::string> headers);
+	t_file		callGetMethod(std::filesystem::path &path, t_server_config server);
+	t_file		callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
+	void	callDeleteMethod(std::filesystem::path &path);
+	t_file		callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> headers);
+
+	void	setContentLength(std::unordered_map<std::string, std::string> headers);
+	void	checkContentLength(std::unordered_map<std::string, std::string> headers) const;
+	void	checkContentType(std::unordered_map<std::string, std::string> headers) const;
+	void	parseBoundaries(const std::string &boundary, std::vector<t_FormData>& sections);
+	void	checkIfRegFile(const std::filesystem::path &path);
+	void	checkIfSymlink(const std::filesystem::path &path);
+	void	checkIfDirectory(const std::filesystem::path &path);
+	void	checkIfLocExists(const std::filesystem::path &path);
+	std::filesystem::path	createFileName(const std::string &path);
+	std::filesystem::path	createRealPath(const std::string &server, const std::string &target);
 public:
     MethodHandler();
     MethodHandler(const MethodHandler &copy);
     ~MethodHandler();
     MethodHandler &operator=(const MethodHandler &copy);
 
-	int	    handleMethod(t_method method, std::unordered_map<std::string, std::string> headers);
+	t_file	handleRequest(t_server_config server, std::unordered_map<std::string, std::string> headers);
 };
