@@ -107,7 +107,7 @@ std::string request="POST /upload HTTP/1.1\r\n"
 // };
 	std::string file = "202";
 	HttpRequests parser;
-	HttpResponse response;
+	// HttpResponse response;
 
 	parser.httpParser(request);
 	// response.successResponse(conn, parser, file );

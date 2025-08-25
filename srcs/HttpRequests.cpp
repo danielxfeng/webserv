@@ -357,20 +357,37 @@ void HttpRequests::header_contenttype_validator()
 	}
 }
 
+bool HttpRequests::is_digit_str(std::string &str){
+	for(auto &ch:str){
+		if(!std::isdigit(ch))
+			return (false);
+	}
+	return (true);
+}
 
 void HttpRequests::header_content_length_validator(){
 	if(requestLineMap["Method"] == "POST"){
-		if(requestHeaderMap.contains("content-length")){
-			if(requestHeaderMap.contains("transfer-encoding")){
-				throw WebServErr::BadRequestException("content-type & transfer-encoding in the same request.");
-			}
-			else{
-
-			}
-
+		if(requestHeaderMap.contains("content-length") && requestHeaderMap.contains("transfer-encoding")){
+			throw WebServErr::BadRequestException("content-type & transfer-encoding in the same request.");
 		}
+		else if (requestHeaderMap.contains("content-length")){
+				if (requestHeaderMap["content-length"].empty() || !is_digit_str(requestHeaderMap["content-length"]))
+					throw WebServErr::BadRequestException("content-length must be numbers only");
+				long long content_length = std::stoi(requestHeaderMap["content-length"]);
+				if(content_length <= 0)
+					throw WebServErr::BadRequestException("content-length is negative or zero");
+			}
+		else if (requestHeaderMap.contains("transfer-encoding")){
+				if(requestHeaderMap["transfer-encoding"] == "chunked")
+					is_chunked = true;
+				else
+					throw WebServErr::BadRequestException("only chunked is supported");
+			}
+		}
+		
+
 	}
-}
+
 
 
 /**
