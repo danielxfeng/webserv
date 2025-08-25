@@ -273,12 +273,21 @@ std::filesystem::path	MethodHandler::createFileName(const std::string &path)
 
 std::filesystem::path	MethodHandler::createRealPath(const std::string &server, const std::string &target)
 {
-	std::filesystem::path root = server.locations.root;
-	std::filesystem::path sought = headers.find("Target");
-	std::filesystem::path realPath;
+	std::filesystem::path root = std::filesystem::path(server);
+	std::filesystem::path sought = std::filesystem::path(target).lexically_normal();
 	if (sought.is_absolute())
-		realPath = sought;
-	else
-		realPath = root / sought;
+		sought = sought.relative_path();
+	if (!sought.empty() && root.filename() == (*sought.begin()))
+		sought = sought.lexically_relative(*sought.begin());
+	std::filesystem::path realPath = (root / sought).lexically_normal();
 
+	std::filesystem::path canonicalRoot = std::filesystem::weakly_canonical(root);
+	std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(realPath);
+	auto mismatch = std::mismatch(canonicalRoot.begin(), canonicalRoot.end(), canonicalPath.begin());
+	if (mismatch.first != canonicalRoot.end())
+	{
+		LOG_WARN("Security Warning: Path escapes server root ", realPath);
+		throw WebServErr;MethodException(ERR_403, "Security Warning: Path escapes server root");
+	}
+	return (realPath);
 }
