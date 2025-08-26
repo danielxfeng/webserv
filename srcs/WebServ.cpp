@@ -57,7 +57,7 @@ void timeoutKiller(const std::unordered_map<int, Server *> &serverMap)
         server.second->timeoutKiller();
 }
 
-WebServ::WebServ(const std::string &conf_file) : conns(0), epollFd_(-1)
+WebServ::WebServ(const std::string &conf_file) : epollFd_(-1)
 {
     // Load the configuration from the file.
     config_ = std::move(Config::parseConfigFromFile(conf_file));
@@ -76,7 +76,7 @@ void WebServ::eventLoop()
 {
     struct epoll_event events[config_.max_poll_events];
 
-    LOG_INFO("Server started.");
+    LOG_INFO("Server started.", "");
     for (auto it = serverVec_.begin(); it != serverVec_.end(); ++it)
     {
         int serverFd = listenToPort(it->getConfig().port);
@@ -120,7 +120,7 @@ void WebServ::eventLoop()
                 const auto connServer = connMap_.find(events[i].data.fd);
                 if (connServer == connMap_.end())
                 {
-                    LOG_ERROR("Connection not found", connServer);
+                    LOG_ERROR("Connection not found", "");//TODO: connServer);
                     continue;
                 }
 
@@ -136,12 +136,12 @@ void WebServ::eventLoop()
                 }
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
-                    connServer->second->handleDataEnd(connServer->first);
+                    // TODO connServer->second->handleDataEnd(connServer->first);
                     handleServerMsg({true, -1, IN, -1}, OUT, connServer);
                 }
                 if (events[i].events & EPOLLRDHUP)
                 {
-                    connServer->second->handleReadEnd(connServer->first);
+                    // TODO  connServer->second->handleReadEnd(connServer->first);
                     handleServerMsg({true, -1, IN, -1}, IN, connServer);
                 }
             }
@@ -182,7 +182,7 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, t_direction direction,
 
 WebServ::~WebServ()
 {
-    LOG_INFO("Closing down server.");
+    LOG_INFO("Closing down server.", "");
     for (const auto &server : serverMap_)
     {
         LOG_INFO("Closing Server: ", server.first);

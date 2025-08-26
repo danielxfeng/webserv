@@ -23,7 +23,8 @@ private:
 public:
     Server() = delete;
     Server(const t_server_config &config);
-    Server(const Server &) = delete;
+    Server(const Server &) = default;
+    Server(Server&&) = default; 
     Server &operator=(const Server &) = delete;
     ~Server() = default;
 
