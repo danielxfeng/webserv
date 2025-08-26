@@ -110,8 +110,12 @@ std::string HttpRequests::httpTargetDecoder(std::string &target)
 			if (target[i + 1] && target[i + 1] != ' ' && target[i + 2] && target[i + 2] != ' ')
 			{
 				std::string hex;
-				hex.push_back(target[i + 1]);
-				hex.push_back(target[i + 2]);
+				if (isxdigit(target[i + 1]) && (isxdigit(target[i + 2]))){
+					hex.push_back(target[i + 1]);
+					hex.push_back(target[i + 2]);
+				}
+				else
+					throw WebServErr::BadRequestException("invalid values after %");
 				char ch = stoi(hex, nullptr, 16);
 				result.push_back(ch);
 				i = i + 2;
@@ -155,7 +159,7 @@ void HttpRequests::validateTarget()
 		}
 	}
 	}
-	
+
 		
 }
 
