@@ -21,7 +21,7 @@ class WebServ
 {
 private:
     int epollFd_;                                 // Singleton epoll file descriptor
-    const t_global_config config_;                // Config
+    t_global_config config_;                // Config
     std::vector<Server> serverVec_;               // Vector of servers, the instances.
     std::unordered_map<int, Server *> serverMap_; // Maps `listen` file descriptors to pointers to Server instances
     std::unordered_map<int, Server *> connMap_;   // Maps `connections` file descriptors to pointers to Server instances

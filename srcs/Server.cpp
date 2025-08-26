@@ -56,13 +56,13 @@ t_msg_from_serv Server::handleDataIn(int fd)
 
         if (bytes_read == EOF_REACHED && !is_max_length_reached)
         {
-            LOG_ERROR("EOF reached but content length not reached");
+            LOG_ERROR("EOF reached but content length not reached", " weird eh?");
             return handleError(conn, BAD_REQUEST, "EOF reached but content length not reached");
         }
 
         if (conn->bytes_received > config_.max_request_size)
         {
-            LOG_ERROR("Request size exceeded");
+            LOG_ERROR("Request size exceeded: ", conn->bytes_received);
             return handleError(conn, BAD_REQUEST, "Request size exceeded");
         }
 
@@ -110,12 +110,16 @@ t_msg_from_serv Server::handleDataIn(int fd)
 
         return handleError(conn, INTERNAL_SERVER_ERROR, "Should not reach here");
     }
+
+    throw WebServErr::ShouldNotBeHereException("Should not reach here"); // TODO: remove this after implementation
 }
 
-t_msg_from_serv Server::handleDataOut(int fd) { /* TODO: implement */ }
+t_msg_from_serv Server::handleDataOut(int fd) { return {false, -1, OUT, -1}; // TODO: Implement this.
+}
 
 t_msg_from_serv Server::handleError(t_conn *conn, t_error_code error_code, const std::string &error_message)
 {
+    return {true, -1, IN, conn->socket_fd};
     // TODO: Handle the error based on the error_code.
 }
 
@@ -128,7 +132,7 @@ void Server::timeoutKiller()
         if (difftime(now, it->last_heartbeat) > 99999 || difftime(now, it->start_timestamp) > 99999)
         {
             it = conn_vec_.erase(it);
-            handleDataEnd(it->socket_fd); // TODO: need a way to unregister the fd from epoll.
+           // handleDataEnd(it->socket_fd); // TODO: need a way to unregister the fd from epoll.
         }
         else
         {

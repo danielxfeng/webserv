@@ -3,7 +3,7 @@
 MethodHandler::MethodHandler()
 	: requested_({-1, 0, 0, false, nullptr})
 {
-	LOG_TRACE("Method Handler created", (void));
+	LOG_TRACE("Method Handler created", " Yay!");
 }
 
 MethodHandler::MethodHandler(const MethodHandler &copy)
@@ -13,7 +13,7 @@ MethodHandler::MethodHandler(const MethodHandler &copy)
 
 MethodHandler::~MethodHandler()
 {
-	LOG_TRACE("Method Handler deconstructed", (void));
+	LOG_TRACE("Method Handler deconstructed", " Yay!");
 }
 
 MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
@@ -26,48 +26,55 @@ MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
 		requested_.isDynamic = copy.requested_.isDynamic;
 		requested_.dynamicPage = copy.requested_.dynamicPage;
 	}
-	LOG_TRACE("Method handler copied", copy);
+	LOG_TRACE("Method handler copied", " Yay!");
     return (*this);
 }
 
 t_file	MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
-	std::string &&targetRef = headers.find("Target") != headers.end() ? targetRef = headers.find("Target")->second : "";
+	std::string targetRef = headers.find("Target") != headers.end() ? targetRef = headers.find("Target")->second : "";
 	if (targetRef == "")
 		throw WebServErr::MethodException(ERR_404, "Path does not exist");
-	std::string &&chosenMethod = headers.find("Method") != headers.end() ? chosenMethod = headers.find("Method")->second : "";
+	std::string chosenMethod = headers.find("Method") != headers.end() ? chosenMethod = headers.find("Method")->second : "";
 	if (chosenMethod == "")
 		throw WebServErr::MethodException(ERR_404, "Method does not exist");
+	t_method	realMethod = convertMethod(chosenMethod);
 	std::string &rootRef = server.locations[targetRef].root;
 	std::filesystem::path realPath = createRealPath(rootRef, targetRef);
-	
 
-	if (std::find(server.locations[targetRef].methods.begin(), server.locations[targetRef].methods.end(), chosenMethod) != server.locations[targetRef].methods.end())
+	for (size_t i = 0; i < server.locations[targetRef].methods.size(); i++)
 	{
-		if (chosenMethod == "GET")
+		if (server.locations[targetRef].methods[i] == realMethod)
 		{
-			LOG_TRACE("Calling GET: ", realPath);
-			return (callGetMethod(realPath, server));
-		}
-		if (chosenMethod == "POST")
-		{
-			LOG_TRACE("Calling POST: ", realPath);
-			return (callPostMethod(realPath, server, headers));
-		}
-		if (chosenMethod == "DELETE")
-		{
-			LOG_TRACE("Calling DELETE: ", realPath);
-			callDeleteMethod(realPath);
-			return (requested_);
-		}
-		if (chosenMethod == "CGI")
-		{
-			LOG_TRACE("Calling CGI: ", realPath);
-			return (callCGIMethod(realPath, headers));
+			switch (realMethod)
+			{
+				case GET:
+				{
+					LOG_TRACE("Calling GET: ", realPath);
+					return (callGetMethod(realPath, server));
+				}
+				case POST:
+				{
+					LOG_TRACE("Calling POST: ", realPath);
+					return (callPostMethod(realPath, server, headers));
+				}
+				case DELETE:
+				{
+					LOG_TRACE("Calling DELETE: ", realPath);
+					callDeleteMethod(realPath);
+					return (requested_);
+				}
+				case CGI:
+				{
+					LOG_TRACE("Calling CGI: ", realPath);
+					return (callCGIMethod(realPath, headers));
+				}
+				default:
+					throw WebServErr::MethodException(ERR_500, "Method not allowed or is unknown");
+			}
 		}
 	}
-	else
-		throw WebServErr::MethodException(ERR_500, "Method not allowed or is unknown");
+	throw WebServErr::MethodException(ERR_500, "Method not allowed or is unknown");
 }
 
 t_file	MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config server)
@@ -150,16 +157,16 @@ void	MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 	if (!length.eof())
 		throw WebServErr::MethodException(ERR_400, "Bad Request, failed to get end of file for content length.");//TODO double check error code
 	if (requested_.expectedSize > MAX_BODY_SIZE)
-		throw WebServErr::MethodException(/*TODO*/, "Body size too large.");
+		throw WebServErr::MethodException(ERR_500, "Body size too large.");//TODO double check error code
 }
 
 void	MethodHandler::checkContentLength(std::unordered_map<std::string, std::string> headers) const
 {
-	auto check = headers.find("content-length");
-	if (/*TODO length check here*/ != expectedLength_ || /*TODO*/ > MAX_BODY_SIZE)
-	{
-		throw WebServErr::MethodException(ERR_400, "Bad Request, Body Length does not equal Expected Length.");
-	}
+//	auto check = headers.find("content-length");
+//	if (/*TODO length check here*/ != expectedLength_ || /*TODO*/ > MAX_BODY_SIZE)
+//	{
+//		throw WebServErr::MethodException(ERR_400, "Bad Request, Body Length does not equal Expected Length.");
+//	}
 }
 
 void	MethodHandler::checkContentType(std::unordered_map<std::string, std::string> headers) const
@@ -169,8 +176,8 @@ void	MethodHandler::checkContentType(std::unordered_map<std::string, std::string
 	{
 		//TODO loop through parts and check MIMETYPE, if not throw bad request
 	}
-	else if (/*TODO chceck MIMEType of path against content type*/)
-		throw WebServErr::MethodException(ERR_400, "Bad Request, Content Type does not match.");
+//	else if (/*TODO chceck MIMEType of path against content type*/)
+//		throw WebServErr::MethodException(ERR_400, "Bad Request, Content Type does not match.");
 }
 
 void	MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_FormData>& sections)
@@ -211,7 +218,7 @@ std::filesystem::path	MethodHandler::createFileName(const std::string &path)
 	std::string year = std::to_string(local_tm.tm_year + 1900);
 	std::string month = std::to_string(local_tm.tm_mon + 1);
 	std::string day = std::to_string(local_tm.tm_mday);
-	std::filesystem::path filename = /*TODO directory*/ path + '_' + year + '_' + month + '_' + day + '.png';
+	std::filesystem::path filename = /*TODO directory*/ path + '_' + year + '_' + month + '_' + day + ".png";
 	checkIfLocExists(filename);
 	return (filename);
 }
