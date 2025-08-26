@@ -29,6 +29,7 @@ class HttpRequests{
 		void validateRequestLine();
 		void validateMethod();
 		void validateTarget();
+		std::string httpTargetDecoder(std::string &target);
 		void validateHttpVersion();
 
 		void validateRequestHeader(void);
