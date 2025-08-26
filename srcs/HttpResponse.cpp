@@ -127,8 +127,3 @@ void HttpResponse::failedResponse( HttpRequests request, t_conn *conn, t_status_
 
 
 
-
-// HttpResponse::HttpResponse(){};
-// HttpResponse::HttpResponse(const HttpResponse &obj){}
-// HttpResponse& HttpResponse::operator=(const HttpResponse &obj){};
-// HttpResponse::~HttpResponse(){};

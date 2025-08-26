@@ -109,11 +109,12 @@ std::string HttpRequests::httpTargetDecoder(std::string &target)
 		{
 			if (target[i + 1] && target[i + 1] != ' ' && target[i + 2] && target[i + 2] != ' ')
 			{
-				if (target[i + 1] == '2' && target[i + 2] == '0')
-				{
-					result.append(" ");
-					i = i + 2;
-				}
+				std::string hex;
+				hex.push_back(target[i + 1]);
+				hex.push_back(target[i + 2]);
+				char ch = stoi(hex, nullptr, 16);
+				result.push_back(ch);
+				i = i + 2;
 			}
 			else
 				throw WebServErr::BadRequestException("invalid values after %");
@@ -142,8 +143,20 @@ void HttpRequests::validateTarget()
 				throw WebServErr::BadRequestException("target cannot has invalid characters");
 		}
 	}
-	if (encoded)
+	if (encoded){
 		requestLineMap["Target"] = httpTargetDecoder(requestLineMap["Target"]);
+		std::string invalidCharactersUri = "<>\"{}|\\^`";
+		for (char j : requestLineMap["Target"])
+	{
+		for (char i : invalidCharactersUri)
+		{
+			if (i == j)
+				throw WebServErr::BadRequestException("target cannot has invalid characters");
+		}
+	}
+	}
+	
+		
 }
 
 /**
