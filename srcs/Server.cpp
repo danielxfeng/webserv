@@ -56,13 +56,13 @@ t_msg_from_serv Server::handleDataIn(int fd)
 
         if (bytes_read == EOF_REACHED && !is_max_length_reached)
         {
-            LOG_ERROR("EOF reached but content length not reached");
+            LOG_ERROR("EOF reached but content length not reached", " weird eh?");
             return handleError(conn, BAD_REQUEST, "EOF reached but content length not reached");
         }
 
         if (conn->bytes_received > config_.max_request_size)
         {
-            LOG_ERROR("Request size exceeded");
+            LOG_ERROR("Request size exceeded: ", conn->bytes_received);
             return handleError(conn, BAD_REQUEST, "Request size exceeded");
         }
 

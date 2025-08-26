@@ -9,7 +9,7 @@ BLUE := \033[0;94m
 # Project variables
 RM := rm -rf
 NAME := webserv
-CXX := c++
+CXX := g++
 CXXFLAGS := -std=c++20 $(DEPFLAGS) # TODO: -Wall -Wextra -Werror
 LDFLAGS :=
 DEPFLAGS := -MMD -MP
