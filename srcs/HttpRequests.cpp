@@ -101,7 +101,6 @@ void HttpRequests::validateHttpVersion()
 
 void HttpRequests::validateTarget()
 {
-	size_t pos;
 	if (requestLineMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
@@ -113,11 +112,24 @@ void HttpRequests::validateTarget()
 				throw WebServErr::BadRequestException("target cannot has invalid characters");
 		}
 	}
-	pos = requestLineMap["Target"].find("%20");
-		if(pos != std::string::npos){
-			std::replace(requestLineMap["Target"].begin(),requestLineMap["Target"].end(),"%20", " ");
-			
+	std::string &ref = requestLineMap["Target"];
+	std::string result;
+	for (size_t i = 0; i < requestLineMap["Target"].size(); i++){
+		if(ref[i] == '%'){
+			if(ref[i+1] && ref[i+1] != ' ' && ref[i+2] && ref[i+2] != ' '){
+					if(ref[i+1] == '2' && ref[i+2] == '0'){
+						result.append(" ");
+						i = i+2;
+					}
+				 }
+			else
+				throw WebServErr::BadRequestException("invalid values after %");
 		}
+		else{
+			result += ref[i];
+		}
+	}
+	requestLineMap["Target"] = result;
 }
 /**
  * @brief validate the method it must be get, post and delete.
@@ -578,14 +590,17 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 	pre_validator(requestLength, request);
 	extractRequestLine(i, requestLength, request);
 	validateRequestLine();
-	extractRequestHeader(i, requestLength, request);;
+	extractRequestHeader(i, requestLength, request);
 	validateRequestHeader();
-	extractRequestBody(i, requestLength, request);
-	validateRequestBody();
-	// for (const auto &pair : requestLineMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
-	// for (const auto &pair : requestHeaderMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	if(requestHeaderMap["Method"] == "POST" ||requestHeaderMap["Method"] == "DELETE" ){
+		extractRequestBody(i, requestLength, request);
+		validateRequestBody();
+	}
+
+	for (const auto &pair : requestLineMap)
+		std::cout << pair.first << ": " << pair.second << std::endl;
+	for (const auto &pair : requestHeaderMap)
+		std::cout << pair.first << ": " << pair.second << std::endl;
 	// for (const auto &pair : requestBodyMap)
 	// 	std::cout << pair.first << ":" << pair.second << std::endl;
 	return (*this);
