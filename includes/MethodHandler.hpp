@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <cstdio>
 #include <unistd.h>
-#include "SharedEnums.hpp"
+#include "SharedTypes.hpp"
 #include <chrono>
 #include <ctime>
 #include <algorithm>
