@@ -21,4 +21,5 @@ class HttpResponse{
         void notFoundResponse(t_conn conn, HttpRequests request);
         void failedResponse(HttpRequests request, t_conn *conn, t_status_error_codes error_code, const std::string &error_message);
 
+        
 };
