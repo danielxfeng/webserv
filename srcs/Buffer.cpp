@@ -1,6 +1,6 @@
 #include "Buffer.hpp"
 
-Buffer::Buffer(size_t capacity, size_t block_size) : capacity_(capacity), block_size_(block_size), readPos_(0), writePos_(0), size_(0) {}
+Buffer::Buffer(size_t capacity, size_t block_size) : readPos_(0), writePos_(0), capacity_(capacity), size_(0), block_size_(block_size) {}
 
 size_t Buffer::readFd(int fd)
 {

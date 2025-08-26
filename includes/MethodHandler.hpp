@@ -14,9 +14,10 @@
 #include <filesystem>
 #include <cstdio>
 #include <unistd.h>
-#include "SharedEnums.hpp"
+#include "SharedTypes.hpp"
 #include <chrono>
 #include <ctime>
+#include <algorithm>
 
 #define MAX_BODY_SIZE	1024
 
@@ -57,6 +58,7 @@ private:
 	void	checkIfLocExists(const std::filesystem::path &path);
 	std::filesystem::path	createFileName(const std::string &path);
 	std::filesystem::path	createRealPath(const std::string &server, const std::string &target);
+	std::string	generateDynamicPage(std::filesystem::path &path);
 public:
     MethodHandler();
     MethodHandler(const MethodHandler &copy);

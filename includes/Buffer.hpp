@@ -23,7 +23,7 @@ private:
     size_t block_size_;                  // The size of each block in the buffer.
 
 public:
-    Buffer() = default;
+    Buffer() = delete;
     Buffer(const Buffer &) = default;
     Buffer &operator=(const Buffer &) = default;
     ~Buffer() = default;
