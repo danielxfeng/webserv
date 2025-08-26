@@ -102,7 +102,7 @@ void HttpRequests::validateHttpVersion()
 std::string HttpRequests::httpTargetDecoder(std::string &target)
 {
 	std::string result;
-	
+
 	for (size_t i = 0; i < target.size(); i++)
 	{
 		if (target[i] == '%')
@@ -110,7 +110,8 @@ std::string HttpRequests::httpTargetDecoder(std::string &target)
 			if (target[i + 1] && target[i + 1] != ' ' && target[i + 2] && target[i + 2] != ' ')
 			{
 				std::string hex;
-				if (isxdigit(target[i + 1]) && (isxdigit(target[i + 2]))){
+				if (isxdigit(target[i + 1]) && (isxdigit(target[i + 2])))
+				{
 					hex.push_back(target[i + 1]);
 					hex.push_back(target[i + 2]);
 				}
@@ -139,7 +140,7 @@ void HttpRequests::validateTarget()
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
 	for (char j : requestLineMap["Target"])
 	{
-		if(j == '%')
+		if (j == '%')
 			encoded = true;
 		for (char i : invalidCharactersUri)
 		{
@@ -147,20 +148,19 @@ void HttpRequests::validateTarget()
 				throw WebServErr::BadRequestException("target cannot has invalid characters");
 		}
 	}
-	if (encoded){
+	if (encoded)
+	{
 		requestLineMap["Target"] = httpTargetDecoder(requestLineMap["Target"]);
 		std::string invalidCharactersUri = "<>\"{}|\\^`";
 		for (char j : requestLineMap["Target"])
-	{
-		for (char i : invalidCharactersUri)
 		{
-			if (i == j)
-				throw WebServErr::BadRequestException("target cannot has invalid characters");
+			for (char i : invalidCharactersUri)
+			{
+				if (i == j)
+					throw WebServErr::BadRequestException("target cannot has invalid characters");
+			}
 		}
 	}
-	}
-
-		
 }
 
 /**
