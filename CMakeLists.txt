@@ -12,6 +12,8 @@ enable_testing()
 
 # Add test executable(s)
 add_executable(testtest test/test/test.cpp)
+add_executable(testtinyjson test/tinyjson/testTinyJson.cpp srcs/TinyJson.cpp)
+add_executable(testconfig test/config/testConfig.cpp srcs/Config.cpp srcs/TinyJson.cpp srcs/SharedTypes.cpp)
 add_executable(testparsing
 				test/test/test_parsing.cpp
 				srcs/HttpRequests.cpp
@@ -34,9 +36,14 @@ target_include_directories(testparsing PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
 
 # Link Google Test libraries to your tests
 target_link_libraries(testtest PRIVATE gtest_main)
+target_link_libraries(testtinyjson PRIVATE gtest_main)
+target_link_libraries(testconfig PRIVATE gtest_main)
 target_link_libraries(testparsing PRIVATE gtest_main)
 
 include(GoogleTest)
+gtest_discover_tests(testtest)
+gtest_discover_tests(testtinyjson)
+gtest_discover_tests(testconfig)
 gtest_discover_tests(testparsing)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")

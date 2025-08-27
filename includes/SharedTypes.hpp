@@ -101,3 +101,4 @@ typedef struct s_global_config
     std::unordered_map<std::string, t_server_config> servers; // Server names and their corresponding configurations
 } t_global_config;
 
+t_method convertMethod(const std::string &method_str);

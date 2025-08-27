@@ -1,20 +1,4 @@
-#include "Server.hpp"
-
-t_method convertMethod(const std::string &method_str)
-{
-    std::string upper_method = method_str;
-    std::transform(upper_method.begin(), upper_method.end(), upper_method.begin(), ::toupper);
-    if (upper_method == "GET")
-        return GET;
-    else if (upper_method == "POST")
-        return POST;
-    else if (upper_method == "DELETE")
-        return DELETE;
-    else if (upper_method == "CGI")
-        return CGI;
-    else
-        return UNKNOWN;
-}
+#include "../includes/Server.hpp"
 
 Server::Server(const t_server_config &config) : config_(config) {}
 
@@ -39,9 +23,9 @@ t_msg_from_serv Server::handleDataIn(int fd)
     if (fd == conn->socket_fd)
     {
 
-        size_t bytes_read = conn->read_buf.readFd(fd);
+        ssize_t bytes_read = static_cast<ssize_t>(conn->read_buf.readFd(fd));
 
-        if (bytes_read == SRV_ERROR || bytes_read == BUFFER_FULL)
+        if (bytes_read == SRV_ERROR /*|| bytes_read == BUFFER_FULL*/)//TODO BUFFER_FULL is an enum
             return {false, -1, IN, -1}; // Just skip for now.
 
         conn->bytes_received += bytes_read;
@@ -98,7 +82,7 @@ t_msg_from_serv Server::handleDataIn(int fd)
         if (conn->status != WRITING)
             return handleError(conn, INTERNAL_SERVER_ERROR, "Connection not in writing state");
 
-        size_t bytes_read = conn->read_buf.readFd(fd);
+        ssize_t bytes_read = conn->read_buf.readFd(fd);
         if (bytes_read == SRV_ERROR)
             return handleError(conn, INTERNAL_SERVER_ERROR, "Read error.");
 
@@ -114,11 +98,13 @@ t_msg_from_serv Server::handleDataIn(int fd)
     throw WebServErr::ShouldNotBeHereException("Should not reach here"); // TODO: remove this after implementation
 }
 
-t_msg_from_serv Server::handleDataOut(int fd) { return {false, -1, OUT, -1}; // TODO: Implement this.
+t_msg_from_serv Server::handleDataOut(int fd) {(void)fd; return {false, -1, OUT, -1}; // TODO: Implement this.
 }
 
 t_msg_from_serv Server::handleError(t_conn *conn, t_error_code error_code, const std::string &error_message)
 {
+    (void)error_message;
+    (void)error_code;
     return {true, -1, IN, conn->socket_fd};
     // TODO: Handle the error based on the error_code.
 }

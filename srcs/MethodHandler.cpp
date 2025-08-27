@@ -109,6 +109,7 @@ t_file	MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 
 t_file	MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
+	(void) server;
 	checkIfLocExists(path);
 	checkIfDirectory(path);
 	//TODO Check if location has permission for POST
@@ -141,6 +142,8 @@ void	MethodHandler::callDeleteMethod(std::filesystem::path &path)
 
 t_file	MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> headers)
 {
+	(void) path;
+	(void) headers;
 	//TODO
 	return (requested_);
 }
@@ -162,6 +165,7 @@ void	MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 
 void	MethodHandler::checkContentLength(std::unordered_map<std::string, std::string> headers) const
 {
+	(void)headers;
 //	auto check = headers.find("content-length");
 //	if (/*TODO length check here*/ != expectedLength_ || /*TODO*/ > MAX_BODY_SIZE)
 //	{
@@ -182,7 +186,8 @@ void	MethodHandler::checkContentType(std::unordered_map<std::string, std::string
 
 void	MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_FormData>& sections)
 {
-
+	(void)boundary;
+	(void)sections;
 }
 
 void    MethodHandler::checkIfRegFile(const std::filesystem::path &path)

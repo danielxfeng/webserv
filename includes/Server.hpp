@@ -3,15 +3,12 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "Buffer.hpp"
-#include "MethodHandler.hpp"
-#include "Config.hpp"
-#include "SharedTypes.hpp"
+#include "../includes/Buffer.hpp"
+#include "../includes/MethodHandler.hpp"
+#include "../includes/Config.hpp"
+#include "../includes/SharedTypes.hpp"
 
 class Config;
-
-
-t_method convertMethod(const std::string &method_str);
 
 class Server
 {

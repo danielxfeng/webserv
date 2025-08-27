@@ -24,6 +24,7 @@ CGIHandler &CGIHandler::operator=(const CGIHandler &copy)
 
 std::vector<std::string>    CGIHandler::setENVP(std::unordered_map<std::string, std::string> headers)
 {
+	(void) headers;
 	std::vector<std::string> data;
 	return (data);
 }
