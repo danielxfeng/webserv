@@ -10,7 +10,7 @@ BLUE := \033[0;94m
 RM := rm -rf
 NAME := webserv
 CXX := g++
-CXXFLAGS := -std=c++20 $(DEPFLAGS) -fPIE # TODO: -Wall -Wextra -Werror
+CXXFLAGS := -Wall -Wextra -Werror -std=c++20 $(DEPFLAGS) -fPIE
 LDFLAGS :=
 DEPFLAGS := -MMD -MP
 SANITIZERS := -fsanitize=address -fsanitize=leak -fsanitize=undefined
