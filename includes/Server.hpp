@@ -7,6 +7,8 @@
 #include "../includes/MethodHandler.hpp"
 #include "../includes/Config.hpp"
 #include "../includes/SharedTypes.hpp"
+#include "HttpRequests.hpp"
+#include "HttpResponse.hpp"
 
 class Config;
 
@@ -21,7 +23,7 @@ public:
     Server() = delete;
     Server(const t_server_config &config);
     Server(const Server &) = default;
-    Server(Server&&) = default; 
+    Server(Server &&) = default;
     Server &operator=(const Server &) = delete;
     ~Server() = default;
 

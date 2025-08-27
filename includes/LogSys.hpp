@@ -45,7 +45,7 @@ private:
 			std::tm local_tm = *std::localtime(&now_time_t);
 			std::cout << std::put_time(&local_tm, "%H:%M:%S");
 			std::cout << '.' << std::setfill('0') << std::setw(3) << now_ms.count();
-			std::cout << " " << msg_priority_str << " " << message << " " << function << "\033[0m ";
+			std::cout << " " << msg_priority_str << " Func: "  << function << ", Msg: " << message << "\033[0m ";
 			(std::cout << ... << std::forward<Args>(args));
 			std::cout <<std::endl;
 		}

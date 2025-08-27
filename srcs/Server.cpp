@@ -12,6 +12,7 @@ void Server::addConn(int fd)
 
     conn_vec_.push_back(conn);
     conn_map_.emplace(fd, &conn_vec_.back());
+    LOG_DEBUG("New connection added: ", fd);
 }
 
 t_msg_from_serv Server::handleDataIn(int fd)
@@ -22,18 +23,22 @@ t_msg_from_serv Server::handleDataIn(int fd)
     t_conn *conn = conn_map_.at(fd);
     if (fd == conn->socket_fd)
     {
-
+        LOG_DEBUG("Data read: ", fd);
         ssize_t bytes_read = static_cast<ssize_t>(conn->read_buf.readFd(fd));
 
-        if (bytes_read == SRV_ERROR /*|| bytes_read == BUFFER_FULL*/)//TODO BUFFER_FULL is an enum
+        if (bytes_read == SRV_ERROR || bytes_read == BUFFER_FULL)
             return {false, -1, IN, -1}; // Just skip for now.
 
         conn->bytes_received += bytes_read;
 
         if (conn->status == HEADER_PARSING)
         {
+            HttpRequests request;
+            request.httpParser(conn->read_buf.getData().front());
             // TODO: Call headerparser.
             // Assign the value to header.
+            LOG_DEBUG("Header parsed, bytes received: ", conn->bytes_received);
+            return {false, -1, IN, -1};
         }
 
         const bool is_max_length_reached = (conn->bytes_received == conn->content_length);
@@ -95,10 +100,14 @@ t_msg_from_serv Server::handleDataIn(int fd)
         return handleError(conn, INTERNAL_SERVER_ERROR, "Should not reach here");
     }
 
-    throw WebServErr::ShouldNotBeHereException("Should not reach here"); // TODO: remove this after implementation
+    LOG_DEBUG("Data read: ", fd);
+    throw WebServErr::ShouldNotBeHereException("Should not reach here, here"); // TODO: remove this after implementation
 }
 
-t_msg_from_serv Server::handleDataOut(int fd) {(void)fd; return {false, -1, OUT, -1}; // TODO: Implement this.
+t_msg_from_serv Server::handleDataOut(int fd)
+{
+    (void)fd;
+    return {false, -1, OUT, -1}; // TODO: Implement this.
 }
 
 t_msg_from_serv Server::handleError(t_conn *conn, t_error_code error_code, const std::string &error_message)
@@ -118,7 +127,7 @@ void Server::timeoutKiller()
         if (difftime(now, it->last_heartbeat) > 99999 || difftime(now, it->start_timestamp) > 99999)
         {
             it = conn_vec_.erase(it);
-           // handleDataEnd(it->socket_fd); // TODO: need a way to unregister the fd from epoll.
+            // handleDataEnd(it->socket_fd); // TODO: need a way to unregister the fd from epoll.
         }
         else
         {

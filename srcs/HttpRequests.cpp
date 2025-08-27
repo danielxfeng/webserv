@@ -612,7 +612,7 @@ content-disposition:form-data; name="file"; filename="example.png"*/
  * @param std::string.
  * @return (HttpRequests&);
  */
-HttpRequests &HttpRequests::httpParser(const std::string &request)
+HttpRequests &HttpRequests::httpParser(std::string &request)
 {
 	size_t i;
 	size_t requestLength;
@@ -632,10 +632,10 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 		validateRequestBody();
 	}
 
-	for (const auto &pair : requestLineMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
-	for (const auto &pair : requestHeaderMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
+	// for (const auto &pair : requestLineMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	// for (const auto &pair : requestHeaderMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
 	// for (const auto &pair : requestBodyMap)
 	// 	std::cout << pair.first << ":" << pair.second << std::endl;
 	return (*this);

@@ -15,12 +15,12 @@ typedef enum e_buff_error_code
 class Buffer
 {
 private:
-    std::queue<std::vector<char>> data_; // The data structure of the buffer. We split the buffer into fixed-size blocks, new block is appended when the prev one is full.
-    size_t readPos_;                     // The position of the next read in the current block.
-    size_t writePos_;                    // The position of the next write in the current block.
-    size_t capacity_;                    // The maximum size of the buffer.
-    size_t size_;                        // The current size of the buffer.
-    size_t block_size_;                  // The size of each block in the buffer.
+    std::queue<std::string> data_; // The data structure of the buffer. We split the buffer into fixed-size blocks, new block is appended when the prev one is full.
+    size_t readPos_;               // The position of the next read in the current block.
+    size_t writePos_;              // The position of the next write in the current block.
+    size_t capacity_;              // The maximum size of the buffer.
+    size_t size_;                  // The current size of the buffer.
+    size_t block_size_;            // The size of each block in the buffer.
 
 public:
     Buffer() = delete;
@@ -45,4 +45,6 @@ public:
      * @brief Checks if the buffer is full.
      */
     bool isFull() const;
+
+    std::queue<std::string> getData() const;
 };

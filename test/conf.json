@@ -7,7 +7,7 @@
     "max_headers_size": 4096,
     "servers": [
       {
-        "server_name": "app",
+        "server_name": "localhost",
         "port": 8080,
         "max_request_timeout": 999999,
         "max_request_size": 99999999,

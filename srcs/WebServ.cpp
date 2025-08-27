@@ -67,7 +67,7 @@ WebServ::WebServ(const std::string &conf_file) : epollFd_(-1)
         serverVec_.push_back(Server(server_conf.second));
 
     // Initialize epoll.
-    epollFd_ = epoll_create(0);
+    epollFd_ = epoll_create(1);
     if (epollFd_ == -1)
         throw WebServErr::SysCallErrException("epoll_create failed");
 }
