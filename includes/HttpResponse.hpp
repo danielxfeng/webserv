@@ -16,11 +16,6 @@ class HttpResponse
         HttpResponse(const HttpResponse &obj)= default;
         HttpResponse& operator=(const HttpResponse &obj) = default;
         ~HttpResponse()= default;
-public:
-    HttpResponse() = default;
-    HttpResponse(const HttpResponse &obj) = default;
-    HttpResponse &operator=(const HttpResponse &obj) = default;
-    ~HttpResponse() = default;
 
         void successResponse(t_conn conn, HttpRequests request, std::string &statusCode);
         void badRequestResponse(t_conn conn, HttpRequests request);
