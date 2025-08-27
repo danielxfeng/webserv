@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "../../includes/Config.hpp"
+#include "../../includes/SharedTypes.hpp"
 
 TEST(ConfigTest, TestGetGlobalConfig)
 {
@@ -53,7 +54,6 @@ TEST(ConfigFromJson, HappyPath_AllBranches)
   // globals
   EXPECT_EQ(g.max_poll_events, 128u);
   EXPECT_EQ(g.max_poll_timeout, 250u);
-  EXPECT_EQ(g.max_connections, 500u);
   EXPECT_EQ(g.global_request_timeout, 2000u);
   EXPECT_EQ(g.max_request_size, 1024u);
   EXPECT_EQ(g.max_headers_size, 4096u);

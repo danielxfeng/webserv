@@ -1,5 +1,4 @@
 #include "../includes/Config.hpp"
-#include "Server.hpp"
 
 const t_global_config &Config::getGlobalConfig() const
 {

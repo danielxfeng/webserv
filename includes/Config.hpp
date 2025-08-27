@@ -5,10 +5,9 @@
 #include <algorithm>
 #include <string>
 #include <fstream>
-#include "TinyJson.hpp"
-#include "TinyJsonSerializable.hpp"
-#include "SharedTypes.hpp"
-#include "Server.hpp"
+#include "../includes/TinyJson.hpp"
+#include "../includes/TinyJsonSerializable.hpp"
+#include "../includes/SharedTypes.hpp"
 
 class Server;
 class Config : public TinyJsonSerializable

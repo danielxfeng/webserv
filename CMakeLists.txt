@@ -13,7 +13,7 @@ enable_testing()
 # Add test executable(s)
 add_executable(testtest test/test/test.cpp)
 add_executable(testtinyjson test/tinyjson/testTinyJson.cpp srcs/TinyJson.cpp)
-add_executable(testconfig test/config/testConfig.cpp srcs/Config.cpp srcs/TinyJson.cpp)
+add_executable(testconfig test/config/testConfig.cpp srcs/Config.cpp srcs/TinyJson.cpp srcs/SharedTypes.cpp)
 add_executable(testparsing
 				test/test/test_parsing.cpp
 				srcs/HttpRequests.cpp
