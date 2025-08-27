@@ -128,3 +128,6 @@ void HttpResponse::failedResponse(HttpRequests request, t_conn *conn, t_status_e
     result.append(htmlPage);
     write(conn->inner_fd_out, result.c_str(), result.size());
 }
+
+
+

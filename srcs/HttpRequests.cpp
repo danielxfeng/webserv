@@ -2,7 +2,7 @@
 
 // default
 HttpRequests::HttpRequests() : upToBodyCounter(0), requestHeaderMap(),
-							   requestLineMap(), requestBodyMap()
+							   requestLineMap(), requestBodyMap(), is_chunked(false)
 {
 }
 /*
@@ -18,6 +18,7 @@ HttpRequests::HttpRequests(const HttpRequests &obj)
 		requestHeaderMap = obj.requestHeaderMap;
 		requestLineMap = obj.requestLineMap;
 		requestBodyMap = obj.requestBodyMap;
+		is_chunked = obj.is_chunked;
 	}
 };
 HttpRequests HttpRequests::operator=(const HttpRequests &obj)
@@ -28,6 +29,7 @@ HttpRequests HttpRequests::operator=(const HttpRequests &obj)
 		requestHeaderMap = obj.requestHeaderMap;
 		requestLineMap = obj.requestLineMap;
 		requestBodyMap = obj.requestBodyMap;
+		is_chunked = obj.is_chunked;
 	}
 	return (*this);
 };
@@ -97,20 +99,70 @@ void HttpRequests::validateHttpVersion()
 		throw WebServErr::BadRequestException("Http version must be 1.1 ot 1.0");
 }
 
+std::string HttpRequests::httpTargetDecoder(std::string &target)
+{
+	std::string result;
+
+	for (size_t i = 0; i < target.size(); i++)
+	{
+		if (target[i] == '%')
+		{
+			if (target[i + 1] && target[i + 1] != ' ' && target[i + 2] && target[i + 2] != ' ')
+			{
+				std::string hex;
+				if (isxdigit(target[i + 1]) && (isxdigit(target[i + 2])))
+				{
+					hex.push_back(target[i + 1]);
+					hex.push_back(target[i + 2]);
+				}
+				else
+					throw WebServErr::BadRequestException("invalid values after %");
+				char ch = stoi(hex, nullptr, 16);
+				result.push_back(ch);
+				i = i + 2;
+			}
+			else
+				throw WebServErr::BadRequestException("invalid values after %");
+		}
+		else
+		{
+			result += target[i];
+		}
+	}
+	return (result);
+}
+
 void HttpRequests::validateTarget()
 {
+	bool encoded = false;
 	if (requestLineMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
 	for (char j : requestLineMap["Target"])
 	{
+		if (j == '%')
+			encoded = true;
 		for (char i : invalidCharactersUri)
 		{
 			if (i == j)
 				throw WebServErr::BadRequestException("target cannot has invalid characters");
 		}
 	}
+	if (encoded)
+	{
+		requestLineMap["Target"] = httpTargetDecoder(requestLineMap["Target"]);
+		std::string invalidCharactersUri = "<>\"{}|\\^`";
+		for (char j : requestLineMap["Target"])
+		{
+			for (char i : invalidCharactersUri)
+			{
+				if (i == j)
+					throw WebServErr::BadRequestException("target cannot has invalid characters");
+			}
+		}
+	}
 }
+
 /**
  * @brief validate the method it must be get, post and delete.
  * @param (size_t &i, size_t requestLength, const std::string &request)
@@ -252,11 +304,11 @@ void HttpRequests::content_length_validator(void)
 	if (requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
 	{
 		if (!requestHeaderMap.contains("content-length") && !requestHeaderMap.contains("transfer-encoding"))
-			throw WebServErr::BadRequestException("POST must have content-length or transfer-encoding");
+			throw WebServErr::BadRequestException("content-length is needed");
 		if (requestHeaderMap.contains("content-length"))
 		{
-			if (requestHeaderMap["content-length"].empty())
-				throw WebServErr::BadRequestException("POST and DELETE must have content-length value");
+			if (requestHeaderMap["content-length"].empty() || !is_digit_str(requestHeaderMap["content-length"]))
+				throw WebServErr::BadRequestException("content-length must bee number only");
 			else
 			{
 				content_length_var = static_cast<size_t>(stoull(requestHeaderMap["content-length"]));
@@ -336,7 +388,7 @@ void HttpRequests::header_contenttype_validator()
 		}
 		if (has_semicolon)
 		{
-			std::vector<std::string> type = stov(requestHeaderMap["content-type"],';');
+			std::vector<std::string> type = stov(requestHeaderMap["content-type"], ';');
 			requestHeaderMap["content-type"] = type[0];
 			requestHeaderMap["boundary"] = type[1].substr(9);
 		}
@@ -355,6 +407,34 @@ void HttpRequests::header_contenttype_validator()
 	}
 }
 
+bool HttpRequests::is_digit_str(std::string &str)
+{
+	for (auto &ch : str)
+	{
+		if (!std::isdigit(ch))
+			return (false);
+	}
+	return (true);
+}
+
+void HttpRequests::header_transfer_encoding_validator()
+{
+	if (requestLineMap["Method"] == "POST")
+	{
+		if (requestHeaderMap.contains("content-length") && requestHeaderMap.contains("transfer-encoding"))
+		{
+			throw WebServErr::BadRequestException("content-type & transfer-encoding in the same request.");
+		}
+		else if (requestHeaderMap.contains("transfer-encoding"))
+		{
+			if (requestHeaderMap["transfer-encoding"] == "chunked")
+				is_chunked = true;
+			else
+				throw WebServErr::BadRequestException("only chunked is supported");
+		}
+	}
+}
+
 /**
  * @brief validate the request line part
  * @param nothing
@@ -366,6 +446,8 @@ void HttpRequests::validateRequestHeader(void)
 	content_length_validator();
 	header_connection_validator();
 	header_contenttype_validator();
+	header_transfer_encoding_validator();
+	content_length_validator();
 }
 
 /**
@@ -412,25 +494,25 @@ void HttpRequests::parse_body_header(std::string_view requestBodyHeader)
 	std::string firstPart;
 	std::string secondPart;
 
-	for (size_t i=0; i < requestBodyHeader.size(); i++)
+	for (size_t i = 0; i < requestBodyHeader.size(); i++)
 	{
-		
+
 		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i + 1] == '\n' && requestBodyHeader[i + 2] == '\r' && requestBodyHeader[i + 3] == '\n')
 		{
 			requestBodyMap[firstPart] = secondPart;
 			break;
 		}
-		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i+1] == '\n')
+		if (requestBodyHeader[i] == '\r' && requestBodyHeader[i + 1] == '\n')
 		{
 			requestBodyMap[firstPart] = secondPart;
 			firstPart = "";
 			secondPart = "";
 			colonFind = false;
-			i+=2;
+			i += 2;
 		}
 		if (requestBodyHeader[i] == ':')
 		{
-			i+=2;
+			i += 2;
 			colonFind = true;
 		}
 		if (!colonFind)
@@ -452,8 +534,7 @@ void HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 	std::string_view sv(request);
 	std::string_view requestBody;
 	std::string_view requestBodyHeader;
-	
-	
+
 	requestBody = sv.substr(i, request.size());
 	posToRawFile = request.find("\r\n\r\n");
 	if (posToRawFile == std::string::npos)
@@ -468,28 +549,29 @@ void HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 	if (pos == std::string::npos)
 		throw WebServErr::BadRequestException("no file part found.");
 	// extract the body header part
-	requestBodyHeader = requestBodyHeader.substr(0, pos+4);
-	upToBodyCounter+=posToRawFile +4;
+	requestBodyHeader = requestBodyHeader.substr(0, pos + 4);
+	upToBodyCounter += posToRawFile + 4;
 	parse_body_header(requestBodyHeader);
 }
 
-
-void HttpRequests::validateFileName(){
-	if(!requestBodyMap.contains("filename"))
+void HttpRequests::validateFileName()
+{
+	if (!requestBodyMap.contains("filename"))
 		throw WebServErr::BadRequestException("the body header must have filename keyword");
-	if(requestBodyMap["filename"].empty())
+	if (requestBodyMap["filename"].empty())
 		throw WebServErr::BadRequestException("the body header must have filename value");
 }
 
-void HttpRequests::validateContentType(){
-	if(!requestBodyMap.contains("content-type"))
+void HttpRequests::validateContentType()
+{
+	if (!requestBodyMap.contains("content-type"))
 		throw WebServErr::BadRequestException("the body header must have filename keyword");
-	if(requestBodyMap["content-type"].empty())
+	if (requestBodyMap["content-type"].empty())
 		throw WebServErr::BadRequestException("the body header must have filename value");
 }
 
-
-void HttpRequests::validateRequestBody(void){
+void HttpRequests::validateRequestBody(void)
+{
 	/*
 	content-type:image/png
 content-disposition:form-data; name="file"; filename="example.png"*/
@@ -502,17 +584,20 @@ content-disposition:form-data; name="file"; filename="example.png"*/
 
 	content = stov(requestBodyMap["content-disposition"], ';');
 	requestBodyMap["disposition-type"] = content[0];
-	for(size_t j = 1; j<content.size(); j++){
+	for (size_t j = 1; j < content.size(); j++)
+	{
 		equalSignFound = false;
-		for(size_t i = 0; i < content[j].size();i++){
-			if(content[j][i] == '='){
+		for (size_t i = 0; i < content[j].size(); i++)
+		{
+			if (content[j][i] == '=')
+			{
 				equalSignFound = true;
 				i++;
 			}
-			if(!equalSignFound)
-				firstPart+=content[j][i];
+			if (!equalSignFound)
+				firstPart += content[j][i];
 			else
-				secondPart+=content[j][i];
+				secondPart += content[j][i];
 		}
 		requestBodyMap[firstPart] = secondPart;
 		firstPart = "";
@@ -521,7 +606,6 @@ content-disposition:form-data; name="file"; filename="example.png"*/
 	validateFileName();
 	validateContentType();
 }
-
 
 /**
  * @brief Parsing the request.
@@ -540,14 +624,18 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 	pre_validator(requestLength, request);
 	extractRequestLine(i, requestLength, request);
 	validateRequestLine();
-	extractRequestHeader(i, requestLength, request);;
+	extractRequestHeader(i, requestLength, request);
 	validateRequestHeader();
-	extractRequestBody(i, requestLength, request);
-	validateRequestBody();
-	// for (const auto &pair : requestLineMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
-	// for (const auto &pair : requestHeaderMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	if (requestHeaderMap["Method"] == "POST" || requestHeaderMap["Method"] == "DELETE")
+	{
+		extractRequestBody(i, requestLength, request);
+		validateRequestBody();
+	}
+
+	for (const auto &pair : requestLineMap)
+		std::cout << pair.first << ": " << pair.second << std::endl;
+	for (const auto &pair : requestHeaderMap)
+		std::cout << pair.first << ": " << pair.second << std::endl;
 	// for (const auto &pair : requestBodyMap)
 	// 	std::cout << pair.first << ":" << pair.second << std::endl;
 	return (*this);
@@ -587,7 +675,6 @@ std::string HttpRequests::getHttpVersion()
 {
 	return (requestLineMap["HttpVersion"]);
 }
-
 
 std::string HttpRequests::getHttpRequestMethod()
 {
