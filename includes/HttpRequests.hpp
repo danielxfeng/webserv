@@ -21,7 +21,7 @@ public:
 	HttpRequests operator=(const HttpRequests &obj);
 	~HttpRequests();
 
-	HttpRequests &httpParser(std::string &request);
+	HttpRequests &httpParser(const std::string &request);
 
 	void tillBodyCounter(size_t &i, size_t requestLength, const std::string &request);
 

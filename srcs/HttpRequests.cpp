@@ -612,7 +612,7 @@ content-disposition:form-data; name="file"; filename="example.png"*/
  * @param std::string.
  * @return (HttpRequests&);
  */
-HttpRequests &HttpRequests::httpParser(std::string &request)
+HttpRequests &HttpRequests::httpParser(const std::string &request)
 {
 	size_t i;
 	size_t requestLength;

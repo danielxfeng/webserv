@@ -34,7 +34,8 @@ t_msg_from_serv Server::handleDataIn(int fd)
         if (conn->status == HEADER_PARSING)
         {
             HttpRequests request;
-            request.httpParser(conn->read_buf.getData().front());
+            const auto buf = conn->read_buf.getData();
+            request.httpParser(buf.front());
             // TODO: Call headerparser.
             // Assign the value to header.
             LOG_DEBUG("Header parsed, bytes received: ", conn->bytes_received);
