@@ -464,12 +464,9 @@ void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength,
 		{
 			break;
 		}
-		if (upToBodyCounter > 8192)
-		{ // 8KB max size of the requestline + request header
-			throw WebServErr::BadRequestException("403 Long request");
-		}
 		upToBodyCounter++;
 	}
+	throw WebServErr::InvalidRequestHeader("Invalid request header");
 }
 /**
  * @brief validate the reauest before start extraction.
