@@ -91,4 +91,12 @@ public:
 			UtilsException &operator=(const UtilsException &other) = delete;
 			~UtilsException() override = default;
 	};
+
+    class InvalidRequestHeader: public std::exception
+	{
+		private:
+			std::string what_;
+		public:
+			explicit InvalidRequestHeader(const std::string &what_arg);
+	};
 };
