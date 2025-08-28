@@ -51,3 +51,8 @@ WebServErr::UtilsException::UtilsException(const std::string &what_arg)
 // {
 // 	return what_.c_str();
 // }
+
+
+
+WebServErr::InvalidRequestHeader::InvalidRequestHeader(const std::string &what_arg)
+	: what_(myFormat("Invalid request header:", what_arg)) {}
