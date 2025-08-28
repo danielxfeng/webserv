@@ -66,3 +66,16 @@ const char *WebServErr::CGIException::what() const noexcept
 {
 	return what_.c_str();
 }
+
+// const char *WebServErr::UtilsException::what() const noexcept
+// {
+// 	return what_.c_str();
+// }
+
+WebServErr::CGIException::CGIException(const std::string &what_arg)
+	: what_(myFormat("CGI Error: ", what_arg)) {}
+
+const char *WebServErr::CGIException::what() const noexcept
+{
+	return what_.c_str();
+}
