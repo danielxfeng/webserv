@@ -59,7 +59,7 @@ bool Buffer::isFull() const
     return size_ >= capacity_;
 }
 
-const std::queue<std::string> &Buffer::getData() const
+std::queue<std::string> &Buffer::getData()
 {
     return data_;
 }

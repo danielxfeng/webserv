@@ -9,6 +9,7 @@
 #include "../includes/SharedTypes.hpp"
 #include "HttpRequests.hpp"
 #include "HttpResponse.hpp"
+#include "MethodHandler.hpp"
 
 class Config;
 

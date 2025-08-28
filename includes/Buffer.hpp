@@ -46,5 +46,5 @@ public:
      */
     bool isFull() const;
 
-    const std::queue<std::string> &getData() const;
+    std::queue<std::string> &getData();
 };

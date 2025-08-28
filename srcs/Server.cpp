@@ -8,7 +8,7 @@ void Server::addConn(int fd)
 {
     auto now = time(NULL);
 
-    t_conn conn = {fd, -1, -1, "", UNKNOWN, HEADER_PARSING, now, now, config_.max_request_size, 0, Buffer(1024, 256), Buffer(1024, 256), HttpRequests()};
+    t_conn conn = {fd, -1, -1, HEADER_PARSING, now, now, config_.max_request_size, 0, Buffer(1024, 256), Buffer(1024, 256), HttpRequests(), HttpResponse()};
 
     conn_vec_.push_back(conn);
     conn_map_.emplace(fd, &conn_vec_.back());
@@ -27,20 +27,46 @@ t_msg_from_serv Server::handleDataIn(int fd)
         ssize_t bytes_read = static_cast<ssize_t>(conn->read_buf.readFd(fd));
 
         if (bytes_read == SRV_ERROR || bytes_read == BUFFER_FULL)
-            return {false, -1, IN, -1}; // Just skip for now.
+            return {false, std::vector<std::pair<int, t_direction>>{}, std::vector<std::pair<int, t_direction>>{}}; // Just skip for now.
 
         conn->bytes_received += bytes_read;
 
         if (conn->status == HEADER_PARSING)
         {
-            try {
+            try
+            {
                 conn->request.httpParser(conn->read_buf.getData().front());
                 if (conn->request.getrequestLineMap().contains("Content-Length"))
                     conn->content_length = static_cast<size_t>(stoull(conn->request.getrequestLineMap().at("Content-Length")));
-                else
-                    conn->content_length = 0;
-            } catch (const std::exception &e) { // TODO: Catch not found exception.
-                continue;
+
+                conn->status = READING;
+                try
+                {
+                    t_file output = MethodHandler().handleRequest(config_, conn->request.getrequestLineMap(), conn->request.getrequestBodyMap());
+                    const auto response_header = conn->response.successResponse(*conn, conn->request, output.fileSize);
+                    conn->write_buf.getData().push(response_header);
+                    conn->status = WRITING;
+                    const auto fd_to_register = std::vector<std::pair<int, t_direction>>{{fd, OUT}};
+                    if (output.isDynamic)
+                    {
+                        conn->write_buf.getData().push(output.dynamicPage);
+                        return {true, fd_to_register, std::vector<std::pair<int, t_direction>>{}};
+                    }
+                    conn->inner_fd_in = output.fd;
+                    fd_to_register.push_back(std::make_pair(conn->inner_fd_in, IN));
+                    return {false, fd_to_register, std::vector<std::pair<int, t_direction>>{}};
+                }
+                catch (const WebServErr::MethodException &e)
+                {
+                    return handleError(conn, INTERNAL_SERVER_ERROR, e.what());
+                }
+            }
+            catch (const WebServErr::InvalidRequestHeader &)
+            {
+            } // Ignore the error since the header might be incomplete.
+            catch (const WebServErr::BadRequestException &e)
+            {
+                return handleError(conn, BAD_REQUEST, e.what());
             }
         }
 
@@ -72,14 +98,14 @@ t_msg_from_serv Server::handleDataIn(int fd)
             // TODO: Generate Header
             break;
         default:
-            return {false, -1, IN, -1}; // Just skip for now.
+            return {false, std::vector<std::pair<int, t_direction>>{}, std::vector<std::pair<int, t_direction>>{}}; // Just skip for now.
         }
 
         if (is_max_length_reached)
         {
             conn->status = WRITING;
-            const bool keep_alive = conn->headers.contains("Connection") && conn->headers.at("Connection") == "keep-alive";
-            return {true, -1, IN, keep_alive ? -1 : fd};
+            const bool keep_alive = !conn->request.getrequestHeaderMap().contains("Connection") || conn->request.getrequestHeaderMap().at("Connection") == "keep-alive";
+            return {false, std::vector<std::pair<int, t_direction>>{}, std::vector<std::pair<int, t_direction>>{}}; // todo
         }
     }
     else
@@ -95,10 +121,10 @@ t_msg_from_serv Server::handleDataIn(int fd)
             return handleError(conn, INTERNAL_SERVER_ERROR, "Read error.");
 
         if (bytes_read == BUFFER_FULL)
-            return {false, -1, IN, -1}; // Buffer is full, skip
+            return {false, std::vector<std::pair<int, t_direction>>{}, std::vector<std::pair<int, t_direction>>{}}; // Buffer is full, skip
 
         if (bytes_read == EOF_REACHED)
-            return {true, -1, IN, fd};
+            return {true, std::vector<std::pair<int, t_direction>>{}, std::vector<std::pair<int, t_direction>>{}}; // todo
 
         return handleError(conn, INTERNAL_SERVER_ERROR, "Should not reach here");
     }
@@ -110,15 +136,14 @@ t_msg_from_serv Server::handleDataIn(int fd)
 t_msg_from_serv Server::handleDataOut(int fd)
 {
     (void)fd;
-    return {false, -1, OUT, -1}; // TODO: Implement this.
+    return {false, std::vector<std::pair<int, t_direction>>{}, std::vector<std::pair<int, t_direction>>{}}; // TODO: Implement this.
 }
 
 t_msg_from_serv Server::handleError(t_conn *conn, t_error_code error_code, const std::string &error_message)
 {
     (void)error_message;
     (void)error_code;
-    return {true, -1, IN, conn->socket_fd};
-    // TODO: Handle the error based on the error_code.
+    return {true, std::vector<std::pair<int, t_direction>>{}, std::vector<std::pair<int, t_direction>>{}}; // TODO: Handle the error based on the error_code.
 }
 
 void Server::timeoutKiller()

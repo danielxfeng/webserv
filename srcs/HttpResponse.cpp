@@ -9,14 +9,14 @@
 
  */
 
-void HttpResponse::successResponse(t_conn conn, HttpRequests request, std::string &page_size)
+std::string HttpResponse::successResponse(t_conn conn, HttpRequests request, std::size_t &page_size)
 {
     std::string result;
     if (request.getHttpRequestMethod() == "GET")
     {
         result.append(request.getHttpVersion()).append(" 202 OK\r\n");
         result.append("Content-Type: text/html\r\n");
-        result.append("Content-Length: ").append(std::to_string(page_size.size())).append("\r\n\r\n");
+        result.append("Content-Length: ").append(std::to_string(page_size)).append("\r\n\r\n");
     }
     else if (request.getHttpRequestMethod() == "POST")
     {
@@ -39,10 +39,10 @@ void HttpResponse::successResponse(t_conn conn, HttpRequests request, std::strin
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
     }
-    write(conn.inner_fd_out, result.c_str(), result.size());
+    return (result);
 }
 
-void HttpResponse::notFoundResponse(t_conn conn, HttpRequests request)
+std::string HttpResponse::notFoundResponse(t_conn conn, HttpRequests request)
 {
     std::string result;
     std::string notFound = "<!DOCTYPE html>"
@@ -57,10 +57,10 @@ void HttpResponse::notFoundResponse(t_conn conn, HttpRequests request)
     result.append("Content-Type: text/html\r\n");
     result.append("Content-Length: ").append(std::to_string(notFound.size())).append("\r\n\r\n");
     result.append(notFound);
-    write(conn.inner_fd_out, result.c_str(), result.size());
+    return (result);
 }
 
-void HttpResponse::badRequestResponse(t_conn conn, HttpRequests request)
+std::string HttpResponse::badRequestResponse(t_conn conn, HttpRequests request)
 {
     std::string result;
     std::string notFound = "<!DOCTYPE html>"
@@ -75,7 +75,7 @@ void HttpResponse::badRequestResponse(t_conn conn, HttpRequests request)
     result.append("Content-Type: text/html\r\n");
     result.append("Content-Length: ").append(std::to_string(notFound.size())).append("\r\n\r\n");
     result.append(notFound);
-    write(conn.inner_fd_out, result.c_str(), result.size());
+    return (result);
 }
 
 /*
@@ -87,7 +87,7 @@ ERR_301,
     ERR_500
     */
 
-void HttpResponse::failedResponse(HttpRequests request, t_conn *conn, t_status_error_codes error_code, const std::string &error_message)
+std::string HttpResponse::failedResponse(HttpRequests request, t_conn *conn, t_status_error_codes error_code, const std::string &error_message)
 {
     std::string result;
     std::string status;
@@ -126,8 +126,6 @@ void HttpResponse::failedResponse(HttpRequests request, t_conn *conn, t_status_e
     result.append("Content-Type: text/html\r\n");
     result.append("Content-Length: ").append(std::to_string(htmlPage.size())).append("\r\n\r\n");
     result.append(htmlPage);
-    write(conn->inner_fd_out, result.c_str(), result.size());
+
+    return (result);
 }
-
-
-

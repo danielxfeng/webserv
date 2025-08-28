@@ -2,18 +2,19 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
+#include <utility>
 #include <ctime>
 
 #include "Buffer.hpp"
 #include "HttpRequests.hpp"
-
+#include "HttpResponse.hpp"
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
-constexpr unsigned int MAX_POLL_TIMEOUT = 1000u; // in milliseconds
+constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;       // in milliseconds
 constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 5000u; // in milliseconds
 constexpr unsigned int MAX_REQUEST_SIZE = 1048576u;    // 1 MB
 constexpr unsigned int MAX_HEADERS_SIZE = 8192u;       // 8 KB
-
 
 typedef enum e_method
 {
@@ -60,16 +61,15 @@ typedef struct s_conn
     Buffer read_buf;
     Buffer write_buf;
     HttpRequests request;
+    HttpResponse response;
 } t_conn;
 
 typedef struct s_msg_from_serv
 {
-    bool is_done;          // Indicates if the operation is complete
-    int fd_to_register;    // File descriptor to register for epoll
-    t_direction direction; // Direction of the fd_to_register
-    int fd_to_unregister;  // File descriptor to unregister from epoll
+    bool is_done;                                               // Indicates if the operation is complete
+    std::vector<std::pair<int, t_direction>> fds_to_register;   // File descriptors to register for epoll with their directions
+    std::vector<std::pair<int, t_direction>> fds_to_unregister; // File descriptors to unregister from epoll with their directions
 } t_msg_from_serv;
-
 
 typedef struct s_location_config
 {
