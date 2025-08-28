@@ -8,7 +8,7 @@ void Server::addConn(int fd)
 {
     auto now = time(NULL);
 
-    t_conn conn = {fd, -1, -1, "", UNKNOWN, HEADER_PARSING, now, now, config_.max_request_size, 0, Buffer(1024, 256), Buffer(1024, 256), std::unordered_map<std::string, std::string>()};
+    t_conn conn = {fd, -1, -1, "", UNKNOWN, HEADER_PARSING, now, now, config_.max_request_size, 0, Buffer(1024, 256), Buffer(1024, 256), HttpRequests()};
 
     conn_vec_.push_back(conn);
     conn_map_.emplace(fd, &conn_vec_.back());
@@ -33,13 +33,15 @@ t_msg_from_serv Server::handleDataIn(int fd)
 
         if (conn->status == HEADER_PARSING)
         {
-            HttpRequests request;
-            const auto buf = conn->read_buf.getData();
-            request.httpParser(buf.front());
-            // TODO: Call headerparser.
-            // Assign the value to header.
-            LOG_DEBUG("Header parsed, bytes received: ", conn->bytes_received);
-            return {false, -1, IN, -1};
+            try {
+                conn->request.httpParser(conn->read_buf.getData().front());
+                if (conn->request.getrequestLineMap().contains("Content-Length"))
+                    conn->content_length = static_cast<size_t>(stoull(conn->request.getrequestLineMap().at("Content-Length")));
+                else
+                    conn->content_length = 0;
+            } catch (const std::exception &e) { // TODO: Catch not found exception.
+                continue;
+            }
         }
 
         const bool is_max_length_reached = (conn->bytes_received == conn->content_length);

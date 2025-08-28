@@ -5,6 +5,7 @@
 #include <ctime>
 
 #include "Buffer.hpp"
+#include "HttpRequests.hpp"
 
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
@@ -51,8 +52,6 @@ typedef struct s_conn
     int socket_fd;
     int inner_fd_in;
     int inner_fd_out;
-    std::string path;
-    t_method method;
     t_status status;
     time_t start_timestamp;
     time_t last_heartbeat;
@@ -60,7 +59,7 @@ typedef struct s_conn
     size_t bytes_received;
     Buffer read_buf;
     Buffer write_buf;
-    std::unordered_map<std::string, std::string> headers;
+    HttpRequests request;
 } t_conn;
 
 typedef struct s_msg_from_serv
