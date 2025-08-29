@@ -5,16 +5,54 @@
 #include <vector>
 #include <utility>
 #include <ctime>
+#include <memory>
 
-#include "Buffer.hpp"
-#include "HttpRequests.hpp"
-#include "HttpResponse.hpp"
+typedef enum e_status_error_codes
+{
+    ERR_NO_ERROR = 0,
+    ERR_301_REDIRECT = 301,
+    ERR_400_BAD_REQUEST = 400,
+    ERR_401_UNAUTHORIZED = 401,
+    ERR_403_FORBIDDEN = 403,
+    ERR_404_NOT_FOUND = 404,
+    ERR_405_METHOD_NOT_ALLOWED = 405,
+    ERR_409_CONFLICT = 409,
+    ERR_500_INTERNAL_SERVER_ERROR = 500
+} t_status_error_codes;
+
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
 constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;       // in milliseconds
 constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 5000u; // in milliseconds
 constexpr unsigned int MAX_REQUEST_SIZE = 1048576u;    // 1 MB
 constexpr unsigned int MAX_HEADERS_SIZE = 8192u;       // 8 KB
+
+class HttpRequests;
+class HttpResponse;
+class Buffer;
+
+typedef struct s_FormData
+{
+    std::string name_;
+    std::string type_;
+    std::string content_;
+} t_FormData;
+
+typedef struct s_file
+{
+    int fd;
+    size_t expectedSize;
+    size_t fileSize;
+    bool isDynamic;
+    std::string dynamicPage;
+} t_file;
+
+typedef enum e_buff_error_code
+{
+    EOF_REACHED = 0,
+    BUFFER_ERROR = -1,
+    BUFFER_FULL = -2
+} t_buff_error_code;
 
 typedef enum e_method
 {
@@ -40,14 +78,6 @@ typedef enum e_status
     SRV_ERROR
 } t_status;
 
-typedef enum e_error_codes
-{
-    NO_ERROR,
-    NOT_FOUND,
-    BAD_REQUEST,
-    INTERNAL_SERVER_ERROR
-} t_error_code;
-
 typedef struct s_conn
 {
     int socket_fd;
@@ -58,10 +88,10 @@ typedef struct s_conn
     time_t last_heartbeat;
     size_t content_length;
     size_t bytes_received;
-    Buffer read_buf;
-    Buffer write_buf;
-    HttpRequests request;
-    HttpResponse response;
+    std::unique_ptr<Buffer> read_buf;
+    std::unique_ptr<Buffer> write_buf;
+    std::shared_ptr<HttpRequests> request;
+    std::shared_ptr<HttpResponse> response;
 } t_conn;
 
 typedef struct s_msg_from_serv

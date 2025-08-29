@@ -18,8 +18,8 @@ public:
     HttpResponse &operator=(const HttpResponse &obj) = default;
     ~HttpResponse() = default;
 
-    std::string successResponse(t_conn conn, HttpRequests request, std::size_t &page_size);
-    std::string badRequestResponse(t_conn conn, HttpRequests request);
-    std::string notFoundResponse(t_conn conn, HttpRequests request);
-    std::string failedResponse(HttpRequests request, t_conn *conn, t_status_error_codes error_code, const std::string &error_message);
+    std::string successResponse(t_conn &conn, std::size_t &page_size);
+    std::string badRequestResponse(t_conn &conn);
+    std::string notFoundResponse(t_conn &conn);
+    std::string failedResponse(t_conn &conn, t_status_error_codes error_code, const std::string &error_message);
 };

@@ -4,13 +4,8 @@
 #include <queue>
 #include <unistd.h>
 #include "WebServErr.hpp"
+#include "SharedTypes.hpp"
 
-typedef enum e_buff_error_code
-{
-    EOF_REACHED = 0,
-    BUFFER_ERROR = -1,
-    BUFFER_FULL = -2
-} t_buff_error_code;
 
 class Buffer
 {

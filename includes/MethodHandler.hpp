@@ -1,9 +1,5 @@
 #pragma once
 
-#include "LogSys.hpp"
-#include "WebServErr.hpp"
-#include "Config.hpp"
-
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -14,28 +10,16 @@
 #include <filesystem>
 #include <cstdio>
 #include <unistd.h>
-#include "SharedTypes.hpp"
 #include <chrono>
 #include <ctime>
 #include <algorithm>
 
+#include "SharedTypes.hpp"
+#include "LogSys.hpp"
+#include "WebServErr.hpp"
+#include "Config.hpp"
+
 #define MAX_BODY_SIZE 1024
-
-typedef struct s_FormData
-{
-	std::string name_;
-	std::string type_;
-	std::string content_;
-} t_FormData;
-
-typedef struct s_fileinfo
-{
-	int fd;
-	size_t expectedSize;
-	size_t fileSize;
-	bool isDynamic;
-	std::string dynamicPage;
-} t_file;
 
 class MethodHandler
 {

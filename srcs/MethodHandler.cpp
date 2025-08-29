@@ -34,10 +34,10 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 {
 	std::string targetRef = requestLine.find("Target") != requestLine.end() ? targetRef = requestLine.find("Target")->second : "";
 	if (targetRef == "")
-		throw WebServErr::MethodException(ERR_404, "Path does not exist");
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Path does not exist");
 	std::string chosenMethod = requestLine.find("Method") != requestLine.end() ? chosenMethod = requestLine.find("Method")->second : "";
 	if (chosenMethod == "")
-		throw WebServErr::MethodException(ERR_404, "Method does not exist");
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Method does not exist");
 	t_method realMethod = convertMethod(chosenMethod);
 	std::string &rootRef = server.locations[targetRef].root;
 	std::filesystem::path realPath = createRealPath(rootRef, targetRef);
@@ -70,11 +70,11 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 				return (callCGIMethod(realPath, requestLine, requestBody));
 			}
 			default:
-				throw WebServErr::MethodException(ERR_500, "Method not allowed or is unknown");
+				throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 			}
 		}
 	}
-	throw WebServErr::MethodException(ERR_500, "Method not allowed or is unknown");
+	throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 }
 
 t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config server)
@@ -99,7 +99,7 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 	checkIfRegFile(path);
 	checkIfSymlink(path);
 	if (!access(path.c_str(), R_OK))
-		throw WebServErr::MethodException(ERR_404, "Permission denied to file");
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied to file");
 	requested_.fd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
 	if (requested_.fd == -1)
 		throw WebServErr::SysCallErrException("Failed to open file with permission");
@@ -110,13 +110,14 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestBody)
 {
 	(void)server;
+	(void)requestLine;
 	checkIfLocExists(path);
 	checkIfDirectory(path);
 	// TODO Check if location has permission for POST
 	auto typeCheck = requestBody.find("content-type");
 	setContentLength(requestBody);
 	if (typeCheck == requestBody.end())
-		throw WebServErr::MethodException(ERR_400, "Bad Request, Type not found.");
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Type not found.");
 	checkContentType(requestBody);
 	// TODO get file name from requestBody
 	std::string filename = createFileName(path.c_str());
@@ -135,7 +136,7 @@ void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 	checkIfRegFile(path);
 	checkIfSymlink(path);
 	if (!access(path.c_str(), X_OK))
-		throw WebServErr::MethodException(ERR_404, "Permission denied to file");
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied to file");
 	if (!std::filesystem::remove(path))
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }
@@ -144,6 +145,7 @@ t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_
 {
 	(void)path;
 	(void)requestLine;
+	(void)requestBody;
 	// TODO
 	return (requested_);
 }
@@ -152,15 +154,15 @@ void MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 {
 	auto check = requestBody.find("content-length");
 	if (check == requestBody.end())
-		throw WebServErr::MethodException(ERR_400, "Failed to get content length."); // TODO double check error code
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Failed to get content length."); // TODO double check error code
 	std::stringstream length(check->second);
 	length >> requested_.expectedSize;
 	if (length.fail())
-		throw WebServErr::MethodException(ERR_400, "Bad Request, content length not found."); // TODO double check error code
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, content length not found."); // TODO double check error code
 	if (!length.eof())
-		throw WebServErr::MethodException(ERR_400, "Bad Request, failed to get end of file for content length."); // TODO double check error code
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, failed to get end of file for content length."); // TODO double check error code
 	if (requested_.expectedSize > MAX_BODY_SIZE)
-		throw WebServErr::MethodException(ERR_500, "Body size too large."); // TODO double check error code
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Body size too large."); // TODO double check error code
 }
 
 void MethodHandler::checkContentLength(std::unordered_map<std::string, std::string> requestBody) const
@@ -169,7 +171,7 @@ void MethodHandler::checkContentLength(std::unordered_map<std::string, std::stri
 	//	auto check = requestLine.find("content-length");
 	//	if (/*TODO length check here*/ != expectedLength_ || /*TODO*/ > MAX_BODY_SIZE)
 	//	{
-	//		throw WebServErr::MethodException(ERR_400, "Bad Request, Body Length does not equal Expected Length.");
+	//		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Body Length does not equal Expected Length.");
 	//	}
 }
 
@@ -181,7 +183,7 @@ void MethodHandler::checkContentType(std::unordered_map<std::string, std::string
 		// TODO loop through parts and check MIMETYPE, if not throw bad request
 	}
 	//	else if (/*TODO chceck MIMEType of path against content type*/)
-	//		throw WebServErr::MethodException(ERR_400, "Bad Request, Content Type does not match.");
+	//		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Content Type does not match.");
 }
 
 void MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_FormData> &sections)
@@ -193,25 +195,25 @@ void MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_F
 void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 {
 	if (!std::filesystem::is_regular_file(path))
-		throw WebServErr::MethodException(ERR_500, "File is not a regular file");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
 void MethodHandler::checkIfSymlink(const std::filesystem::path &path)
 {
 	if (std::filesystem::is_symlink(path))
-		throw WebServErr::MethodException(ERR_500, "File or Directory is a symlink");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
 }
 
 void MethodHandler::checkIfDirectory(const std::filesystem::path &path)
 {
 	if (std::filesystem::is_directory(path))
-		throw WebServErr::MethodException(ERR_403, "Target is a directory");
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a directory");
 }
 
 void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
 {
 	if (!std::filesystem::exists(path))
-		throw WebServErr::MethodException(ERR_500, "Permission Denied, cannot delete selected file");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Permission Denied, cannot delete selected file");
 }
 
 std::filesystem::path MethodHandler::createFileName(const std::string &path)
@@ -242,7 +244,7 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 	std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(realPath);
 	auto mismatch = std::mismatch(canonicalRoot.begin(), canonicalRoot.end(), canonicalPath.begin());
 	if (mismatch.first != canonicalRoot.end())
-		throw WebServErr::MethodException(ERR_403, "Security Warning: Path escapes server root");
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Security Warning: Path escapes server root");
 	return (realPath);
 }
 

@@ -1,70 +1,77 @@
-# Color codes
-X := \033[0;39m
-GREEN := \033[0;92m
-DARK_RED := \033[0;31m
-DARK_YELLOW := \033[0;33m
-DARK_CYAN := \033[0;36m
-BLUE := \033[0;94m
+# === Colors (use printf) ===
+X          := \033[0;39m
+GREEN      := \033[0;92m
+DARK_RED   := \033[0;31m
+DARK_YELLOW:= \033[0;33m
+DARK_CYAN  := \033[0;36m
+BLUE       := \033[0;94m
 
-# Project variables
-RM := rm -rf
-NAME := webserv
-CXX := g++
-CXXFLAGS := -Wall -Wextra -Werror -std=c++20 $(DEPFLAGS) -fPIE
-LDFLAGS :=
-DEPFLAGS := -MMD -MP
-SANITIZERS := -fsanitize=address -fsanitize=leak -fsanitize=undefined
+# === Project variables ===
+NAME      := webserv
+CXX       := g++
+RM        := rm -rf
 
-SRCS_DIR := srcs/
-OBJS_DIR := objs/
-INCL_DIR := includes/
+SRCS_DIR  := srcs
+OBJS_DIR  := objs
+INCL_DIR  := includes
 
-# TODO: remove all the wildcards
-SRCS := $(wildcard $(SRCS_DIR)*.cpp)
-OBJS := $(patsubst $(SRCS_DIR)%.cpp,$(OBJS_DIR)%.o,$(SRCS))
-DEPS := $(OBJS:.o=.d)
+# Sources (supports nested folders; change to a static list if you prefer)
+SRCS      := $(shell find $(SRCS_DIR) -name '*.cpp')
+OBJS      := $(patsubst $(SRCS_DIR)/%.cpp,$(OBJS_DIR)/%.o,$(SRCS))
+DEPS      := $(OBJS:.o=.d)
 
-INCL := -I $(INCL_DIR)
+# Flags
+DEPFLAGS  := -MMD -MP
+CXXWARN   := -Wall -Wextra -Werror
+STD       := -std=c++20
+INCL      := -I$(INCL_DIR)
 
+# Sanitizers (add to both compile and link)
+SAN       := -fsanitize=address -fsanitize=leak -fsanitize=undefined
+
+CXXFLAGS  := $(CXXWARN) $(STD) -fPIE
+LDFLAGS   :=
+LDLIBS    :=
+
+# Phony targets
 .PHONY: all clean fclean re debug rebug
 
-# Main target
+# Default
 all: $(NAME)
-	@echo "$(GREEN)Run the program with ./$(NAME) $(X)"
+	@printf "$(GREEN)Run the program with ./$(NAME) $(X)\n"
 
-# Linking
+# Link
 $(NAME): $(OBJS)
-	@$(CXX) $(OBJS) $(CXXFLAGS) -o $@ $(LDFLAGS)
-	@echo "$(DARK_YELLOW)$@ compiled $(X)"
+	@$(CXX) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+	@printf "$(DARK_YELLOW)%s compiled %s\n" "$@" "$(X)"
 
-# Object compilation
-$(OBJS_DIR)%.o: $(SRCS_DIR)%.cpp
-	@mkdir -p $(OBJS_DIR)
-	@echo "$(DARK_CYAN)Compiling $<... $(X)"
-	@$(CXX) $(CXXFLAGS) $(INCL) -c $< -o $@
-	@echo "$(BLUE)Compiled: $@$(X)"
+# Ensure objs dir exists (order-only prerequisite)
+$(OBJS_DIR)/%.o: $(SRCS_DIR)/%.cpp | $(OBJS_DIR)
+	@printf "$(DARK_CYAN)Compiling %s... %s\n" "$<" "$(X)"
+	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCL) -c $< -o $@
+	@printf "$(BLUE)Compiled: %s%s\n" "$@" "$(X)"
+
+$(OBJS_DIR):
+	@mkdir -p $@
 
 -include $(DEPS)
 
-# Clean object and dep files
+# Clean
 clean:
 	@$(RM) $(OBJS_DIR)
-	@echo "$(DARK_RED)Objects cleaned $(X)"
+	@printf "$(DARK_RED)Objects cleaned %s\n" "$(X)"
 
-# Full clean
 fclean: clean
 	@$(RM) $(NAME)
-	@echo "$(DARK_RED)$(NAME) removed $(X)"
+	@printf "$(DARK_RED)%s removed %s\n" "$(NAME)" "$(X)"
 
-# Rebuild
 re: fclean all
-	@echo "$(GREEN)$(NAME) Cleaned and rebuilt $(X)"
+	@printf "$(GREEN)%s Cleaned and rebuilt %s\n" "$(NAME)" "$(X)"
 
-# Debug build
-debug: CXXFLAGS += -ggdb3 $(SANITIZERS)
+# Debug build (adds sanitizers to both compile and link)
+debug: CXXFLAGS += -ggdb3 $(SAN)
+debug: LDFLAGS  += $(SAN)
 debug: re
 
 # Rebuild with debug
-rebug:
-	@$(MAKE) clean
-	@$(MAKE) debug
+rebug: clean debug
