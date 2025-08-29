@@ -56,3 +56,8 @@ WebServErr::UtilsException::UtilsException(const std::string &what_arg)
 
 WebServErr::InvalidRequestHeader::InvalidRequestHeader(const std::string &what_arg)
 	: what_(myFormat("Invalid request header:", what_arg)) {}
+	
+const char *WebServErr::InvalidRequestHeader::what() const noexcept
+{
+    return what_.c_str();
+}
