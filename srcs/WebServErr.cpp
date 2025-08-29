@@ -41,9 +41,6 @@ const char *WebServErr::MethodException::what() const noexcept
 }
 
 
-
-
-
 WebServErr::UtilsException::UtilsException(const std::string &what_arg)
 	: what_(myFormat("Bad request:", what_arg)) {}
 

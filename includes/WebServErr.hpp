@@ -68,17 +68,37 @@ public:
         const char *what() const noexcept override;
     };
 
-	class MethodException: public std::exception
-	{
-		private:
-			std::string what_;
-		public:
-			MethodException() = delete;
-			explicit MethodException(t_status_error_codes code, const std::string &what_arg);
-			MethodException(const MethodException &other) = default;
-			MethodException &operator=(const MethodException &other) = delete;
-			~MethodException() override = default;
-	};
+	// class MethodException: public std::exception
+	// {
+	// 	private:
+	// 		std::string what_;
+	// 	public:
+	// 		MethodException() = delete;
+	// 		explicit MethodException(t_status_error_codes code, const std::string &what_arg);
+	// 		MethodException(const MethodException &other) = default;
+	// 		MethodException &operator=(const MethodException &other) = delete;
+	// 		~MethodException() override = default;
+	// };
+
+
+    class MethodException : public std::exception
+    {
+    private:
+        std::string what_;
+
+    public:
+        MethodException() = delete;
+        explicit MethodException(t_status_error_codes code, const std::string &what_arg);
+        MethodException(const MethodException &other) = default;
+        MethodException &operator=(const MethodException &o) = delete;
+        ~MethodException() override = default;
+
+        const char *what() const noexcept override;
+    };
+
+
+
+
 
     class InvalidRequestHeader : public std::exception
     {
@@ -102,7 +122,7 @@ public:
         std::string what_;
 
     public:
-        InvalidRequestHeader() = delete;
+        UtilsException() = delete;
         explicit UtilsException(const std::string &what_arg);
         UtilsException(const UtilsException &other) = default;
         UtilsException &operator=(const UtilsException &o) = delete;
