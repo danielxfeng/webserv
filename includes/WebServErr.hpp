@@ -80,23 +80,35 @@ public:
 			~MethodException() override = default;
 	};
 
-	class UtilsException: public std::exception
-	{
-		private:
-			std::string what_;
-		public:
-			UtilsException() = delete;
-			explicit UtilsException(const std::string &what_arg);
-			UtilsException(const UtilsException &other) = default;
-			UtilsException &operator=(const UtilsException &other) = delete;
-			~UtilsException() override = default;
-	};
+    class InvalidRequestHeader : public std::exception
+    {
+    private:
+        std::string what_;
 
-    class InvalidRequestHeader: public std::exception
-	{
-		private:
-			std::string what_;
-		public:
-			explicit InvalidRequestHeader(const std::string &what_arg);
-	};
+    public:
+        InvalidRequestHeader() = delete;
+        explicit InvalidRequestHeader(const std::string &what_arg);
+        InvalidRequestHeader(const InvalidRequestHeader &other) = default;
+        InvalidRequestHeader &operator=(const InvalidRequestHeader &o) = delete;
+        ~InvalidRequestHeader() override = default;
+
+        const char *what() const noexcept override;
+    };
+
+
+    class UtilsException : public std::exception
+    {
+    private:
+        std::string what_;
+
+    public:
+        InvalidRequestHeader() = delete;
+        explicit UtilsException(const std::string &what_arg);
+        UtilsException(const UtilsException &other) = default;
+        UtilsException &operator=(const UtilsException &o) = delete;
+        ~UtilsException() override = default;
+
+        const char *what() const noexcept override;
+    };
+
 };
