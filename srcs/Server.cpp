@@ -40,6 +40,7 @@ t_msg_from_serv Server::handleDataIn(int fd)
                     conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestLineMap().at("Content-Length")));
 
                 conn->status = READING;
+                LOG_DEBUG("Header parsed successfully for fd: ", fd);
                 try
                 {
                     t_file output = MethodHandler().handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestBodyMap());
@@ -58,14 +59,17 @@ t_msg_from_serv Server::handleDataIn(int fd)
                 }
                 catch (const WebServErr::MethodException &e)
                 {
+                    LOG_ERROR("Method exception occurred: ", e.what());
                     return handleError(conn, e.what());
                 }
             }
             catch (const WebServErr::InvalidRequestHeader &e)
             {
+                LOG_ERROR("Invalid request header for fd: ", fd, e.what());
             } // Ignore the error since the header might be incomplete.
             catch (const WebServErr::BadRequestException &e)
             {
+                LOG_ERROR("Bad request for fd: ", fd);
                 return handleError(conn, e.what());
             }
         }

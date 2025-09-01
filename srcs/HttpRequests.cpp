@@ -617,6 +617,7 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 	size_t i;
 	size_t requestLength;
 
+	LOG_DEBUG("Parsing HTTP request", request);
 	i = 0;
 
 	requestLength = request.size();

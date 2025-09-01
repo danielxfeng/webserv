@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "SharedTypes.hpp"
 #include "WebServErr.hpp"
+#include "LogSys.hpp"
 
 class HttpRequests
 {
