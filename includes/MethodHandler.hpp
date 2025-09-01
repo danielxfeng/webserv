@@ -28,15 +28,6 @@ typedef struct	s_FormData
 	std::string	content_;
 }	t_FormData;
 
-typedef struct	s_fileinfo
-{
-	int	fd;
-	size_t	expectedSize;
-	size_t	fileSize;
-	bool	isDynamic;
-	std::string	dynamicPage;
-}	t_file;
-
 class MethodHandler
 {
 private:

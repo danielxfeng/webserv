@@ -28,10 +28,9 @@ public:
     ~CGIHandler();
     CGIHandler &operator=(const CGIHandler &copy);
 
-    //Setters
-    std::vector<std::string> createENVP(t_server_config server, std::unordered_map<std::string, std::string> headers);
+
 
 
     //Getters
-    std::string    getCGIOutput(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
+    t_file    getCGIOutput(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
 };
