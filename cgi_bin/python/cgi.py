@@ -128,7 +128,7 @@ class Request:
 
         if not self.headers.path_info:
             raise CGIError(400, "Bad Request: No Path Info for POST")
-        
+
         key = self.headers.path_info.lstrip('/')
         if not key:
             raise CGIError(400, "Bad Request: Key cannot be empty")
@@ -142,7 +142,7 @@ class Request:
                 raise CGIError(400, "Bad Request: Value cannot be empty")
             if not value.isprintable():
                 raise CGIError(400, "Bad Request: Value must be printable")
-            
+
             self.storage.set_value(key, value)
             return Response(f"Stored value for '{key}': {value}", status=201)
 
@@ -157,7 +157,7 @@ class Request:
         else:
             raise CGIError(405, "Method Not Allowed")
 
-        
+
 def main():
     try:
         request = Request()

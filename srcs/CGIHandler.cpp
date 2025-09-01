@@ -24,6 +24,7 @@ CGIHandler &CGIHandler::operator=(const CGIHandler &copy)
 
 std::vector<std::string>    CGIHandler::createENVP(t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
+	//TODO for everything in HEADER make uppercase and change - to _
 	std::vector<std::string> data;
 	data.emplace_back("SERVER_NAME=" + server.server_name);
 	data.emplace_back("SERVER_PORT=" + std::to_string(server.port));
@@ -70,3 +71,9 @@ t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, t_server_config ser
 		throw WebServErr::CGIException("Failed to complete external process");
 	return (result);
 }
+
+/*NOTES:
+ * For POST CGI, need a pipe and pass the write FD to HTTP Response, while read FD goes to CGI file
+ * For GET CGI, need a pipe and pass the write FD to CGI File, while read FD goes to Parent process
+ * Use socketpair
+ * /
