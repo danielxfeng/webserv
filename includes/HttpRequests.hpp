@@ -23,7 +23,7 @@ public:
 
 	HttpRequests &httpParser(const std::string &request);
 
-	void tillBodyCounter(size_t &i, size_t requestLength, const std::string &request);
+	void tillBodyCounter(size_t requestLength, const std::string &request);
 
 	void extractRequestLine(size_t &i, size_t requestLength, const std::string &request);
 	void extractRequestHeader(size_t &i, size_t requestLength, const std::string &request);

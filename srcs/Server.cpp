@@ -61,7 +61,7 @@ t_msg_from_serv Server::handleDataIn(int fd)
                     return handleError(conn, e.what());
                 }
             }
-            catch (const WebServErr::InvalidRequestHeader &)
+            catch (const WebServErr::InvalidRequestHeader &e)
             {
             } // Ignore the error since the header might be incomplete.
             catch (const WebServErr::BadRequestException &e)
