@@ -165,16 +165,6 @@ void MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Body size too large."); // TODO double check error code
 }
 
-void MethodHandler::checkContentLength(std::unordered_map<std::string, std::string> requestBody) const
-{
-	(void)requestBody;
-	//	auto check = requestLine.find("content-length");
-	//	if (/*TODO length check here*/ != expectedLength_ || /*TODO*/ > MAX_BODY_SIZE)
-	//	{
-	//		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Body Length does not equal Expected Length.");
-	//	}
-}
-
 void MethodHandler::checkContentType(std::unordered_map<std::string, std::string> requestBody) const
 {
 	auto typeCheck = requestBody.find("content-type");

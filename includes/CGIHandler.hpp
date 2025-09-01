@@ -15,15 +15,21 @@ class CGIHandler
 {
 private:
     std::vector<std::string> envp;
+
+	//Processes
+	void	handleWriteProcess(std::filesystem::path &path, std::vector<std::string> &envp);
+	void	handleReadProcess(pid_t pid);
+
+	//Setters
+    std::vector<std::string> createENVP(t_server_config server, std::unordered_map<std::string, std::string> headers);
 public:
     CGIHandler();
     CGIHandler(const CGIHandler &copy);
     ~CGIHandler();
     CGIHandler &operator=(const CGIHandler &copy);
 
-    //Setters
-    std::vector<std::string> createENVP(t_server_config server, std::unordered_map<std::string, std::string> headers);
+
 
     //Getters
-    std::string    getCGIOutput(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
+    t_file    getCGIOutput(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
 };
