@@ -26,33 +26,35 @@ const char *WebServErr::ShouldNotBeHereException::what() const noexcept
 WebServErr::BadRequestException::BadRequestException(const std::string &what_arg)
     : what_(myFormat("Bad request:", what_arg)) {}
 
-
-
-WebServErr::MethodException::MethodException(t_status_error_codes code, const std::string &what_arg)
-	: what_(myFormat("Bad request:", what_arg))
-{
-	(void)code;//TODO This needs to change
-}
-
 const char *WebServErr::BadRequestException::what() const noexcept
 {
     return what_.c_str();
 }
 
-// const char *WebServErr::MethodException::what() const noexcept
-// {
-// 	return what_.c_str();
-// }
+
+WebServErr::MethodException::MethodException(t_status_error_codes code, const std::string &what_arg)
+	: what_(myFormat("Bad request:", what_arg)) {}
+
+const char *WebServErr::MethodException::what() const noexcept
+{
+	return what_.c_str();
+}
+
 
 WebServErr::UtilsException::UtilsException(const std::string &what_arg)
 	: what_(myFormat("Bad request:", what_arg)) {}
 
-// const char *WebServErr::UtilsException::what() const noexcept
-// {
-// 	return what_.c_str();
-// }
+const char *WebServErr::UtilsException::what() const noexcept
+{
+	return what_.c_str();
+}
 
 
 
 WebServErr::InvalidRequestHeader::InvalidRequestHeader(const std::string &what_arg)
 	: what_(myFormat("Invalid request header:", what_arg)) {}
+	
+const char *WebServErr::InvalidRequestHeader::what() const noexcept
+{
+    return what_.c_str();
+}
