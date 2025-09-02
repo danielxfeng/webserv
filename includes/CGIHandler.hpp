@@ -22,7 +22,7 @@ private:
 	void	handleReadProcess(pid_t pid);
 
 	//Setters
-    std::vector<std::string> createENVP(t_server_config server, std::unordered_map<std::string, std::string> headers);
+    std::vector<std::string> createENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 public:
     CGIHandler();
     CGIHandler(const CGIHandler &copy);
@@ -33,5 +33,5 @@ public:
 
 
     //Getters
-    t_file    getCGIOutput(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers);
+    t_file    getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 };

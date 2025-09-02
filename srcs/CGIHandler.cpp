@@ -20,12 +20,27 @@ CGIHandler &CGIHandler::operator=(const CGIHandler &copy)
     return (*this);
 }
 
-std::vector<std::string>    CGIHandler::createENVP(t_server_config server, std::unordered_map<std::string, std::string> headers)
+std::vector<std::string>    CGIHandler::createENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
 	std::vector<std::string> data;
-	data.emplace_back("SERVER_NAME=" + server.server_name);
-	data.emplace_back("SERVER_PORT=" + std::to_string(server.port));
-	for (auto key: headers)
+	// Sets requestLine into vector of strings
+	for (auto key: requestLine)
+	{
+		std::string temp;
+		for (size_t h = 0; h < key.first.size(); h++)
+		{
+			if (key.first[h] == '-')
+				temp.push_back('_');
+			else
+				temp.push_back(std::toupper(key.first.c_str()[h]));
+		}
+		temp.push_back('=');
+		temp.append(key.second);
+		data.emplace_back(temp);
+		temp.clear();
+	}
+	//Sets requestHeader into vector of strings
+	for (auto key: requestHeader)
 	{
 		std::string temp;
 		for(size_t i = 0; i < key.first.size(); i++)
@@ -33,10 +48,10 @@ std::vector<std::string>    CGIHandler::createENVP(t_server_config server, std::
 			if (key.first == "boundary" && !key.second.empty())
 			{
 				temp.append("BOUNDARY=");
-				for (size_t j = 0; j < headers["boundary"].size(); j++)
+				for (size_t j = 0; j < requestHeader["boundary"].size(); j++)
 				{
-					temp += headers["boundary"][j];
-					if (j + 1 != headers["boundary"].size())
+					temp += requestHeader["boundary"][j];
+					if (j + 1 != requestHeader["boundary"].size())
 						temp.push_back(';');
 				}
 			}
@@ -56,6 +71,22 @@ std::vector<std::string>    CGIHandler::createENVP(t_server_config server, std::
 		data.emplace_back(temp);
 		temp.clear();
 	}
+	//Sets requestBody into vector of strings
+	for (auto key: requestBody)
+	{
+		std::string temp;
+		for (size_t l = 0; l < key.first.size(); l++)
+		{
+			if (key.first[l] == '-')
+				temp.push_back('_');
+			else
+				temp.push_back(std::toupper(key.first.c_str()[l]));
+		}
+		temp.push_back('=');
+		temp.append(key.second);
+		data.emplace_back(temp);
+		temp.clear();
+	}
 	return (data);
 }
 
@@ -72,9 +103,9 @@ void	CGIHandler::handleReadProcess(pid_t pid)
 
 }
 
-t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> headers)
+t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
-	std::vector<std::string> envp = createENVP(server, headers);
+	std::vector<std::string> envp = createENVP(requestLine, requestHeader, requestBody);
 	t_file result = {-1,0, 0, false};
 	//TODO Find CGI
 	int		exit_code = 0;
