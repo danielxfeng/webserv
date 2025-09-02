@@ -455,18 +455,21 @@ void HttpRequests::validateRequestHeader(void)
  * @param (size_t &i, size_t requestLength, const std::string &request)
  * @return nothing it store in the variable.
  */
-void HttpRequests::tillBodyCounter(size_t &i, size_t requestLength,
+void HttpRequests::tillBodyCounter(size_t requestLength,
 								   const std::string &request)
 {
-	for (; i <= requestLength; i++)
+	bool found = false;
+	for (size_t i = 0; i <= requestLength; i++)
 	{
-		if (request[i] == '\r' && request[i + 1] && request[i + 1] == '\n' && request[i + 2] && request[i + 2] == '\r' && request[i + 3] && request[i + 3] == '\n')
+		if (request[i] == '\r' && request[i + 1] == '\n' && request[i + 2] == '\r' && request[i + 3] == '\n')
 		{
+			found = true;
 			break;
 		}
 		upToBodyCounter++;
 	}
-	throw WebServErr::InvalidRequestHeader("Invalid request header");
+	if (!found)
+		throw WebServErr::BadRequestException("Invalid request header");
 }
 /**
  * @brief validate the reauest before start extraction.
@@ -614,9 +617,11 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 	size_t i;
 	size_t requestLength;
 
+	LOG_DEBUG("Parsing HTTP request", request);
 	i = 0;
+
 	requestLength = request.size();
-	tillBodyCounter(i, requestLength, request);
+	tillBodyCounter(requestLength, request);
 	i = 0;
 	pre_validator(requestLength, request);
 	extractRequestLine(i, requestLength, request);
@@ -629,10 +634,10 @@ HttpRequests &HttpRequests::httpParser(const std::string &request)
 		validateRequestBody();
 	}
 
-	for (const auto &pair : requestLineMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
-	for (const auto &pair : requestHeaderMap)
-		std::cout << pair.first << ": " << pair.second << std::endl;
+	// for (const auto &pair : requestLineMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
+	// for (const auto &pair : requestHeaderMap)
+	// 	std::cout << pair.first << ": " << pair.second << std::endl;
 	// for (const auto &pair : requestBodyMap)
 	// 	std::cout << pair.first << ":" << pair.second << std::endl;
 	return (*this);

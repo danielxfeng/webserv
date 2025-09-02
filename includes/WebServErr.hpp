@@ -4,16 +4,7 @@
 #include <exception>
 #include <sstream>
 
-typedef enum e_status_error_codes
-{
-	ERR_301,
-	ERR_400,
-	ERR_401,
-	ERR_403,
-	ERR_404,
-	ERR_409,
-	ERR_500
-}	t_status_error_codes;
+#include "SharedTypes.hpp"
 
 class WebServErr
 {

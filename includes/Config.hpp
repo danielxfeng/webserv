@@ -5,11 +5,12 @@
 #include <algorithm>
 #include <string>
 #include <fstream>
-#include "../includes/TinyJson.hpp"
-#include "../includes/TinyJsonSerializable.hpp"
-#include "../includes/SharedTypes.hpp"
+#include "SharedTypes.hpp"
+#include "TinyJson.hpp"
+#include "TinyJsonSerializable.hpp"
 
 class Server;
+
 class Config : public TinyJsonSerializable
 {
 private:

@@ -67,7 +67,7 @@ WebServ::WebServ(const std::string &conf_file) : epollFd_(-1)
         serverVec_.push_back(Server(server_conf.second));
 
     // Initialize epoll.
-    epollFd_ = epoll_create(0);
+    epollFd_ = epoll_create(1);
     if (epollFd_ == -1)
         throw WebServErr::SysCallErrException("epoll_create failed");
 }
@@ -137,12 +137,12 @@ void WebServ::eventLoop()
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
                     // TODO connServer->second->handleDataEnd(connServer->first);
-                    handleServerMsg({true, -1, IN, -1}, OUT, connServer);
+                    throw std::runtime_error("HandleDataEnd not implemented yet");
                 }
                 if (events[i].events & EPOLLRDHUP)
                 {
                     // TODO  connServer->second->handleReadEnd(connServer->first);
-                    handleServerMsg({true, -1, IN, -1}, IN, connServer);
+                    throw std::runtime_error("HandleReadEnd not implemented yet");
                 }
             }
         }
@@ -173,11 +173,10 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, t_direction direction,
         else
             throw std::runtime_error("Invalid direction in handleServerMsg");
     }
-
-    if (msg.fd_to_register != -1)
-        registerToEpoll(epollFd_, msg.fd_to_register, (msg.direction == IN) ? IN_FLAGS : OUT_FLAGS);
-    if (msg.fd_to_unregister != -1)
-        closeConn(msg.fd_to_unregister);
+    for (const auto &fd_pair : msg.fds_to_register)
+        registerToEpoll(epollFd_, fd_pair.first, (fd_pair.second == IN) ? IN_FLAGS : OUT_FLAGS);
+    for (const auto &fd_pair : msg.fds_to_unregister)
+        closeConn(fd_pair.first);
 }
 
 WebServ::~WebServ()

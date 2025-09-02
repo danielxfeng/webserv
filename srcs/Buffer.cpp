@@ -9,11 +9,11 @@ size_t Buffer::readFd(int fd)
 
     if (data_.empty() || readPos_ == block_size_)
     {
-        data_.push(std::vector<char>(block_size_));
+        data_.push(std::string(block_size_, '\0'));
         readPos_ = 0;
     }
 
-    std::vector<char> &buf = data_.back();
+    std::string &buf = data_.back();
 
     size_t read_size = std::min(block_size_ - readPos_, capacity_ - size_);
     ssize_t read_bytes = read(fd, &(buf.data()[readPos_]), read_size);
@@ -38,7 +38,7 @@ void Buffer::writeFd(int fd)
     if (data_.empty())
         return;
 
-    std::vector<char> &block = data_.front();
+    std::string &block = data_.front();
     size_t write_bytes = write(fd, &(block.data()[writePos_]), block.size() - writePos_);
     if (write_bytes <= 0)
         return;
@@ -57,4 +57,9 @@ void Buffer::writeFd(int fd)
 bool Buffer::isFull() const
 {
     return size_ >= capacity_;
+}
+
+std::queue<std::string> &Buffer::getData()
+{
+    return data_;
 }

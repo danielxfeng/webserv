@@ -3,10 +3,13 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "../includes/Buffer.hpp"
-#include "../includes/MethodHandler.hpp"
-#include "../includes/Config.hpp"
-#include "../includes/SharedTypes.hpp"
+#include "Buffer.hpp"
+#include "MethodHandler.hpp"
+#include "Config.hpp"
+#include "SharedTypes.hpp"
+#include "HttpRequests.hpp"
+#include "HttpResponse.hpp"
+#include "MethodHandler.hpp"
 
 class Config;
 
@@ -21,7 +24,7 @@ public:
     Server() = delete;
     Server(const t_server_config &config);
     Server(const Server &) = default;
-    Server(Server&&) = default; 
+    Server(Server &&) = default;
     Server &operator=(const Server &) = delete;
     ~Server() = default;
 
@@ -32,6 +35,6 @@ public:
     void handleReadEnd(int fd);
     t_msg_from_serv handleDataIn(int fd);
     t_msg_from_serv handleDataOut(int fd);
-    t_msg_from_serv handleError(t_conn *conn, t_error_code error_code, const std::string &error_message);
+    t_msg_from_serv handleError(t_conn *conn, const std::string &error_message);
     void timeoutKiller();
 };
