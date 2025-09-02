@@ -1,6 +1,4 @@
 #include "../includes/CGIHandler.hpp"
-#include <unordered_map>
-#include <vector>
 
 CGIHandler::CGIHandler()
 {}
@@ -24,14 +22,40 @@ CGIHandler &CGIHandler::operator=(const CGIHandler &copy)
 
 std::vector<std::string>    CGIHandler::createENVP(t_server_config server, std::unordered_map<std::string, std::string> headers)
 {
-	//TODO for everything in HEADER make uppercase and change - to _
 	std::vector<std::string> data;
 	data.emplace_back("SERVER_NAME=" + server.server_name);
 	data.emplace_back("SERVER_PORT=" + std::to_string(server.port));
-	data.emplace_back("REQUEST_METHOD=" + headers.find("Method")->second);
-	data.emplace_back("PATH_INFO=" + headers.find("Target")->second);//TODO Do I need to send root & index?
-	data.emplace_back("CONTENT_LENGTH=" + headers.find("content-length")->second);
-	data.emplace_back("CONTENT_TYPE=" + headers.find("content-type")->second);//TODO Double check
+	for (auto key: headers)
+	{
+		std::string temp;
+		for(size_t i = 0; i < key.first.size(); i++)
+		{
+			if (key.first == "boundary" && !key.second.empty())
+			{
+				temp.append("BOUNDARY=");
+				for (size_t j = 0; j < headers["boundary"].size(); j++)
+				{
+					temp += headers["boundary"][j];
+					if (j + 1 != headers["boundary"].size())
+						temp.push_back(';');
+				}
+			}
+			else
+			{
+				for(size_t k = 0; k < key.first.size(); k++)
+				{
+					if (key.first[k] == '-')
+						temp.push_back('_');
+					else
+						temp.push_back(std::toupper(key.first.c_str()[k]));
+				}
+				temp.push_back('=');
+				temp.append(key.second);
+			}
+		}
+		data.emplace_back(temp);
+		temp.clear();
+	}
 	return (data);
 }
 
