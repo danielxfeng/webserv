@@ -101,7 +101,8 @@ void	CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLin
 
 void	CGIHandler::handleWriteProcess(std::string script, std::filesystem::path &path, std::vector<std::string> &envp)
 {
-	dup2(fds[1], STDIN_FILENO);
+	if (dup2(fds[1], STDIN_FILENO) == -1)
+		throw WebServErr::CGIException("Dup2 Failure");
 	close(fds[0]);
 	if (execve(path.c_str(), script, envp) == -1)
 		throw WebServErr::CGIException("Failed to execute CGI");
@@ -137,13 +138,20 @@ void	CGIHandler::handleReadProcess(pid_t pid)
 	result.fileSize = temp.size();
 	result.expectedSize = temp.size();
 	result.isDynamic = true;
-	//TODO how is it meant to get this infomation back to the server?
 }
 
 t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
 	setENVP(requestLine, requestHeader, requestBody);
-	std::string script = ;//TODO Find CGI
+	std::string script = "../cgi_bin/python/cgi.py";
+	if (!std::filesystem::exists(script))
+		throw WebServErr::CGIException("CGI script does not exist.");
+	if (std::filesystem::is_directory(script))
+		throw WebServErr::CGIException("CGI script is a directory");
+	if (std::filesystem::is_symlink(script))
+		throw WebServErr::CGIException("CGI script is a symlink");
+	if (!std::filesystem::is_regular_fille(script))
+		throw WebServErr::CGIException("CGI script is not a regular file.");
 	int		exit_code = 0;
 	int fds[2];
 	socketpair(AF_UNIX, SOCK_STREAM, fds);
@@ -161,8 +169,3 @@ t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 	return (result);
 }
 
-/*NOTES:
- * For POST CGI, need a pipe and pass the write FD to HTTP Response, while read FD goes to CGI file
- * For GET CGI, need a pipe and pass the write FD to CGI File, while read FD goes to Parent process
- * Use socketpair
- * /
