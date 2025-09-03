@@ -99,12 +99,12 @@ void	CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLin
 	}
 }
 
-void	CGIHandler::handleWriteProcess(std::string script, std::filesystem::path &path, std::vector<std::string> &envp)
+void	CGIHandler::handleWriteProcess(std::filesystem::path &script, std::filesystem::path &path, std::vector<std::string> &envp)
 {
 	if (dup2(fds[1], STDIN_FILENO) == -1)
 		throw WebServErr::CGIException("Dup2 Failure");
 	close(fds[0]);
-	if (execve(path.c_str(), script, envp) == -1)
+	if (execve(path.c_str(), script.c_str(), envp) == -1)
 		throw WebServErr::CGIException("Failed to execute CGI");
 }
 
@@ -143,7 +143,7 @@ void	CGIHandler::handleReadProcess(pid_t pid)
 t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
 	setENVP(requestLine, requestHeader, requestBody);
-	std::string script = "../cgi_bin/python/cgi.py";
+	std::filesystem::path script = "/cgi_bin/python/cgi.py";
 	if (!std::filesystem::exists(script))
 		throw WebServErr::CGIException("CGI script does not exist.");
 	if (std::filesystem::is_directory(script))
@@ -159,7 +159,7 @@ t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 	if (pid == -1)
 		throw WebServErr::CGIException("Failed to fork");
 	if (pid == 0)
-		handleWriteProcess(path, script, envp);
+		handleWriteProcess(script, path, envp);
 	else
 		handleReadProcess(pid);
 	close(fds[0]);

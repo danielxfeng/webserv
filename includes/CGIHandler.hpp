@@ -25,7 +25,7 @@ private:
     void	setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 
 	//Processes
-	void	handleWriteProcess(std::string script, std::filesystem::path &path);
+	void	handleWriteProcess(std::filesystem::path &script, std::filesystem::path &path);
 	void	handleReadProcess(pid_t pid);
 public:
     CGIHandler();
