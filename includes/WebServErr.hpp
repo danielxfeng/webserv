@@ -122,4 +122,31 @@ public:
         const char *what() const noexcept override;
     };
 
+	class CGIException: public std::exception
+	{
+		private:
+			std::string what_;
+		public:
+			CGIException() = delete;
+			explicit CGIException(const std::string &what_arg);
+			CGIException(const CGIException &other) = default;
+			CGIException &operator=(const CGIException &other) = delete;
+			~CGIException() override = default;
+			const char *what() const noexcept override;
+
+	};
+
+	class CGIException: public std::exception
+	{
+		private:
+			std::string what_;
+		public:
+			CGIException() = delete;
+			explicit CGIException(const std::string &what_arg);
+			CGIException(const CGIException &other) = default;
+			CGIException &operator=(const CGIException &other) = delete;
+			~CGIException() override = default;
+
+			const char *what() const noexcept override;
+	};
 };

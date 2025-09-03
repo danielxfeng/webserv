@@ -131,3 +131,4 @@ typedef struct s_global_config
 } t_global_config;
 
 t_method convertMethod(const std::string &method_str);
+
