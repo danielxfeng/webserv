@@ -132,11 +132,3 @@ typedef struct s_global_config
 
 t_method convertMethod(const std::string &method_str);
 
-typedef struct	s_fileinfo
-{
-	int	fd;
-	size_t	expectedSize;
-	size_t	fileSize;
-	bool	isDynamic;
-	std::string	dynamicPage;
-}	t_file;

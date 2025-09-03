@@ -1,7 +1,11 @@
 #include "../includes/CGIHandler.hpp"
 
 CGIHandler::CGIHandler()
-{}
+	: result({-1,0, 0, false})
+{
+	fds[0] = -1;
+	fds[1] = -1;
+}
 
 CGIHandler::CGIHandler(const CGIHandler &copy)
 {
@@ -15,14 +19,20 @@ CGIHandler &CGIHandler::operator=(const CGIHandler &copy)
 {
     if (this != &copy)
     {
-
+		envp = copy.envp;
+		result.fd = copy.result.fd;
+		result.dynamicPage = copy.result.dynamicPage;
+		result.fileSize = copy.result.fileSize;
+		result.expectedSize = copy.result.expectedSize;
+		result.isDynamic = copy.result.isDynamic;
+		fds[0] = copy.fds[0];
+		fds[1] = copy.fds[1];
     }
     return (*this);
 }
 
-std::vector<std::string>    CGIHandler::createENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+void	CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
-	std::vector<std::string> data;
 	// Sets requestLine into vector of strings
 	for (auto key: requestLine)
 	{
@@ -36,7 +46,7 @@ std::vector<std::string>    CGIHandler::createENVP(std::unordered_map<std::strin
 		}
 		temp.push_back('=');
 		temp.append(key.second);
-		data.emplace_back(temp);
+		envp.emplace_back(temp);
 		temp.clear();
 	}
 	//Sets requestHeader into vector of strings
@@ -68,7 +78,7 @@ std::vector<std::string>    CGIHandler::createENVP(std::unordered_map<std::strin
 				temp.append(key.second);
 			}
 		}
-		data.emplace_back(temp);
+		envp.emplace_back(temp);
 		temp.clear();
 	}
 	//Sets requestBody into vector of strings
@@ -84,45 +94,69 @@ std::vector<std::string>    CGIHandler::createENVP(std::unordered_map<std::strin
 		}
 		temp.push_back('=');
 		temp.append(key.second);
-		data.emplace_back(temp);
+		envp.emplace_back(temp);
 		temp.clear();
 	}
-	return (data);
 }
 
-void	CGIHandler::handleWriteProcess(std::filesystem::path &path, std::vector<std::string> &envp)
+void	CGIHandler::handleWriteProcess(std::string script, std::filesystem::path &path, std::vector<std::string> &envp)
 {
-	//TODO need args
-	if (execve(path.c_str(), NULL, envp) == -1)
+	dup2(fds[1], STDIN_FILENO);
+	close(fds[0]);
+	if (execve(path.c_str(), script, envp) == -1)
 		throw WebServErr::CGIException("Failed to execute CGI");
-	//TODO save CGI output to string
 }
 
 void	CGIHandler::handleReadProcess(pid_t pid)
 {
-
+	close(fds[1]);
+	std::string temp;
+	constexpr size_t CHUNK_SIZE = 4096;
+	while (true)
+	{
+		size_t oldSize = temp.size();
+		temp.resize(oldSize + CHUNK_SIZE);
+		ssize_t bytesRead = read(fds[0], &temp[oldSize], CHUNK_SIZE);
+		if (bytesRead > 0)
+			temp.resize(oldSize + bytesRead);
+		else if (bytesRead == 0)
+		{
+			temp.resize(oldSize);
+			break;
+		}
+		else
+		{
+			temp.resize(oldSize);
+			if (errno == EINTR)
+				continue ;
+			throw WebServErr::CGIException("Reading from CGI failed.");
+		}
+	}
+	result.fd = fds[0];
+	result.dynamicPage = temp;
+	result.fileSize = temp.size();
+	result.expectedSize = temp.size();
+	result.isDynamic = true;
+	//TODO how is it meant to get this infomation back to the server?
 }
 
 t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
-	std::vector<std::string> envp = createENVP(requestLine, requestHeader, requestBody);
-	t_file result = {-1,0, 0, false};
-	//TODO Find CGI
+	setENVP(requestLine, requestHeader, requestBody);
+	std::string script = ;//TODO Find CGI
 	int		exit_code = 0;
-	//TODO Do we need a pipe?
+	int fds[2];
+	socketpair(AF_UNIX, SOCK_STREAM, fds);
 	pid_t	pid = fork();
 	if (pid == -1)
 		throw WebServErr::CGIException("Failed to fork");
 	if (pid == 0)
-	{
-		handleWriteProcess(path, envp);
-	}
+		handleWriteProcess(path, script, envp);
 	else
-	{
 		handleReadProcess(pid);
-	}
+	close(fds[0]);
 	waitpid(pid, &exit_code, 0);
-	//TODO check exit_code if (exit_code == )
+	if (exit_code != 0)
 		throw WebServErr::CGIException("Failed to complete external process");
 	return (result);
 }
