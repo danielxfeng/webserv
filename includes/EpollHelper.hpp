@@ -29,6 +29,12 @@ public:
     ~EpollHelper();
 
     /**
+     * @brief Returns the epoll file descriptor.
+     * @return The epoll file descriptor.
+     */
+    int getEpollFd() const;
+
+    /**
      * @brief Cleans up the epoll instance if it is valid.
      */
     void cleanup();
