@@ -1,6 +1,6 @@
 #pragma once
 
-#include "WebServ.hpp"
+#include "EpollHelper.hpp"
 #include "LogSys.hpp"
 
 /**
@@ -9,23 +9,19 @@
  * @details
  * - Guarantees that the fd will be released when the object goes out of scope.
  * - Ensures the fd is unregistered from epoll before being closed.
- * - Notifies WebServ and Server to unregister the fd from their containers.
  * - Finally closes the underlying fd and resets it to -1.
  */
 class RaiiFd
 {
 private:
-    WebServ &web_serv_;
-    Server &server_;
+    EpollHelper &epoll_helper_;
     int fd_;
-    bool is_in_epoll_in_;
-    bool is_in_epoll_out_;
 
     /**
      * @brief Internal cleanup routine.
      *
      * Called by both the destructor and closeFd().
-     * Ensures epoll unregistration, container cleanup,
+     * Ensures epoll unregistration,
      * closes the underlying fd, and resets state.
      */
     void cleanUp();
@@ -38,13 +34,13 @@ public:
     /**
      * @brief Constructs a RAII fd, initially invalid (fd = -1).
      */
-    RaiiFd(WebServ &web_serv, Server &server);
+    RaiiFd(EpollHelper &epoll_helper);
 
     /**
      * @brief Constructs a RAII fd with an existing descriptor.
      * @throws std::runtime_error if fd < 0
      */
-    RaiiFd(WebServ &web_serv, Server &server, int fd);
+    RaiiFd(EpollHelper &epoll_helper, int fd);
 
     /**
      * @brief Destructor of a RAII fd.
@@ -70,11 +66,11 @@ public:
     bool isValid() const;
 
     /**
-     * @brief Register the fd with epoll for the given direction.
+     * @brief Register the fd with epoll.
      *
-     * No-op if the fd is already registered for the same direction.
+     * No-op if the fd is already registered.
      */
-    void addToEpoll(t_direction direction);
+    void addToEpoll();
 
     /**
      * @brief Explicitly close and cleanup the fd.

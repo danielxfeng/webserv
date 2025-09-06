@@ -1,8 +1,8 @@
 #include "../includes/RaiiFd.hpp"
 
-RaiiFd::RaiiFd(WebServ &web_serv, Server &server) : web_serv_(web_serv), server_(server), fd_(-1), is_in_epoll_in_(false), is_in_epoll_out_(false) {}
+RaiiFd::RaiiFd(EpollHelper &epoll_helper) : epoll_helper_(epoll_helper), fd_(-1) {}
 
-RaiiFd::RaiiFd(WebServ &web_serv, Server &server, int fd) : web_serv_(web_serv), server_(server), fd_(fd), is_in_epoll_in_(false), is_in_epoll_out_(false) {}
+RaiiFd::RaiiFd(EpollHelper &epoll_helper, int fd) : epoll_helper_(epoll_helper), fd_(fd) {}
 
 int RaiiFd::get() const { return fd_; }
 void RaiiFd::setFd(int fd)
@@ -15,7 +15,7 @@ void RaiiFd::setFd(int fd)
 }
 
 bool RaiiFd::isValid() const { return fd_ >= 0; };
-void RaiiFd::addToEpoll(t_direction direction)
+void RaiiFd::addToEpoll()
 {
     if (!isValid())
     {
@@ -23,16 +23,8 @@ void RaiiFd::addToEpoll(t_direction direction)
         return;
     }
 
-    if ((direction == IN && is_in_epoll_in_) || (direction == OUT && is_in_epoll_out_))
-    {
-        LOG_DEBUG("fd already in epoll for this direction, skipping", "");
-        return;
-    }
-    web_serv_.addConn(fd_, server_, direction);
-    if (direction == IN)
-        is_in_epoll_in_ = true;
-    else
-        is_in_epoll_out_ = true;
+    epoll_helper_.addFd(fd_);
+    LOG_INFO("Added fd to epoll: ", fd_);
 }
 
 void RaiiFd::cleanUp()
@@ -42,8 +34,7 @@ void RaiiFd::cleanUp()
 
     try
     {
-        web_serv_.closeConn(fd_);
-        server_.closeConn(fd_);
+        epoll_helper_.removeFd(fd_);
     }
     catch (const WebServErr::SysCallErrException &)
     {
@@ -56,8 +47,7 @@ void RaiiFd::cleanUp()
 
     close(fd_);
     fd_ = -1;
-    is_in_epoll_in_ = false;
-    is_in_epoll_out_ = false;
+    LOG_INFO("RaiiFd cleaned up", "");
 }
 
 void RaiiFd::closeFd()
