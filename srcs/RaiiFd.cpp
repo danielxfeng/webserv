@@ -45,9 +45,9 @@ void RaiiFd::cleanUp()
         web_serv_.closeConn(fd_);
         server_.closeConn(fd_);
     }
-    catch (const WebServErr::SysCallErrException &e)
+    catch (const WebServErr::SysCallErrException &)
     {
-        throw e;
+        throw;
     }
     catch (const std::exception &e)
     {
@@ -68,4 +68,17 @@ void RaiiFd::closeFd()
 RaiiFd::~RaiiFd()
 {
     cleanUp();
+}
+
+bool RaiiFd::operator==(const RaiiFd &o) const
+{
+    if (!isValid() || !o.isValid())
+        return false;
+    return fd_ == o.fd_;
+}
+
+std::ostream &operator<<(std::ostream &os, const RaiiFd &r)
+{
+    os << "RaiiFd{" << r.get() << "}";
+    return os;
 }

@@ -82,4 +82,8 @@ public:
      * Equivalent to letting the object go out of scope, but callable manually.
      */
     void closeFd();
+
+    bool operator==(const RaiiFd &other) const;
 };
+
+std::ostream &operator<<(std::ostream &os, const RaiiFd &r);
