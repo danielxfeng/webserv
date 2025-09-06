@@ -20,7 +20,6 @@ typedef enum e_status_error_codes
     ERR_500_INTERNAL_SERVER_ERROR = 500
 } t_status_error_codes;
 
-
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
 constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;       // in milliseconds
 constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 5000u; // in milliseconds
@@ -96,9 +95,8 @@ typedef struct s_conn
 
 typedef struct s_msg_from_serv
 {
-    bool is_done;                                               // Indicates if the operation is complete
-    std::vector<std::pair<int, t_direction>> fds_to_register;   // File descriptors to register for epoll with their directions
-    std::vector<std::pair<int, t_direction>> fds_to_unregister; // File descriptors to unregister from epoll with their directions
+    std::vector<RaiiFd> fds_to_register;
+    std::vector<int> fds_to_unregister;
 } t_msg_from_serv;
 
 typedef struct s_location_config
@@ -131,4 +129,3 @@ typedef struct s_global_config
 } t_global_config;
 
 t_method convertMethod(const std::string &method_str);
-

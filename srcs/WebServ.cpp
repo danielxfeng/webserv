@@ -1,5 +1,6 @@
 #include "WebServ.hpp"
-#include "LogSys.hpp"
+
+volatile std::sig_atomic_t stopFlag = 0;
 
 void setNonBlocking(int fd)
 {
@@ -9,6 +10,15 @@ void setNonBlocking(int fd)
 
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
         throw WebServErr::SysCallErrException("fcntl(F_SETFL) failed");
+
+    int fdflags = fcntl(fd, F_GETFD, 0);
+    if (fdflags == -1)
+        throw WebServErr::SysCallErrException("fcntl(F_GETFD) failed");
+
+    if (fcntl(fd, F_SETFD, fdflags | FD_CLOEXEC) == -1)
+        throw WebServErr::SysCallErrException("fcntl(F_SETFD) failed");
+
+    LOG_INFO("Set fd to non-blocking:", fd);
 }
 
 int listenToPort(unsigned int port)
@@ -19,35 +29,50 @@ int listenToPort(unsigned int port)
 
     setNonBlocking(serverFd);
 
-    sockaddr_in serverAddress;
+    sockaddr_in serverAddress{};
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(port);
     serverAddress.sin_addr.s_addr = INADDR_ANY;
 
+    int opt = 1;
+    if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
+        throw WebServErr::SysCallErrException("setsockopt(SO_REUSEADDR) failed");
+
     if (bind(serverFd, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
         throw WebServErr::SysCallErrException("bind failed");
 
-    if (listen(serverFd, 10) == -1)
+    if (listen(serverFd, SOMAXCONN) == -1)
         throw WebServErr::SysCallErrException("listen failed");
 
+    LOG_INFO("Listening on port:", port);
     return serverFd;
 }
 
-void registerToEpoll(int epollFd, int fd, uint32_t events)
+int acceptNewConnection(int listenFd)
 {
-    struct epoll_event event{};
-    event.events = events;
-    event.data.fd = fd;
-
-    if (epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event) == -1)
+    struct sockaddr_in clientAddress;
+    socklen_t clientAddressLength = sizeof(clientAddress);
+    int connClientFd = accept(listenFd, (struct sockaddr *)&clientAddress, &clientAddressLength);
+    if (connClientFd == -1)
     {
-        if (errno == ENOENT)
-        {
-            if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event) == -1)
-                throw WebServErr::SysCallErrException("epoll_ctl ADD failed");
-        }
-        else
-            throw WebServErr::SysCallErrException("epoll_ctl MOD failed");
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return -1; // No more connections to accept
+        if (errno == ECONNABORTED || errno == EINTR)
+            return -1; // Connection aborted or interrupted, ignore this error
+        throw WebServErr::SysCallErrException("accept failed");
+    }
+
+    setNonBlocking(connClientFd);
+
+    LOG_INFO("Accepted new connection, fd:", connClientFd);
+    return connClientFd;
+}
+
+void handleSignal(int sig)
+{
+    if (sig == SIGINT || sig == SIGTERM)
+    {
+        stopFlag = 1;
     }
 }
 
@@ -57,19 +82,22 @@ void timeoutKiller(const std::unordered_map<int, Server *> &serverMap)
         server.second->timeoutKiller();
 }
 
-WebServ::WebServ(const std::string &conf_file) : epollFd_(-1)
+WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
 {
     // Load the configuration from the file.
     config_ = std::move(Config::parseConfigFromFile(conf_file));
+    LOG_INFO("Configuration loaded from file:", conf_file);
+
+    // Setup signal handlers for graceful shutdown.
+    std::signal(SIGINT, handleSignal);
+    std::signal(SIGTERM, handleSignal);
 
     // Create server instances based on the configuration.
     for (const auto &server_conf : config_.servers)
-        serverVec_.push_back(Server(server_conf.second));
-
-    // Initialize epoll.
-    epollFd_ = epoll_create(1);
-    if (epollFd_ == -1)
-        throw WebServErr::SysCallErrException("epoll_create failed");
+    {
+        servers_.push_back(Server(server_conf.second));
+        LOG_INFO("Created server instance for:", server_conf.first);
+    }
 }
 
 void WebServ::eventLoop()
@@ -77,121 +105,96 @@ void WebServ::eventLoop()
     struct epoll_event events[config_.max_poll_events];
 
     LOG_INFO("Server started.", "");
-    for (auto it = serverVec_.begin(); it != serverVec_.end(); ++it)
+    for (auto it = servers_.begin(); it != servers_.end(); ++it)
     {
-        int serverFd = listenToPort(it->getConfig().port);
+        RaiiFd serverFd = RaiiFd(epoll_, listenToPort(it->getConfig().port));
         LOG_INFO("Server listening to port:", serverFd);
-        registerToEpoll(epollFd_, serverFd, IN_FLAGS);
-        serverMap_[serverFd] = &(*it);
+        serverFd.addToEpoll();
+        fds_.push_back(std::move(serverFd));
+        server_map_[fds_.back().get()] = &(*it);
+        LOG_INFO("Mapped listening fd to server instance:", fds_.back().get());
     }
 
-    while (true)
+    while (!stopFlag)
     {
-        int numEvents = epoll_wait(epollFd_, events, config_.max_poll_events, config_.max_poll_timeout);
+        int numEvents = epoll_wait(epoll_.getEpollFd(), events, config_.max_poll_events, config_.max_poll_timeout);
         if (numEvents == -1)
+        {
+            if (errno == EINTR)
+                continue; // Interrupted by signal, retry
             throw WebServErr::SysCallErrException("epoll_wait failed");
+        }
 
         for (int i = 0; i < numEvents; ++i)
         {
-            const auto server = serverMap_.find(events[i].data.fd);
-            const bool isNewConn = server != serverMap_.end() && (events[i].events & EPOLLIN);
+            const auto server = server_map_.find(events[i].data.fd);
+            const bool isNewConn = server != server_map_.end() && (events[i].events & EPOLLIN);
             if (isNewConn)
             {
-                struct sockaddr_in clientAddress;
-                socklen_t clientAddressLength = sizeof(clientAddress);
-                int connClientFd = accept(events[i].data.fd, (struct sockaddr *)&clientAddress, &clientAddressLength);
+                int connClientFd = acceptNewConnection(server->first);
                 if (connClientFd == -1)
                 {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
-                        continue; // No more connections to accept
-                    if (errno == ECONNABORTED || errno == EINTR)
-                        continue; // Connection aborted or interrupted, ignore this error
-                    throw WebServErr::SysCallErrException("accept failed");
+                    LOG_ERROR("No new connection to accept or error occurred, server fd: ", server->first);
+                    continue;
                 }
 
-                setNonBlocking(connClientFd);
-                connMap_[connClientFd] = server->second;
-                server->second->addConn(connClientFd);
-
-                registerToEpoll(epollFd_, connClientFd, IN_FLAGS);
+                fds_.push_back(RaiiFd(epoll_, connClientFd));
+                fds_.back().addToEpoll();
+                conn_map_[fds_.back().get()] = server->second;
+                LOG_INFO("Mapped connection fd to server instance:", fds_.back().get());
             }
             else
             {
-                const auto connServer = connMap_.find(events[i].data.fd);
-                if (connServer == connMap_.end())
+                const auto connServer = conn_map_.find(events[i].data.fd);
+                if (connServer == conn_map_.end())
                 {
-                    LOG_ERROR("Connection not found", "");//TODO: connServer);
+                    LOG_ERROR("Connection not found", events[i].data.fd);
                     continue;
                 }
 
                 if (events[i].events & EPOLLIN)
                 {
                     auto msg = connServer->second->handleDataIn(connServer->first);
-                    handleServerMsg(msg, IN, connServer);
+                    handleServerMsg(msg, connServer->second);
                 }
                 if (events[i].events & EPOLLOUT)
                 {
                     auto msg = connServer->second->handleDataOut(connServer->first);
-                    handleServerMsg(msg, OUT, connServer);
+                    handleServerMsg(msg, connServer->second);
                 }
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
-                    // TODO connServer->second->handleDataEnd(connServer->first);
-                    throw std::runtime_error("HandleDataEnd not implemented yet");
-                }
-                if (events[i].events & EPOLLRDHUP)
-                {
-                    // TODO  connServer->second->handleReadEnd(connServer->first);
-                    throw std::runtime_error("HandleReadEnd not implemented yet");
+                    auto msg = connServer->second->handleDataEnd(connServer->first);
+                    handleServerMsg(msg, connServer->second);
                 }
             }
         }
 
-        timeoutKiller(serverMap_);
+        timeoutKiller(server_map_);
     }
+    LOG_INFO("Server shutting down gracefully.", "");
 }
 
-void WebServ::closeConn(int fd)
+void WebServ::handleServerMsg(const t_msg_from_serv &msg, Server *server)
 {
-    if (fd != -1)
+    for (const auto &fd : msg.fds_to_register)
     {
-        if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr) == -1 && errno != ENOENT)
-            throw WebServErr::SysCallErrException("epoll_ctl failed");
-        close(fd);
+        fds_.push_back(std::move(fd));
+        fds_.back().addToEpoll();
+        conn_map_[fds_.back().get()] = server;
+        LOG_INFO("Registered fd to epoll:", fds_.back().get());
     }
-    LOG_INFO("Connection closed to: ", fd);
-    connMap_.erase(fd);
-}
-
-void WebServ::handleServerMsg(const t_msg_from_serv &msg, t_direction direction, const std::unordered_map<int, Server *>::const_iterator &connServer)
-{
-    if (msg.is_done)
+    for (const auto &fd : msg.fds_to_unregister)
     {
-        if (direction == OUT)
-            closeConn(connServer->first);
-        else if (direction == IN) {}
-        else
-            throw std::runtime_error("Invalid direction in handleServerMsg");
+        server_map_.erase(fd);
+        conn_map_.erase(fd);
+        fds_.remove_if([&fd](const RaiiFd &rfd)
+                       { return rfd.get() == fd; });
+        LOG_INFO("Unregistered fd from epoll and removed from maps:", fd);
     }
-    for (const auto &fd_pair : msg.fds_to_register)
-        registerToEpoll(epollFd_, fd_pair.first, (fd_pair.second == IN) ? IN_FLAGS : OUT_FLAGS);
-    for (const auto &fd_pair : msg.fds_to_unregister)
-        closeConn(fd_pair.first);
 }
 
 WebServ::~WebServ()
 {
     LOG_INFO("Closing down server.", "");
-    for (const auto &server : serverMap_)
-    {
-        LOG_INFO("Closing Server: ", server.first);
-        close(server.first);
-    }
-    for (const auto &conn : connMap_)
-    {
-        LOG_INFO("Closing Connection: ", conn.first);
-        close(conn.first);
-    }
-    if (epollFd_ != -1)
-        close(epollFd_);
 }

@@ -3,31 +3,34 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
-#include <vector>
+#include <list>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <csignal>
 #include "Server.hpp"
 #include "Config.hpp"
 #include "WebServErr.hpp"
+#include "LogSys.hpp"
+#include "EpollHelper.hpp"
+#include "RaiiFd.hpp"
 
-inline constexpr uint32_t IN_FLAGS = EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR;
-inline constexpr uint32_t OUT_FLAGS = EPOLLOUT | EPOLLRDHUP | EPOLLHUP | EPOLLERR;
+void handleSignal(int sig);
+extern volatile std::sig_atomic_t stopFlag;
 
 class WebServ
 {
 private:
-    int epollFd_;                                 // Singleton epoll file descriptor
-    t_global_config config_;                // Config
-    std::vector<Server> serverVec_;               // Vector of servers, the instances.
-    std::unordered_map<int, Server *> serverMap_; // Maps `listen` file descriptors to pointers to Server instances
-    std::unordered_map<int, Server *> connMap_;   // Maps `connections` file descriptors to pointers to Server instances
-
-    void closeConn(int fd);
-    void handleServerMsg(const t_msg_from_serv &msg, t_direction direction, const std::unordered_map<int, Server *>::const_iterator &connServer);
+    EpollHelper epoll_;                            // Singleton epoll instance
+    t_global_config config_;                       // Config
+    std::list<Server> servers_;                    // Vector of servers, the instances.
+    std::list<RaiiFd> fds_;                        // List of RAII wrappers for listening sockets
+    std::unordered_map<int, Server *> server_map_; // Maps `listen` file descriptors to pointers to Server instances
+    std::unordered_map<int, Server *> conn_map_;   // Maps `connections` file descriptors to pointers to Server instances
+    void handleServerMsg(const t_msg_from_serv &msg, Server *server);
 
 public:
     WebServ(const WebServ &other) = delete;
