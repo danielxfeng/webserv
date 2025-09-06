@@ -17,6 +17,8 @@ void EpollHelper::cleanup()
     epollFd_ = -1;
 }
 
+int EpollHelper::getEpollFd() const { return epollFd_; }
+
 void EpollHelper::addFd(int fd)
 {
     if (fd < 0)
