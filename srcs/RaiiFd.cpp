@@ -57,7 +57,14 @@ void RaiiFd::closeFd()
 
 RaiiFd::~RaiiFd()
 {
-    cleanUp();
+    try
+    {
+        cleanUp();
+    }
+    catch (const std::exception &e)
+    {
+        LOG_ERROR("Exception in RaiiFd destructor: ", e.what());
+    }
 }
 
 bool RaiiFd::operator==(const RaiiFd &o) const
