@@ -6,7 +6,11 @@
 #include <utility>
 #include <ctime>
 #include <memory>
+#include "RaiiFd.hpp"
 
+/**
+ * @brief Enumeration of HTTP status error codes.
+ */
 typedef enum e_status_error_codes
 {
     ERR_NO_ERROR = 0,
@@ -46,6 +50,9 @@ typedef struct s_file
     std::string dynamicPage;
 } t_file;
 
+/**
+ * @brief Enumeration of buffer error codes.
+ */
 typedef enum e_buff_error_code
 {
     EOF_REACHED = 0,
@@ -53,6 +60,9 @@ typedef enum e_buff_error_code
     BUFFER_FULL = -2
 } t_buff_error_code;
 
+/**
+ * @brief Enumeration of HTTP methods.
+ */
 typedef enum e_method
 {
     GET,
@@ -68,6 +78,9 @@ typedef enum e_direction
     OUT
 } t_direction;
 
+/**
+ * @brief Enumeration of connection statuses.
+ */
 typedef enum e_status
 {
     HEADER_PARSING,
@@ -77,6 +90,9 @@ typedef enum e_status
     SRV_ERROR
 } t_status;
 
+/**
+ * @brief Structure representing a client connection.
+ */
 typedef struct s_conn
 {
     int socket_fd;
@@ -93,6 +109,9 @@ typedef struct s_conn
     std::shared_ptr<HttpResponse> response;
 } t_conn;
 
+/**
+ * @brief Structure representing a message from the server to the main event loop.
+ */
 typedef struct s_msg_from_serv
 {
     std::vector<RaiiFd> fds_to_register;
@@ -106,6 +125,9 @@ typedef struct s_location_config
     std::string index;             // Default index file for this location
 } t_location_config;
 
+/**
+ * @brief Structure representing the configuration of a server.
+ */
 typedef struct s_server_config
 {
     std::string server_name;                                      // Name of the server
@@ -118,6 +140,9 @@ typedef struct s_server_config
     std::unordered_map<std::string, std::string> cgi_paths;       // CGI paths for different extensions
 } t_server_config;
 
+/**
+ * @brief Structure representing the global configuration of the server.
+ */
 typedef struct s_global_config
 {
     unsigned int max_poll_events;                             // Maximum number of events to poll
