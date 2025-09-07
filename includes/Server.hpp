@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <list>
 #include <vector>
 #include <unordered_map>
 #include "Buffer.hpp"
@@ -10,6 +11,9 @@
 #include "HttpRequests.hpp"
 #include "HttpResponse.hpp"
 #include "MethodHandler.hpp"
+#include "RaiiFd.hpp"
+#include "LogSys.hpp"
+#include "WebServErr.hpp"
 
 class Config;
 
@@ -17,8 +21,23 @@ class Server
 {
 private:
     const t_server_config &config_; // Server configuration
-    std::vector<t_conn> conn_vec_;
+    std::list<t_conn> conns_;
+    std::vector<std::string> cookies_;
     std::unordered_map<int, t_conn *> conn_map_;
+
+    /**
+     * @brief Helper function to close a connection and clean up resources.
+     * @details Removes all the fds from conns, will not remove the conn from conns_ list.
+     */
+    t_msg_from_serv closeConnHelper(t_conn *conn);
+
+    t_msg_from_serv handleDataInFromSocket(int fd, t_conn *conn);
+    t_msg_from_serv handleDataInFromSocketParsingHeader(int fd, t_conn *conn, bool is_eof);
+    t_msg_from_serv handleDataInFromSocketReadingBody(int fd, t_conn *conn, bool is_eof);
+    t_msg_from_serv handleDataInFromInternal(int fd, t_conn *conn);
+
+    t_msg_from_serv handleDataOutToSocket(int fd, t_conn *conn);
+    t_msg_from_serv handleDataOutToInternal(int fd, t_conn *conn);
 
 public:
     Server() = delete;
@@ -31,10 +50,9 @@ public:
     const t_server_config &getConfig() const;
 
     void addConn(int fd);
-    void handleDataEnd(int fd);
-    void handleReadEnd(int fd);
+    t_msg_from_serv handleDataEnd(int fd);
     t_msg_from_serv handleDataIn(int fd);
     t_msg_from_serv handleDataOut(int fd);
-    t_msg_from_serv handleError(t_conn *conn, const std::string &error_message);
-    void timeoutKiller();
+    t_msg_from_serv handleError(t_conn *conn, const t_status_error_codes error_code, const std::string &error_message);
+    t_msg_from_serv timeoutKiller();
 };

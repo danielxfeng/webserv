@@ -25,10 +25,11 @@ typedef enum e_status_error_codes
 } t_status_error_codes;
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
-constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;       // in milliseconds
-constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 5000u; // in milliseconds
-constexpr unsigned int MAX_REQUEST_SIZE = 1048576u;    // 1 MB
-constexpr unsigned int MAX_HEADERS_SIZE = 8192u;       // 8 KB
+constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;         // in milliseconds
+constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 10000u;  // in milliseconds
+constexpr unsigned int GLOBAL_HEARTBEAT_TIMEOUT = 5000u; // 10 seconds
+constexpr unsigned int MAX_REQUEST_SIZE = 1048576u;      // 1 MB
+constexpr unsigned int MAX_HEADERS_SIZE = 8192u;         // 8 KB
 
 class HttpRequests;
 class HttpResponse;
@@ -57,7 +58,8 @@ typedef enum e_buff_error_code
 {
     EOF_REACHED = 0,
     BUFFER_ERROR = -1,
-    BUFFER_FULL = -2
+    BUFFER_FULL = -2,
+    BUFFER_EMPTY = -3
 } t_buff_error_code;
 
 /**
@@ -85,6 +87,7 @@ typedef enum e_status
 {
     HEADER_PARSING,
     READING,
+    PROCESSING,
     WRITING,
     DONE,
     SRV_ERROR
@@ -103,11 +106,38 @@ typedef struct s_conn
     time_t last_heartbeat;
     size_t content_length;
     size_t bytes_received;
+    size_t output_length;
+    size_t bytes_sent;
     std::unique_ptr<Buffer> read_buf;
     std::unique_ptr<Buffer> write_buf;
     std::shared_ptr<HttpRequests> request;
     std::shared_ptr<HttpResponse> response;
 } t_conn;
+
+/**
+ * @brief Helper function to create and initialize a t_conn structure.
+ */
+t_conn make_conn(int socket_fd, size_t max_request_size)
+{
+    t_conn conn;
+
+    conn.socket_fd = socket_fd;
+    conn.inner_fd_in = -1;
+    conn.inner_fd_out = -1;
+    conn.status = HEADER_PARSING;
+    conn.start_timestamp = time(NULL);
+    conn.last_heartbeat = conn.start_timestamp;
+    conn.content_length = max_request_size;
+    conn.bytes_received = 0;
+    conn.output_length = max_request_size;
+    conn.bytes_sent = 0;
+    conn.read_buf = std::make_unique<Buffer>();
+    conn.write_buf = std::make_unique<Buffer>();
+    conn.request = std::make_shared<HttpRequests>();
+    conn.response = std::make_shared<HttpResponse>();
+
+    return conn;
+}
 
 /**
  * @brief Structure representing a message from the server to the main event loop.
@@ -133,6 +163,7 @@ typedef struct s_server_config
     std::string server_name;                                      // Name of the server
     unsigned int port;                                            // Port number for the server
     unsigned int max_request_timeout;                             // Maximum request timeout in milliseconds
+    unsigned int max_heartbeat_timeout;                           // Maximum heartbeat timeout in milliseconds
     unsigned int max_request_size;                                // Maximum size of a request in bytes
     unsigned int max_headers_size;                                // Maximum size of headers in bytes
     bool is_cgi;                                                  // Is this an CGI server?
@@ -148,6 +179,7 @@ typedef struct s_global_config
     unsigned int max_poll_events;                             // Maximum number of events to poll
     unsigned int max_poll_timeout;                            // Maximum timeout for polling events in milliseconds
     unsigned int global_request_timeout;                      // Global request timeout in milliseconds
+    unsigned int max_heartbeat_timeout;                       // Global heartbeat timeout in milliseconds
     unsigned int max_request_size;                            // Maximum size of a request in bytes
     unsigned int max_headers_size;                            // Maximum size of headers in bytes
     std::unordered_map<std::string, t_server_config> servers; // Server names and their corresponding configurations

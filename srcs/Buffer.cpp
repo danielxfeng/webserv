@@ -2,7 +2,7 @@
 
 Buffer::Buffer(size_t capacity, size_t block_size) : readPos_(0), writePos_(0), capacity_(capacity), size_(0), block_size_(block_size) {}
 
-size_t Buffer::readFd(int fd)
+ssize_t Buffer::readFd(int fd)
 {
     if (isFull())
         return BUFFER_FULL;
@@ -32,16 +32,16 @@ size_t Buffer::readFd(int fd)
     return read_bytes;
 }
 
-void Buffer::writeFd(int fd)
+ssize_t Buffer::writeFd(int fd)
 {
 
     if (data_.empty())
-        return;
+        return BUFFER_EMPTY;
 
     std::string &block = data_.front();
     size_t write_bytes = write(fd, &(block.data()[writePos_]), block.size() - writePos_);
     if (write_bytes <= 0)
-        return;
+        return BUFFER_ERROR;
 
     if (write_bytes < block.size() - writePos_)
         writePos_ += write_bytes;

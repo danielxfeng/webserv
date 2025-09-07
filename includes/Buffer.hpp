@@ -6,7 +6,6 @@
 #include "WebServErr.hpp"
 #include "SharedTypes.hpp"
 
-
 class Buffer
 {
 private:
@@ -29,12 +28,12 @@ public:
      * @brief Reads data from the file descriptor(a file/socket/pipe) into the buffer.
      * @return The number of bytes read, 0 if EOF is reached, -1 if an error occurs, -2 if the buffer is full.
      */
-    size_t readFd(int fd);
+    ssize_t readFd(int fd);
 
     /**
      * @brief Writes data from the buffer to the file descriptor(a file/socket/pipe).
      */
-    void writeFd(int fd);
+    ssize_t writeFd(int fd);
 
     /**
      * @brief Checks if the buffer is full.
