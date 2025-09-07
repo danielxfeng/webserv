@@ -8,7 +8,7 @@ int RaiiFd::get() const { return fd_; }
 void RaiiFd::setFd(int fd)
 {
     if (fd < 0)
-        throw std::runtime_error("Don't set fd to a negative value, you may wanna call ~RaiiFd()");
+        throw WebServErr::SysCallErrException("Invalid fd value.");
     if (fd_ >= 0)
         throw std::runtime_error("Don't try to modify an existing fd.");
     fd_ = fd;
