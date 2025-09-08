@@ -1,8 +1,12 @@
 #include "../includes/MethodHandler.hpp"
 
-MethodHandler::MethodHandler()
-	: requested_({-1, 0, 0, false, nullptr})
+MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 {
+	requested_.fileDescriptor = new RaiiFd(epoll_helper);
+	requested_.expectedSize = 0;
+	requested_.fileSize = 0;
+	requested_.isDynamic = false;
+	requested_.dynamicPage = nullptr;
 	LOG_TRACE("Method Handler created", " Yay!");
 }
 
@@ -13,6 +17,7 @@ MethodHandler::MethodHandler(const MethodHandler &copy)
 
 MethodHandler::~MethodHandler()
 {
+	delete requested_.fileDescriptor;
 	LOG_TRACE("Method Handler deconstructed", " Yay!");
 }
 
@@ -20,7 +25,7 @@ MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
 {
 	if (this != &copy)
 	{
-		requested_.fd = copy.requested_.fd;
+		requested_.fileDescriptor = copy.requested_.fileDescriptor;
 		requested_.expectedSize = copy.requested_.expectedSize;
 		requested_.fileSize = copy.requested_.fileSize;
 		requested_.isDynamic = copy.requested_.isDynamic;
@@ -90,9 +95,7 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 			requested_.fileSize = requested_.dynamicPage.size();
 			return (requested_);
 		}
-		requested_.fd = open("../index/index.html", O_RDONLY | O_NONBLOCK);
-		if (requested_.fd == -1)
-			throw WebServErr::SysCallErrException("Failed to open file with permission");
+		requested_.fileDescriptor->setFd(open("../index/index.html", O_RDONLY | O_NONBLOCK));
 		requested_.fileSize = static_cast<int>(std::filesystem::file_size(index_path));
 		return (requested_);
 	}
@@ -100,11 +103,9 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 	checkIfSymlink(path);
 	if (!access(path.c_str(), R_OK))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied to file");
-	requested_.fd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-	if (requested_.fd == -1)
-		throw WebServErr::SysCallErrException("Failed to open file with permission");
+	requested_.fileDescriptor->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
-	return (requested_);
+	return (std::move(requested_));
 }
 
 t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestBody)
@@ -121,9 +122,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	checkContentType(requestBody);
 	// TODO get file name from requestBody
 	std::string filename = createFileName(path.c_str());
-	requested_.fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);
-	if (requested_.fd == -1)
-		throw WebServErr::SysCallErrException("Failed to create file");
+	requested_.fileDescriptor->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(filename));
 	return (requested_);
 }

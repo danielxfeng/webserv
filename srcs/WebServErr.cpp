@@ -33,13 +33,17 @@ const char *WebServErr::BadRequestException::what() const noexcept
 
 
 WebServErr::MethodException::MethodException(t_status_error_codes code, const std::string &what_arg)
-	: what_(myFormat("Bad request:", what_arg)) {}
+	: what_(myFormat("Bad request:", what_arg)), code_(code) {}
 
 const char *WebServErr::MethodException::what() const noexcept
 {
 	return what_.c_str();
 }
 
+t_status_error_codes WebServErr::MethodException::code() const noexcept
+{
+	return (code_);
+}
 
 WebServErr::UtilsException::UtilsException(const std::string &what_arg)
 	: what_(myFormat("Bad request:", what_arg)) {}
@@ -58,19 +62,6 @@ const char *WebServErr::InvalidRequestHeader::what() const noexcept
 {
     return what_.c_str();
 }
-
-WebServErr::CGIException::CGIException(const std::string &what_arg)
-	: what_(myFormat("CGI Error: ", what_arg)) {}
-
-const char *WebServErr::CGIException::what() const noexcept
-{
-	return what_.c_str();
-}
-
-// const char *WebServErr::UtilsException::what() const noexcept
-// {
-// 	return what_.c_str();
-// }
 
 WebServErr::CGIException::CGIException(const std::string &what_arg)
 	: what_(myFormat("CGI Error: ", what_arg)) {}

@@ -19,15 +19,9 @@
 #include "WebServErr.hpp"
 #include "Config.hpp"
 #include "CGIHandler.hpp"
+#include "RaiiFd.hpp"
 
 #define MAX_BODY_SIZE 1024
-
-typedef struct	s_FormData
-{
-	std::string	name_;
-	std::string	type_;
-	std::string	content_;
-}	t_FormData;
 
 class MethodHandler
 {
@@ -50,7 +44,8 @@ private:
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
 	std::string generateDynamicPage(std::filesystem::path &path);
 public:
-	MethodHandler();
+	MethodHandler() = delete;
+	MethodHandler(EpollHelper &epoll_helper);
 	MethodHandler(const MethodHandler &copy);
 	~MethodHandler();
 	MethodHandler &operator=(const MethodHandler &copy);

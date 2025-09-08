@@ -44,7 +44,7 @@ typedef struct s_FormData
 
 typedef struct s_file
 {
-    int fd;
+    RaiiFd *fileDescriptor;
     size_t expectedSize;
     size_t fileSize;
     bool isDynamic;

@@ -76,13 +76,15 @@ public:
     {
     private:
         std::string what_;
-
+        t_status_error_codes code_;
     public:
         MethodException() = delete;
         explicit MethodException(t_status_error_codes code, const std::string &what_arg);
         MethodException(const MethodException &other) = default;
         MethodException &operator=(const MethodException &o) = delete;
         ~MethodException() override = default;
+
+        t_status_error_codes code() const noexcept;
 
         const char *what() const noexcept override;
     };
@@ -134,19 +136,5 @@ public:
 			~CGIException() override = default;
 			const char *what() const noexcept override;
 
-	};
-
-	class CGIException: public std::exception
-	{
-		private:
-			std::string what_;
-		public:
-			CGIException() = delete;
-			explicit CGIException(const std::string &what_arg);
-			CGIException(const CGIException &other) = default;
-			CGIException &operator=(const CGIException &other) = delete;
-			~CGIException() override = default;
-
-			const char *what() const noexcept override;
 	};
 };

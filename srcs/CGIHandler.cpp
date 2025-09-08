@@ -1,8 +1,12 @@
 #include "../includes/CGIHandler.hpp"
 
-CGIHandler::CGIHandler()
-	: result({-1,0, 0, false})
+CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 {
+	result.fileDescriptor = new RaiiFd(epoll_helper);
+	result.expectedSize = 0;
+	result.fileSize = 0;
+	result.isDynamic = false;
+	result.dynamicPage = nullptr;
 	fds[0] = -1;
 	fds[1] = -1;
 }
@@ -13,18 +17,21 @@ CGIHandler::CGIHandler(const CGIHandler &copy)
 }
 
 CGIHandler::~CGIHandler()
-{}
+{
+	delete result.fileDescriptor;
+}
 
 CGIHandler &CGIHandler::operator=(const CGIHandler &copy)
 {
     if (this != &copy)
     {
 		envp = copy.envp;
-		result.fd = copy.result.fd;
+		result.fileDescriptor = copy.result.fileDescriptor;
 		result.dynamicPage = copy.result.dynamicPage;
 		result.fileSize = copy.result.fileSize;
 		result.expectedSize = copy.result.expectedSize;
 		result.isDynamic = copy.result.isDynamic;
+		envp = copy.envp;
 		fds[0] = copy.fds[0];
 		fds[1] = copy.fds[1];
     }
@@ -99,7 +106,7 @@ void	CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLin
 	}
 }
 
-void	CGIHandler::handleWriteProcess(std::filesystem::path &script, std::filesystem::path &path, std::vector<std::string> &envp)
+void	CGIHandler::handleWriteProcess(std::filesystem::path &script, std::filesystem::path &path)
 {
 	if (dup2(fds[1], STDIN_FILENO) == -1)
 		throw WebServErr::CGIException("Dup2 Failure");
@@ -133,7 +140,7 @@ void	CGIHandler::handleReadProcess(pid_t pid)
 			throw WebServErr::CGIException("Reading from CGI failed.");
 		}
 	}
-	result.fd = fds[0];
+	result.fileDescriptor->setFd(fds[0]);
 	result.dynamicPage = temp;
 	result.fileSize = temp.size();
 	result.expectedSize = temp.size();
@@ -150,22 +157,22 @@ t_file	CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 		throw WebServErr::CGIException("CGI script is a directory");
 	if (std::filesystem::is_symlink(script))
 		throw WebServErr::CGIException("CGI script is a symlink");
-	if (!std::filesystem::is_regular_fille(script))
+	if (!std::filesystem::is_regular_file(script))
 		throw WebServErr::CGIException("CGI script is not a regular file.");
 	int		exit_code = 0;
 	int fds[2];
-	socketpair(AF_UNIX, SOCK_STREAM, fds);
+	result.fileDescriptor->setFd(socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
 	pid_t	pid = fork();
 	if (pid == -1)
 		throw WebServErr::CGIException("Failed to fork");
 	if (pid == 0)
-		handleWriteProcess(script, path, envp);
+		handleWriteProcess(script, path);
 	else
 		handleReadProcess(pid);
 	close(fds[0]);
 	waitpid(pid, &exit_code, 0);
 	if (exit_code != 0)
 		throw WebServErr::CGIException("Failed to complete external process");
-	return (result);
+	return (std::move(result));
 }
 
