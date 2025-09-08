@@ -682,3 +682,8 @@ std::string HttpRequests::getHttpRequestMethod()
 {
 	return (requestLineMap["Method"]);
 }
+
+
+bool HttpRequests::isChunked(){
+	return (is_chunked);
+}
