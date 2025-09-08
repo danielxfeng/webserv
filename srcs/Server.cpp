@@ -41,7 +41,7 @@ t_msg_from_serv Server::handleDataInFromSocketParsingHeader(int fd, t_conn *conn
                 conn->content_length = config_.max_request_size;
         }
 
-        LOG_DEBUG("Header parsed successfully for fd: ", fd);
+        LOG_INFO("Header parsed successfully for fd: ", fd);
         conn->status = READING;
 
         // TODO: remove the header from buffer
@@ -53,14 +53,19 @@ t_msg_from_serv Server::handleDataInFromSocketParsingHeader(int fd, t_conn *conn
             {
             case GET:
             case DELETE:
+                LOG_INFO("Switching to writing state for fd: ", fd);
                 return switchToWritingState(conn, output);
             case POST:
             case CGI:
+            {
+
                 t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
                 msg.fds_to_register.push_back(output.fd);
                 conn->inner_fd_in = output.fd;
                 conn_map_.emplace(conn->inner_fd_in, conn);
+                LOG_INFO("Switching to processing state for fd: ", fd);
                 return msg;
+            }
             default:
                 throw WebServErr::ShouldNotBeHereException("Unhandled method after parsing header");
             }
@@ -168,14 +173,19 @@ t_msg_from_serv Server::handleDataInFromInternal(int fd, t_conn *conn)
     switch (bytes_read)
     {
     case SRV_ERROR:
+        LOG_INFO("Error reading from internal fd for fd: ", fd);
         return handleDataEnd(fd);
     case EOF_REACHED:
+    {
         t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
         msg.fds_to_unregister.push_back(fd);
         conn_map_.erase(fd);
         conn->inner_fd_out = -1;
+        LOG_INFO("Finished reading from internal fd for fd: ", fd);
         return msg;
+    }
     default:
+        LOG_INFO("Reading from internal fd for fd: ", fd);
         return defaultMsg();
     }
 }
@@ -214,22 +224,55 @@ t_msg_from_serv Server::handleDataOutToSocket(int fd, t_conn *conn)
         throw WebServErr::ShouldNotBeHereException("Socket fd mismatch");
     }
 
-    if (conn->status != WRITING)
+    if (conn->status != WRITING && conn->status != SRV_ERROR)
     {
+        LOG_DEBUG("Connection not in writing state for fd: ", fd);
         return defaultMsg();
     }
 
     ssize_t bytes_written = conn->write_buf->writeFd(fd);
-    conn->bytes_sent += (bytes_written > 0 ? static_cast<size_t>(bytes_written) : 0);
 
     switch (bytes_written)
     {
     case BUFFER_ERROR:
+        LOG_ERROR("Error writing to socket for fd: ", fd);
         return handleDataEnd(fd);
     case BUFFER_EMPTY:
-    default:
         return defaultMsg();
     }
+
+    conn->bytes_sent += (bytes_written > 0 ? static_cast<size_t>(bytes_written) : 0);
+    LOG_INFO("Data written to fd: ", fd, " bytes: ", bytes_written, " total: ", conn->bytes_sent);
+
+    const bool is_output_exceeded = conn->bytes_sent > conn->output_length;
+    if (is_output_exceeded)
+    {
+        LOG_ERROR("Output length exceeded for fd: ", fd);
+        return handleDataEnd(fd);
+    }
+
+
+    const bool is_output_complete = (conn->bytes_sent == conn->output_length);
+    if (is_output_complete)
+    {
+        if (conn->status == SRV_ERROR ) // TODO: check the keep-alive also.
+        {
+            conn->status = DONE;
+            LOG_INFO("Finished writing error response to socket for fd: ", fd);
+            return handleDataEnd(fd);
+        }
+        else
+        {
+            t_conn new_conn = make_conn(fd, config_.max_request_size);
+            conns_.push_back(std::move(new_conn));
+            conn_map_.at(fd) = &conns_.back();
+            conn->status = HEADER_PARSING;
+            LOG_INFO("Finished writing response to socket for fd: ", fd);
+            return resetConn(conn);
+        }
+    }
+
+    return defaultMsg();
 }
 
 t_msg_from_serv Server::handleDataOutToInternal(int fd, t_conn *conn)
@@ -250,19 +293,23 @@ t_msg_from_serv Server::handleDataOutToInternal(int fd, t_conn *conn)
     switch (bytes_written)
     {
     case BUFFER_ERROR:
+        LOG_ERROR("Error writing to internal fd for fd: ", fd);
         return handleDataEnd(fd);
     case BUFFER_FULL:
     case EOF_REACHED:
         LOG_ERROR("Internal buffer full when writing to internal fd for fd: ", fd);
         return handleError(conn, ERR_500_INTERNAL_SERVER_ERROR, "Internal buffer full when writing to internal fd");
     case BUFFER_EMPTY:
+    {
         LOG_INFO("Finished writing to internal fd for fd: ", fd);
         t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
         msg.fds_to_unregister.push_back(fd);
         conn_map_.erase(fd);
         conn->inner_fd_in = -1;
         return msg;
+    }
     default:
+        LOG_INFO("Writing to internal fd for fd: ", fd);
         return defaultMsg();
     }
 }
@@ -293,7 +340,7 @@ t_msg_from_serv Server::handleDataOut(int fd)
 // Handle close connection
 //
 
-t_msg_from_serv Server::closeConnHelper(t_conn *conn)
+t_msg_from_serv Server::resetConn(t_conn *conn)
 {
     t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
 
@@ -329,7 +376,7 @@ t_msg_from_serv Server::handleDataEnd(int fd)
 
     t_conn *conn = conn_map_.at(fd);
 
-    auto msg = closeConnHelper(conn);
+    auto msg = resetConn(conn);
     conns_.remove_if([fd](const t_conn &c)
                      { return c.socket_fd == fd; });
 
@@ -345,7 +392,7 @@ t_msg_from_serv Server::timeoutKiller()
     {
         if (difftime(now, it->last_heartbeat) > config_.max_heartbeat_timeout || difftime(now, it->start_timestamp) > config_.max_request_timeout)
         {
-            t_msg_from_serv temp = closeConnHelper(&(*it));
+            t_msg_from_serv temp = resetConn(&(*it));
             msg.fds_to_unregister.insert(msg.fds_to_unregister.end(), temp.fds_to_unregister.begin(), temp.fds_to_unregister.end());
             int fd = it->socket_fd;
             it = conns_.erase(it);
@@ -361,4 +408,7 @@ t_msg_from_serv Server::timeoutKiller()
 
 t_msg_from_serv Server::handleError(t_conn *conn, const t_status_error_codes error_code, const std::string &error_message)
 {
+    conn->status = SRV_ERROR;
+    conn->response = std::make_shared<HttpResponse>();
+    conn->write_buf.append(conn->response->failedResponse(*conn, error_code, error_message));
 }

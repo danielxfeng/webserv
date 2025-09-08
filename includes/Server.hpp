@@ -29,7 +29,7 @@ private:
      * @brief Helper function to close a connection and clean up resources.
      * @details Removes all the fds from conns, will not remove the conn from conns_ list.
      */
-    t_msg_from_serv closeConnHelper(t_conn *conn);
+    t_msg_from_serv resetConn(t_conn *conn);
 
     t_msg_from_serv handleDataInFromSocket(int fd, t_conn *conn);
     t_msg_from_serv handleDataInFromSocketParsingHeader(int fd, t_conn *conn, bool is_eof);

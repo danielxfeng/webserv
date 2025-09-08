@@ -88,6 +88,7 @@ typedef enum e_status
     HEADER_PARSING,
     READING,
     PROCESSING,
+    WAITING_HEADER,
     WRITING,
     DONE,
     SRV_ERROR
