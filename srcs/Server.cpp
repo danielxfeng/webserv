@@ -36,9 +36,12 @@ t_msg_from_serv Server::handleDataInFromSocketParsingHeader(int fd, t_conn *conn
         {
             if (method == GET || method == DELETE)
                 conn->content_length = 0;
-            else
-                // TODO: Check for Transfer-Encoding: chunked
+            else if ((method == POST || method == CGI) && conn->request.isChunked())
+            {
                 conn->content_length = config_.max_request_size;
+            }
+            else
+                throw WebServErr::ShouldNotBeHereException("Content-Length not found for method requiring body");
         }
 
         LOG_INFO("Header parsed successfully for fd: ", fd);
@@ -107,7 +110,7 @@ t_msg_from_serv Server::handleDataInFromSocketParsingHeader(int fd, t_conn *conn
 t_msg_from_serv Server::handleDataInFromSocketReadingBody(int fd, t_conn *conn, bool is_eof)
 {
     const bool is_content_length_reached = conn->bytes_received == conn->content_length;
-    const bool is_chunked_eof_reached = is_eof; // TODO: check chunked.
+    const bool is_chunked_eof_reached = conn->request->isChunked() && is_eof;
 
     if (is_chunked_eof_reached || is_content_length_reached)
     {
@@ -255,7 +258,8 @@ t_msg_from_serv Server::handleDataOutToSocket(int fd, t_conn *conn)
     const bool is_output_complete = (conn->bytes_sent == conn->output_length);
     if (is_output_complete)
     {
-        if (conn->status == SRV_ERROR ) // TODO: check the keep-alive also.
+        const bool is_close = conn->request->getrequestHeaderMap().contains("Connection") && conn->request->getrequestHeaderMap().at("Connection") == "close";
+        if (conn->status == SRV_ERROR || is_close)
         {
             conn->status = DONE;
             LOG_INFO("Finished writing error response to socket for fd: ", fd);
