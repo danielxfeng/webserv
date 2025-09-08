@@ -76,13 +76,15 @@ public:
     {
     private:
         std::string what_;
-
+        t_status_error_codes code_;
     public:
         MethodException() = delete;
         explicit MethodException(t_status_error_codes code, const std::string &what_arg);
         MethodException(const MethodException &other) = default;
         MethodException &operator=(const MethodException &o) = delete;
         ~MethodException() override = default;
+
+        t_status_error_codes code() const noexcept;
 
         const char *what() const noexcept override;
     };
