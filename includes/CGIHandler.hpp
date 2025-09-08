@@ -12,13 +12,14 @@
 #include "WebServErr.hpp"
 #include "LogSys.hpp"
 #include "SharedTypes.hpp"
+#include "RaiiFd.hpp"
 
 class CGIHandler
 {
 private:
     std::vector<std::string>	envp;
-	t_file 						result;
-	int							fds[2];
+	t_file 		    	result;
+	int		    	fds[2];
 
 
 	//Setters
@@ -28,7 +29,8 @@ private:
 	void	handleWriteProcess(std::filesystem::path &script, std::filesystem::path &path);
 	void	handleReadProcess(pid_t pid);
 public:
-    CGIHandler();
+    CGIHandler() = delete;
+    CGIHandler(EpollHelper &epoll_helper);
     CGIHandler(const CGIHandler &copy);
     ~CGIHandler();
     CGIHandler &operator=(const CGIHandler &copy);
