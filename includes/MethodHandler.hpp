@@ -40,8 +40,10 @@ private:
 	void checkIfSymlink(const std::filesystem::path &path);
 	void checkIfDirectory(const std::filesystem::path &path);
 	void checkIfLocExists(const std::filesystem::path &path);
+	std::string	MethodHandler::trimPath(const std::string &path);
 	std::filesystem::path createFileName(const std::string &path);
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
+	std::filesystem::path createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody);
 	std::string generateDynamicPage(std::filesystem::path &path);
 public:
 	MethodHandler() = delete;
