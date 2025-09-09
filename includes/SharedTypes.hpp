@@ -34,6 +34,7 @@ constexpr unsigned int MAX_HEADERS_SIZE = 8192u;         // 8 KB
 class HttpRequests;
 class HttpResponse;
 class Buffer;
+class RaiiFd;
 
 typedef struct s_FormData
 {
@@ -44,7 +45,7 @@ typedef struct s_FormData
 
 typedef struct s_file
 {
-    RaiiFd *fileDescriptor;
+    std::shared_ptr<RaiiFd> fileDescriptor;
     size_t expectedSize;
     size_t fileSize;
     bool isDynamic;
@@ -85,13 +86,13 @@ typedef enum e_direction
  */
 typedef enum e_status
 {
-    HEADER_PARSING,
-    READING,
-    PROCESSING,
-    WAITING_HEADER,
-    WRITING,
-    DONE,
-    SRV_ERROR
+    HEADER_PARSING,            // Stage for parsing HTTP headers
+    READING,                   // Stage for reading HTTP body
+    PROCESSING,                // Stage for processing the request (e.g., CGI execution)
+    PREPARING_RESPONSE_HEADER, // Stage for preparing HTTP response headers
+    WRITING,                   // Stage for writing HTTP response
+    DONE,                      // Stage indicating the connection is done
+    SRV_ERROR                  // Stage indicating an error has occurred
 } t_status;
 
 /**

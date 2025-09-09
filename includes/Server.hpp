@@ -20,6 +20,7 @@ class Config;
 class Server
 {
 private:
+    EpollHelper &epoll_;            // Reference to the epoll helper
     const t_server_config &config_; // Server configuration
     std::list<t_conn> conns_;
     std::vector<std::string> cookies_;
@@ -36,12 +37,13 @@ private:
     t_msg_from_serv handleDataInFromSocketReadingBody(int fd, t_conn *conn, bool is_eof);
     t_msg_from_serv handleDataInFromInternal(int fd, t_conn *conn);
 
+    t_msg_from_serv Server::handleDataOutToSocketDone (int fd, t_conn *conn);
     t_msg_from_serv handleDataOutToSocket(int fd, t_conn *conn);
     t_msg_from_serv handleDataOutToInternal(int fd, t_conn *conn);
 
 public:
     Server() = delete;
-    Server(const t_server_config &config);
+    Server(EpollHelper &epoll, const t_server_config &config);
     Server(const Server &) = default;
     Server(Server &&) = default;
     Server &operator=(const Server &) = delete;

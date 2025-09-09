@@ -31,9 +31,9 @@ private:
 public:
     CGIHandler() = delete;
     CGIHandler(EpollHelper &epoll_helper);
-    CGIHandler(const CGIHandler &copy);
+    CGIHandler(const CGIHandler &copy) = delete;
     ~CGIHandler();
-    CGIHandler &operator=(const CGIHandler &copy);
+    CGIHandler &operator=(const CGIHandler &copy) = delete;
 
     //Getters
     t_file    getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);

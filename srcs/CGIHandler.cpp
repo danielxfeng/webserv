@@ -2,7 +2,7 @@
 
 CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 {
-	result.fileDescriptor = new RaiiFd(epoll_helper);
+	result.fileDescriptor = std::make_shared<RaiiFd>(epoll_helper);
 	result.expectedSize = 0;
 	result.fileSize = 0;
 	result.isDynamic = false;
@@ -11,31 +11,8 @@ CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 	fds[1] = -1;
 }
 
-CGIHandler::CGIHandler(const CGIHandler &copy)
-{
-    *this = copy;
-}
-
 CGIHandler::~CGIHandler()
 {
-	delete result.fileDescriptor;
-}
-
-CGIHandler &CGIHandler::operator=(const CGIHandler &copy)
-{
-    if (this != &copy)
-    {
-		envp = copy.envp;
-		result.fileDescriptor = copy.result.fileDescriptor;
-		result.dynamicPage = copy.result.dynamicPage;
-		result.fileSize = copy.result.fileSize;
-		result.expectedSize = copy.result.expectedSize;
-		result.isDynamic = copy.result.isDynamic;
-		envp = copy.envp;
-		fds[0] = copy.fds[0];
-		fds[1] = copy.fds[1];
-    }
-    return (*this);
 }
 
 void	CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
