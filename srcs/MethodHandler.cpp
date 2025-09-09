@@ -2,7 +2,7 @@
 
 MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 {
-	requested_.fileDescriptor = new RaiiFd(epoll_helper);
+	requested_.fileDescriptor = std::make_shared<RaiiFd>(epoll_helper);
 	requested_.expectedSize = 0;
 	requested_.fileSize = 0;
 	requested_.isDynamic = false;
@@ -10,29 +10,9 @@ MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 	LOG_TRACE("Method Handler created", " Yay!");
 }
 
-MethodHandler::MethodHandler(const MethodHandler &copy)
-{
-	*this = copy;
-}
-
 MethodHandler::~MethodHandler()
 {
-	delete requested_.fileDescriptor;
 	LOG_TRACE("Method Handler deconstructed", " Yay!");
-}
-
-MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
-{
-	if (this != &copy)
-	{
-		requested_.fileDescriptor = copy.requested_.fileDescriptor;
-		requested_.expectedSize = copy.requested_.expectedSize;
-		requested_.fileSize = copy.requested_.fileSize;
-		requested_.isDynamic = copy.requested_.isDynamic;
-		requested_.dynamicPage = copy.requested_.dynamicPage;
-	}
-	LOG_TRACE("Method handler copied", " Yay!");
-	return (*this);
 }
 
 t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
@@ -126,7 +106,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	std::filesystem::path filename = createPostFilename(path, requestBody);
 	requested_.fileDescriptor->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(filename));
-	return (requested_);
+	return (std::move(requested_));
 }
 
 std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody)
@@ -155,7 +135,7 @@ t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_
 {
 	CGIHandler cgi;
 	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody);
-	return (requested_);
+	return (std::move(requested_));
 }
 
 void MethodHandler::setContentLength(std::unordered_map<std::string, std::string> requestBody)

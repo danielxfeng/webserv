@@ -48,9 +48,9 @@ private:
 public:
 	MethodHandler() = delete;
 	MethodHandler(EpollHelper &epoll_helper);
-	MethodHandler(const MethodHandler &copy);
+	MethodHandler(const MethodHandler &copy) = delete;
 	~MethodHandler();
-	MethodHandler &operator=(const MethodHandler &copy);
+	MethodHandler &operator=(const MethodHandler &copy) = delete;
 
 	t_file handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 };
