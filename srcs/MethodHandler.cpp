@@ -61,7 +61,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 			case POST:
 			{
 				LOG_TRACE("Calling POST: ", realPath);
-				return (callPostMethod(realPath, server, requestLine, requestBody));
+				return (callPostMethod(realPath, server, requestLine, requestHeader, requestBody));
 			}
 			case DELETE:
 			{
@@ -108,15 +108,17 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestBody)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
 	(void)server;
-	(void)requestLine;
 	checkIfLocExists(path);
 	checkIfDirectory(path);
 	if (!access(path.c_str(), W_OK))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannot POST file");
-	auto typeCheck = requestBody.find("content-type");
+	if (requestHeader.find("multipart/form") == requestHeader.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
+	if (requestBody.find("content-type") == requestBody.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content Type");
 	setContentLength(requestBody);
 	if (typeCheck == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Type not found.");
