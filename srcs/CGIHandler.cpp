@@ -140,7 +140,7 @@ void	CGIHandler::handleReadProcess(pid_t pid)
 			throw WebServErr::CGIException("Reading from CGI failed.");
 		}
 	}
-	result.fileDescriptor->setFd(fds[0]);
+	//result.fileDescriptor->setFd(fds[0]);//TODO verify if this is needed
 	result.dynamicPage = temp;
 	result.fileSize = temp.size();
 	result.expectedSize = temp.size();
