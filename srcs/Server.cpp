@@ -440,22 +440,145 @@ t_msg_from_serv Server::timeoutKiller()
 
 t_msg_from_serv Server::req_header_parsing_handler(int fd, t_conn *conn)
 {
-    return defaultMsg();
+    try
+    {
+        std::string_view buf = conn->read_buf->peek();
+        conn->request->httpParser(buf);
+
+        // After successful parsing, determine the method and content length
+        t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
+        if (conn->request->getrequestLineMap().contains("Content-Length"))
+            conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestLineMap().at("Content-Length")));
+        else
+        {
+            if (method == GET || method == DELETE)
+                conn->content_length = 0;
+            else if ((method == POST || method == CGI) && conn->request->isChunked())
+            {
+                conn->content_length = config_.max_request_size;
+            }
+            else
+                throw WebServErr::ShouldNotBeHereException("Content-Length not found for method requiring body");
+        }
+
+        LOG_INFO("Header parsed successfully for fd: ", fd);
+        conn->read_buf->insertHeaderAndSetChunked(conn->request->getupToBodyCounter(), conn->request->isChunked());
+
+        return req_header_processing_handler(fd, conn);
+    }
+    catch (const WebServErr::InvalidRequestHeader &e)
+    {
+        if (is_eof)
+        {
+            return handleError(conn, ERR_400_BAD_REQUEST, "Invalid request header, didn't find end of header when EOF reached");
+        }
+
+        const bool is_max_length_reached = (conn->bytes_received >= config_.max_headers_size);
+        if (is_max_length_reached)
+        {
+            return handleError(conn, ERR_400_BAD_REQUEST, "Invalid request header, header size exceeded");
+        }
+
+        return defaultMsg(); // Ignore the error since the header might be incomplete.
+    }
+    catch (const WebServErr::BadRequestException &e)
+    {
+        return handleError(conn, ERR_400_BAD_REQUEST, "Invalid request header, parsing failed");
+    }
 }
 
 t_msg_from_serv Server::req_header_processing_handler(int fd, t_conn *conn)
 {
-    return defaultMsg();
+    try
+        {
+            t_file output = MethodHandler(epoll_).handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap());
+            t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
+            switch (method)
+            {
+            case GET:
+            case DELETE:
+                conn->res = output;
+                return res_header_processing_handler(fd, conn);
+            case POST:
+            case CGI:
+            {
+
+                t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
+                msg.fds_to_register.push_back(output.fileDescriptor);
+                conn->inner_fd_in = output.fileDescriptor.get();
+                conn_map_.emplace(conn->inner_fd_in, conn);
+                LOG_INFO("Switching to processing state for fd: ", fd);
+                return msg;
+            }
+            case SRV_ERROR:
+                return defaultMsg();
+            default:
+                throw WebServErr::ShouldNotBeHereException("Unhandled method after parsing header");
+            }
+        }
+        catch (const WebServErr::MethodException &e)
+        {
+            LOG_ERROR("Method exception occurred: ", e.code(), e.what());
+            return handleError(conn, e.code(), e.what());
+        }
 }
 
 t_msg_from_serv Server::req_body_processing_in_handler(int fd, t_conn *conn)
 {
-    return defaultMsg();
+    const bool is_content_length_reached = conn->bytes_received == conn->content_length;
+    const bool is_chunked_eof_reached = conn->request->isChunked() && is_eof;
+
+    if (is_chunked_eof_reached || is_content_length_reached)
+    {
+        conn->status = PROCESSING;
+        return defaultMsg(); // Wait for the main loop to notify when inner fd is ready.
+    }
+
+    const bool is_content_length_exceeded = conn->bytes_received > conn->content_length;
+    if (is_content_length_exceeded || is_eof)
+    {
+        conn->status = SRV_ERROR;
+        LOG_ERROR("Request size exceeded or EOF reached but content length not reached for fd: ", fd);
+        // TODO: delete the created file.
+        return handleError(conn, ERR_400_BAD_REQUEST, "Request size exceeded or EOF reached but content length not reached");
+    }
+
+    return defaultMsg(); // Continue reading
 }
 
 t_msg_from_serv Server::req_body_processing_out_handler(int fd, t_conn *conn)
 {
-    return defaultMsg();
+    if (fd != conn->inner_fd_out)
+    {
+        LOG_ERROR("Inner fd mismatch for fd: ", fd);
+        throw WebServErr::ShouldNotBeHereException("Inner fd mismatch");
+    }
+
+    if (conn->status != WRITING && conn->status != PREPARING_RESPONSE_HEADER)
+    {
+        LOG_DEBUG("Connection not in writing state for fd: ", fd);
+        return defaultMsg();
+    }
+
+    ssize_t bytes_read = conn->write_buf->readFd(fd);
+    switch (bytes_read)
+    {
+    case SRV_ERROR:
+        LOG_INFO("Error reading from internal fd for fd: ", fd);
+        return handleDataEnd(fd);
+    case EOF_REACHED:
+    {
+        t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
+        msg.fds_to_unregister.push_back(fd);
+        conn_map_.erase(fd);
+        conn->inner_fd_out = -1;
+        LOG_INFO("Finished reading from internal fd for fd: ", fd);
+        return msg;
+    }
+    default:
+        LOG_INFO("Reading from internal fd for fd: ", fd);
+        return defaultMsg();
+    }
 }
 
 t_msg_from_serv Server::res_header_processing_handler(int fd, t_conn *conn)
@@ -518,6 +641,11 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
     switch (status)
     {
     case REQ_HEADER_PARSING:
+        if (fd != conn->socket_fd)
+        {
+            LOG_WARN("Invalid fd for REQ_HEADER_PARSING for fd: ", fd);
+            return defaultMsg();
+        }
         switch (event_type)
         {
         case READ_EVENT:
@@ -532,8 +660,18 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         switch (event_type)
         {
         case READ_EVENT:
+            if (fd != conn->socket_fd)
+            {
+                LOG_WARN("Invalid fd for REQ_BODY_PROCESSING READ_EVENT for fd: ", fd);
+                return defaultMsg();
+            }
             return req_body_processing_in_handler(fd, conn);
         case WRITE_EVENT:
+            if (fd != conn->inner_fd_in)
+            {
+                LOG_WARN("Invalid fd for REQ_BODY_PROCESSING WRITE_EVENT for fd: ", fd);
+                return defaultMsg();
+            }
             return req_body_processing_out_handler(fd, conn);
         default:
             LOG_ERROR("Invalid event type for REQ_BODY_PROCESSING for fd: ", fd);
@@ -543,8 +681,18 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         switch (event_type)
         {
         case READ_EVENT:
+            if (fd != conn->inner_fd_out)
+            {
+                LOG_WARN("Invalid fd for RESPONSE READ_EVENT for fd: ", fd);
+                return defaultMsg();
+            }
             return response_in_handler(fd, conn);
         case WRITE_EVENT:
+            if (fd != conn->socket_fd)
+            {
+                LOG_WARN("Invalid fd for RESPONSE WRITE_EVENT for fd: ", fd);
+                return defaultMsg();
+            }
             return response_out_handler(fd, conn);
         default:
             LOG_ERROR("Invalid event type for RESPONSE for fd: ", fd);
