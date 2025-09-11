@@ -1,82 +1,112 @@
 #include "Buffer.hpp"
 
-Buffer::Buffer(size_t capacity, size_t block_size) : data_(), ref_(), data_view_(), capacity_(capacity), write_pos_(0), size_(0), block_size_(block_size), chunked_header_start_pos_(0), remain_chunk_size_(0), is_chunked_(false) {}
+Buffer::Buffer(size_t capacity, size_t block_size) : data_(), ref_(), data_view_(), capacity_(capacity), write_pos_(0), size_(0), block_size_(block_size), chunked_header_start_pos_(0), chunked_body_start_pos_(0), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}
 
-ssize_t Buffer::returnHelperForProcessChunkedData(std::vector<std::string_view> &new_chunks)
+ssize_t Buffer::handleNextHeader(std::string_view data, ssize_t parsed, size_t skipped)
 {
-    size_t total = 0;
-    for (size_t j = 0; j < new_chunks.size(); ++j)
+    size_t pos = data.find("\r\n");
+    if (pos == std::string_view::npos)
     {
-        data_view_.push_back(new_chunks[j]);
-        ref_.back() += 1;
-        total += new_chunks[j].size();
+        chunked_header_start_pos_ = write_pos_ + parsed + skipped;
+        return parsed;
     }
 
-    return total;
+    std::string_view header = data.substr(0, pos);
+    std::string_view crlf = data.substr(pos, CRLF);
+    if (crlf != "\r\n")
+        return handleChunkedError();
+    std::string_view rest = data.substr(pos + CRLF);
+    skipped += CRLF;
+
+    size_t chunk_size = 0;
+    try
+    {
+        chunk_size = std::stoul(std::string(header), nullptr, 16);
+        if (chunk_size == 0)
+        {
+            std::string_view final_crlf = rest.substr(0, CRLF);
+            if (final_crlf != "\r\n")
+                return handleChunkedError();
+            rest.remove_prefix(CRLF);
+            skipped += CRLF;
+
+            if (!rest.empty())
+                return handleChunkedError();
+            return handleChunkedEOF(parsed + pos);
+        }
+
+        chunked_body_start_pos_ = 0;
+        remain_chunk_size_ = chunk_size;
+        return handleBodyProcessing(rest, parsed, skipped);
+    }
+    catch (const std::exception &e)
+    {
+        return handleChunkedError();
+    }
 }
 
-/**
- * @brief Processes chunked data from the given string view, extracting complete chunks.
- * @details
- * We only handle the chunked data that starts from the chunked header.
- */
-ssize_t Buffer::processChunkedData(std::string_view &data)
+ssize_t Buffer::handleBodyProcessing(std::string_view data, ssize_t parsed, size_t skipped)
 {
-    size_t i = 0;
-    std::vector<std::string_view> new_chunks;
-
-    while (i < data.size())
+    ssize_t to_read = std::min(remain_chunk_size_ + CRLF, data.size());
+    if (to_read >= remain_chunk_size_ && to_read < remain_chunk_size_ + CRLF)
     {
-        auto pos = data.find("\r\n", i);
-        if (pos == std::string_view::npos)
-        {
-            chunked_header_start_pos_ = write_pos_ + i;
-            return returnHelperForProcessChunkedData(new_chunks);
-        }
+        to_read = remain_chunk_size_ - 1;
+        chunked_body_start_pos_ = write_pos_ + parsed + to_read + skipped;
+    }
 
-        std::string_view header = data.substr(i, pos - i);
-        size_t chunk_size = 0;
-        try
-        {
-            chunk_size = std::stoul(std::string(header), nullptr, 16);
-            if (chunk_size == 0)
-            {
-                // Last chunk, process remaining data
-                is_eof_ = true;
-                return returnHelperForProcessChunkedData(new_chunks);
-            }
-        }
-        catch (const std::exception &e)
-        {
-            return CHUNKED_ERR; // Invalid chunk size
-        }
+    if (to_read == 0)
+        return parsed;
 
-        i = pos + CRLF; // Move past the header and CRLF
+    std::string_view body = data.substr(0, to_read);
+    std::string_view rest = data.substr(to_read);
 
-        if (i + chunk_size + CRLF < data.size())
-        {
-            std::string_view chunk = data.substr(i, chunk_size);
-            new_chunks.push_back(chunk);
-            i += chunk_size + CRLF;
-            remain_chunk_size_ = 0;
-            chunked_header_start_pos_ = 0;
-            continue;
-        }
-        else if (i + chunk_size + CRLF >= data.size())
-        {
-            size_t available = data.size() - i;
-            if (available >= chunk_size)
-            {
-                available = chunk_size - 1; // Leave space for CRLF
-                chunked_body_start_pos_ = write_pos_ + i + available;
-            }
+    data_view_.push_back(body);
+    ref_.back() += 1;
+    parsed += to_read;
+    remain_chunk_size_ -= to_read;
 
-            std::string_view chunk = data.substr(i, available);
-            new_chunks.push_back(chunk);
-            remain_chunk_size_ = chunk_size - available;
-            chunked_header_start_pos_ = 0;
-            return returnHelperForProcessChunkedData(new_chunks);
-        }
+    if (chunked_body_start_pos_ > 0 || remain_chunk_size_ > 0)
+        return parsed;
+
+    std::string_view crlf = rest.substr(0, CRLF);
+    if (crlf != "\r\n")
+        return handleChunkedError();
+    rest.remove_prefix(CRLF);
+    skipped += CRLF;
+
+    if (rest.empty())
+        return parsed;
+
+    return handleNextHeader(rest, parsed, skipped);
+}
+
+ssize_t Buffer::handleChunkedEOF(ssize_t parsed)
+{
+    chunked_header_start_pos_ = 0;
+    chunked_body_start_pos_ = 0;
+    remain_chunk_size_ = 0;
+    is_eof_ = true;
+    return parsed;
+}
+
+ssize_t Buffer::handleChunkedError()
+{
+    chunked_header_start_pos_ = 0;
+    chunked_body_start_pos_ = 0;
+    remain_chunk_size_ = 0;
+    return CHUNKED_ERR;
+}
+
+ssize_t Buffer::fsmSchduler(t_chunked_status status, std::string_view data)
+{
+    switch (status)
+    {
+    case NEXT_HEADER:
+        return handleNextHeader(data, 0, 0);
+    case BODY_PROCESSING:
+        return handleBodyProcessing(data, 0, 0);
+    default:
+        throw WebServErr::ShouldNotBeHereException("Buffer::fsmSchduler: invalid state");
     }
 }
 
@@ -86,25 +116,27 @@ ssize_t Buffer::processChunkedData(std::string_view &data)
  * 1 Ensures there is enough space for chunk header and trailing CRLF,
  * if not, allocates a new block and copies any remaining header part.
  * 2 Reads data into the last block.
- * 3 If there is any remaining chunk body to be read (`remain_chunk_size_ > 0`),
- * reads them, and sends to `data_view_`.
- * 4 Call helper functions to parse rest of the data (start from chunked header).
+ * 3 Call fsmSchduler to parse the chunked data.
  */
 ssize_t Buffer::readFdChunked(int fd)
 {
-    bool new_block = false;
-
     // Ensure enough space for chunk header and trailing CRLF
     const size_t remain_space = block_size_ - write_pos_;
     if (data_.empty() || remain_space < MAX_CHUNK_HEADER_SPACE                                   // Ensure enough space for chunk header
         || ((remain_chunk_size_ <= remain_space) && (remain_space < remain_chunk_size_ + CRLF))) // Ensure the trailing CRLF will not be split
     {
         std::string_view remain_header;
+        std::string_view remain_body;
 
-        if (write_pos_ > chunked_header_start_pos_)
+        if (chunked_header_start_pos_ > 0 && write_pos_ > chunked_header_start_pos_)
         {
             auto &curr = data_.back();
             remain_header = std::string_view(curr.data() + chunked_header_start_pos_, write_pos_ - chunked_header_start_pos_);
+        }
+        else if (chunked_body_start_pos_ > 0 && write_pos_ > chunked_body_start_pos_)
+        {
+            auto &curr = data_.back();
+            remain_body = std::string_view(curr.data() + chunked_body_start_pos_, write_pos_ - chunked_body_start_pos_);
         }
 
         data_.push_back(std::string(block_size_, '\0'));
@@ -116,9 +148,18 @@ ssize_t Buffer::readFdChunked(int fd)
             std::copy(remain_header.begin(), remain_header.end(), new_buf.begin());
             chunked_header_start_pos_ = 0;
         }
+        else if (!remain_body.empty())
+        {
+            std::copy(remain_body.begin(), remain_body.end(), new_buf.begin());
+            chunked_body_start_pos_ = 0;
+        }
+        else
+        {
+            chunked_header_start_pos_ = 0;
+            chunked_body_start_pos_ = 0;
+        }
 
-        write_pos_ = remain_header.size();
-        new_block = true;
+        write_pos_ = remain_header.size() + remain_body.size();
     }
 
     // Now read into the last block
@@ -132,49 +173,24 @@ ssize_t Buffer::readFdChunked(int fd)
     if (read_bytes == 0)
         return EOF_REACHED;
 
-    size_t new_write_size = 0;
-
-    // Parse the remaining chunk body if any
-    if (remain_chunk_size_ > 0)
-    {
-        const size_t left_body = chunked_body_start_pos_ > 0 ? write_pos_ - chunked_body_start_pos_
-                                                             : write_pos_; // In case the chunk body is started in this block
-        const size_t start_pos = write_pos_ - left_body;
-        // In case the chunk body is ended by the read
-        if (read_bytes + left_body >= remain_chunk_size_ + CRLF)
-        {
-            std::string_view new_data(buf.data() + start_pos, remain_chunk_size_);
-
-            const char *crlf = buf.data() + start_pos + remain_chunk_size_;
-            if (!(crlf[0] == '\r' && crlf[1] == '\n'))
-                return CHUNKED_ERR; // Invalid chunk ending
-
-            data_view_.push_back(new_data);
-            ref_.back() += 1;
-
-            write_pos_ += remain_chunk_size_ + CRLF - left_body;
-            new_write_size += remain_chunk_size_;
-            remain_chunk_size_ = 0;
-            chunked_body_start_pos_ = 0;
-        }
-        else // In case we have only part of the chunked body
-        {
-            std::string_view new_data(buf.data() + write_pos_);
-            data_view_.push_back(new_data);
-            ref_.back() += 1;
-            write_pos_ += read_bytes;
-            remain_chunk_size_ -= read_bytes;
-            return read_bytes;
-        }
-    }
-
     // Parse rest of the data (new chunk headers and bodies)
-    std::string_view chunked_data(buf.data() + write_pos_, read_bytes - new_write_size - CRLF);
-    ssize_t parsed = processChunkedData(chunked_data);
+    std::string_view chunked_data(buf.data() + write_pos_, read_bytes);
+
+    t_chunked_status status;
+
+    if (remain_chunk_size_ > 0)
+        status = BODY_PROCESSING;
+    else
+        status = NEXT_HEADER;
+
+    ssize_t parsed = fsmSchduler(status, chunked_data);
     if (parsed == CHUNKED_ERR)
         return CHUNKED_ERR;
 
-    return new_write_size + parsed;
+    write_pos_ += read_bytes;
+    size_ += parsed;
+
+    return parsed;
 }
 
 ssize_t Buffer::readFd(int fd)
@@ -286,6 +302,7 @@ bool Buffer::removeHeaderAndSetChunked(const std::size_t size, bool is_chunked)
     {
         data_.pop_front();
         data_view_.pop_front();
+        ref_.pop_front();
     }
     else
         data_view_.front() = front;
@@ -294,11 +311,15 @@ bool Buffer::removeHeaderAndSetChunked(const std::size_t size, bool is_chunked)
     // Also process the rest body if in chunked mode
     if (is_chunked_ && !data_view_.empty())
     {
-        ssize_t chunk_size = processChunkedData(data_view_.front());
+        std::string_view rest = data_view_.front();
+        data_view_.pop_front();
+        ref_.front() = 0;
+        ssize_t chunk_size = handleNextHeader(rest, 0, 0);
         if (chunk_size == CHUNKED_ERR)
-            throw WebServErr::ShouldNotBeHereException("Buffer::removeHeader: chunked parse error");
+            return false;
         size_ = chunk_size;
     }
+
     return true;
 }
 

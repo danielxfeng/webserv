@@ -11,6 +11,16 @@
 static constexpr size_t MAX_CHUNK_HEADER_SPACE = 20;
 static constexpr size_t CRLF = 2; // CRLF size
 
+typedef enum e_chunked_status
+{
+    NEXT_HEADER,
+    PARTIAL_HEADER,
+    BODY_PROCESSING,
+    WAITING_DELIMITER,
+    CHUNKED_EOF,
+    CHUNKED_ERR
+} t_chunked_status;
+
 /**
  * @brief A buffer class with reference-counted blocks and optional chunked transfer parsing.
  * @details
@@ -40,8 +50,19 @@ private:
     bool is_chunked_;                        // Whether the buffer is in chunked mode.
     bool is_eof_;                            // Whether the EOF has been reached in chunked mode.
 
-    ssize_t returnHelperForProcessChunkedData(std::vector<std::string_view> &new_chunks);
-    ssize_t processChunkedData(std::string_view &data);
+    ssize_t handleNextHeader(std::string_view data, ssize_t parsed, size_t skipped);
+    ssize_t handleBodyProcessing(std::string_view data, ssize_t parsed, size_t skipped);
+    ssize_t handleChunkedEOF(ssize_t parsed);
+    ssize_t handleChunkedError();
+
+    /**
+     * @brief The finite state machine scheduler for parsing chunked data.
+     */
+    ssize_t fsmSchduler(t_chunked_status status, std::string_view data);
+
+    /**
+     * @brief Reads data from the file descriptor into the buffer in chunked mode.
+     */
     ssize_t readFdChunked(int fd);
 
 public:
