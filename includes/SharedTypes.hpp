@@ -75,6 +75,13 @@ typedef enum e_method
     UNKNOWN,
 } t_method;
 
+typedef enum e_event_type
+{
+    READ_EVENT,
+    WRITE_EVENT,
+    ERROR_EVENT
+} t_event_type;
+
 typedef enum e_direction
 {
     IN,
@@ -86,13 +93,13 @@ typedef enum e_direction
  */
 typedef enum e_status
 {
-    HEADER_PARSING,            // Stage for parsing HTTP headers
-    READING,                   // Stage for reading HTTP body
-    PROCESSING,                // Stage for processing the request (e.g., CGI execution)
-    PREPARING_RESPONSE_HEADER, // Stage for preparing HTTP response headers
-    WRITING,                   // Stage for writing HTTP response
-    DONE,                      // Stage indicating the connection is done
-    SRV_ERROR                  // Stage indicating an error has occurred
+    REQ_HEADER_PARSING,    // Stage for parsing HTTP headers
+    REQ_HEADER_PROCESSING, // Stage for processing HTTP headers
+    REQ_BODY_PROCESSING,   // Stage for processing HTTP body
+    RES_HEADER_PROCESSING, // Stage for preparing HTTP response headers
+    RESPONSE,              // Stage for writing HTTP response
+    DONE,                  // Stage indicating the connection is done
+    TERMINATED             // Stage indicating the connection is terminated
 } t_status;
 
 /**
@@ -104,6 +111,7 @@ typedef struct s_conn
     int inner_fd_in;
     int inner_fd_out;
     t_status status;
+    t_status_error_codes error_code;
     time_t start_timestamp;
     time_t last_heartbeat;
     size_t content_length;
@@ -116,28 +124,32 @@ typedef struct s_conn
     std::shared_ptr<HttpResponse> response;
 } t_conn;
 
+void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
+{
+    conn->socket_fd = socket_fd;
+    conn->inner_fd_in = -1;
+    conn->inner_fd_out = -1;
+    conn->status = REQ_HEADER_PARSING;
+    conn->start_timestamp = time(NULL);
+    conn->last_heartbeat = conn->start_timestamp;
+    conn->content_length = max_request_size;
+    conn->bytes_received = 0;
+    conn->output_length = max_request_size;
+    conn->bytes_sent = 0;
+    conn->read_buf = std::make_unique<Buffer>();
+    conn->write_buf = std::make_unique<Buffer>();
+    conn->request = std::make_shared<HttpRequests>();
+    conn->response = std::make_shared<HttpResponse>();
+    conn->error_code = ERR_NO_ERROR;
+}
+
 /**
  * @brief Helper function to create and initialize a t_conn structure.
  */
 t_conn make_conn(int socket_fd, size_t max_request_size)
 {
     t_conn conn;
-
-    conn.socket_fd = socket_fd;
-    conn.inner_fd_in = -1;
-    conn.inner_fd_out = -1;
-    conn.status = HEADER_PARSING;
-    conn.start_timestamp = time(NULL);
-    conn.last_heartbeat = conn.start_timestamp;
-    conn.content_length = max_request_size;
-    conn.bytes_received = 0;
-    conn.output_length = max_request_size;
-    conn.bytes_sent = 0;
-    conn.read_buf = std::make_unique<Buffer>();
-    conn.write_buf = std::make_unique<Buffer>();
-    conn.request = std::make_shared<HttpRequests>();
-    conn.response = std::make_shared<HttpResponse>();
-
+    resetConn(&conn, socket_fd, max_request_size);
     return conn;
 }
 

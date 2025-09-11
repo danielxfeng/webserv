@@ -221,7 +221,7 @@ t_msg_from_serv Server::handleDataIn(int fd)
 // Handle data out
 //
 
-t_msg_from_serv Server::handleDataOutToSocketDone (int fd, t_conn *conn)
+t_msg_from_serv Server::handleDataOutToSocketDone(int fd, t_conn *conn)
 {
     const bool is_output_exceeded = conn->bytes_sent > conn->output_length;
     if (is_output_exceeded)
@@ -353,11 +353,18 @@ t_msg_from_serv Server::handleDataOut(int fd)
     }
 }
 
+t_msg_from_serv Server::handleError(t_conn *conn, const t_status_error_codes error_code, const std::string &error_message)
+{
+    conn->status = SRV_ERROR;
+    conn->response = std::make_shared<HttpResponse>();
+    conn->write_buf.append(conn->response->failedResponse(*conn, error_code, error_message));
+}
+
 //
-// Handle close connection
+// Helpers for FSM
 //
 
-t_msg_from_serv Server::resetConn(t_conn *conn)
+t_msg_from_serv Server::resetConnMap(t_conn *conn)
 {
     t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
 
@@ -375,6 +382,13 @@ t_msg_from_serv Server::resetConn(t_conn *conn)
         conn->inner_fd_out = -1;
     }
 
+    return msg;
+}
+
+t_msg_from_serv Server::closeConn(t_conn *conn)
+{
+    t_msg_from_serv msg = resetConnMap(conn);
+
     int fd = conn->socket_fd;
 
     if (conn->socket_fd != -1)
@@ -383,20 +397,9 @@ t_msg_from_serv Server::resetConn(t_conn *conn)
         msg.fds_to_unregister.push_back(conn->socket_fd);
         conn->socket_fd = -1;
     }
-    return msg;
-}
-
-t_msg_from_serv Server::handleDataEnd(int fd)
-{
-    if (!conn_map_.contains(fd))
-        return defaultMsg();
-
-    t_conn *conn = conn_map_.at(fd);
-
-    auto msg = resetConn(conn);
     conns_.remove_if([fd](const t_conn &c)
                      { return c.socket_fd == fd; });
-
+    conn->status = TERMINATED;
     LOG_INFO("Connection closed: ", fd);
     return msg;
 }
@@ -404,14 +407,21 @@ t_msg_from_serv Server::handleDataEnd(int fd)
 t_msg_from_serv Server::timeoutKiller()
 {
     auto now = time(NULL);
+
     t_msg_from_serv msg = {std::vector<RaiiFd>{}, std::vector<int>{}};
+
     for (auto it = conns_.begin(); it != conns_.end();)
     {
-        if (difftime(now, it->last_heartbeat) > config_.max_heartbeat_timeout || difftime(now, it->start_timestamp) > config_.max_request_timeout)
+        if (difftime(now, it->last_heartbeat) > config_.max_heartbeat_timeout ||
+            difftime(now, it->start_timestamp) > config_.max_request_timeout)
         {
-            t_msg_from_serv temp = resetConn(&(*it));
-            msg.fds_to_unregister.insert(msg.fds_to_unregister.end(), temp.fds_to_unregister.begin(), temp.fds_to_unregister.end());
             int fd = it->socket_fd;
+            t_msg_from_serv temp = closeConn(&*it);
+            msg.fds_to_unregister.insert(
+                msg.fds_to_unregister.end(),
+                temp.fds_to_unregister.begin(),
+                temp.fds_to_unregister.end());
+
             it = conns_.erase(it);
             LOG_INFO("Connection timed out and closed: ", fd);
         }
@@ -420,12 +430,136 @@ t_msg_from_serv Server::timeoutKiller()
             ++it;
         }
     }
+
     return msg;
 }
 
-t_msg_from_serv Server::handleError(t_conn *conn, const t_status_error_codes error_code, const std::string &error_message)
+//
+// Finite State Machine
+//
+
+t_msg_from_serv Server::req_header_parsing_handler(int fd, t_conn *conn)
 {
-    conn->status = SRV_ERROR;
-    conn->response = std::make_shared<HttpResponse>();
-    conn->write_buf.append(conn->response->failedResponse(*conn, error_code, error_message));
+    return defaultMsg();
+}
+
+t_msg_from_serv Server::req_header_processing_handler(int fd, t_conn *conn)
+{
+    return defaultMsg();
+}
+
+t_msg_from_serv Server::req_body_processing_in_handler(int fd, t_conn *conn)
+{
+    return defaultMsg();
+}
+
+t_msg_from_serv Server::req_body_processing_out_handler(int fd, t_conn *conn)
+{
+    return defaultMsg();
+}
+
+t_msg_from_serv Server::res_header_processing_handler(int fd, t_conn *conn)
+{
+    return defaultMsg();
+}
+
+t_msg_from_serv Server::response_in_handler(int fd, t_conn *conn)
+{
+    return defaultMsg();
+}
+
+t_msg_from_serv Server::response_out_handler(int fd, t_conn *conn)
+{
+    return defaultMsg();
+}
+
+t_msg_from_serv Server::done_handler(int fd, t_conn *conn)
+{
+    const bool keep_alive = conn->request->getrequestHeaderMap().contains("Connection") && conn->request->getrequestHeaderMap().at("Connection") == "keep-alive";
+
+    // Terminate the connection if error occurred or not keep-alive
+    if (conn->error_code != ERR_NO_ERROR || !keep_alive)
+    {
+        conn->status = DONE;
+        LOG_INFO("Connection closed: ", fd);
+        return closeConn(conn);
+    }
+
+    // Reset the connection for next request if keep-alive
+    t_msg_from_serv msg = resetConnMap(conn);
+    resetConn(conn, conn->socket_fd, config_.max_request_size);
+    LOG_INFO("Keep-alive: ready for next request on fd: ", fd);
+    return msg;
+}
+
+t_msg_from_serv Server::terminated_handler(int fd, t_conn *conn)
+{
+    return closeConn(conn);
+}
+
+//
+// Scheduler
+//
+
+t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
+{
+    if (!conn_map_.contains(fd))
+    {
+        LOG_WARN("Connection not found for fd: ", fd);
+        return defaultMsg();
+    }
+
+    t_conn *conn = conn_map_.at(fd);
+    t_status status = conn->status;
+
+    if (event_type == ERROR_EVENT)
+        return terminated_handler(fd, conn);
+
+    switch (status)
+    {
+    case REQ_HEADER_PARSING:
+        switch (event_type)
+        {
+        case READ_EVENT:
+            return req_header_parsing_handler(fd, conn);
+        case WRITE_EVENT:
+            return defaultMsg(); // Ignore write event in this state
+        default:
+            LOG_ERROR("Invalid event type for REQ_HEADER_PARSING for fd: ", fd);
+            throw WebServErr::ShouldNotBeHereException("Invalid event type for REQ_HEADER_PARSING");
+        }
+    case REQ_BODY_PROCESSING:
+        switch (event_type)
+        {
+        case READ_EVENT:
+            return req_body_processing_in_handler(fd, conn);
+        case WRITE_EVENT:
+            return req_body_processing_out_handler(fd, conn);
+        default:
+            LOG_ERROR("Invalid event type for REQ_BODY_PROCESSING for fd: ", fd);
+            throw WebServErr::ShouldNotBeHereException("Invalid event type for REQ_BODY_PROCESSING");
+        }
+    case RESPONSE:
+        switch (event_type)
+        {
+        case READ_EVENT:
+            return response_in_handler(fd, conn);
+        case WRITE_EVENT:
+            return response_out_handler(fd, conn);
+        default:
+            LOG_ERROR("Invalid event type for RESPONSE for fd: ", fd);
+            throw WebServErr::ShouldNotBeHereException("Invalid event type for RESPONSE");
+        }
+    case REQ_HEADER_PROCESSING:
+    case RES_HEADER_PROCESSING:
+        LOG_ERROR("Invalid event type for REQ_HEADER_PROCESSING or RES_HEADER_PROCESSING for fd: ", fd);
+        throw WebServErr::ShouldNotBeHereException("Invalid event type for REQ_HEADER_PROCESSING or RES_HEADER_PROCESSING");
+    case DONE:
+    case TERMINATED:
+        LOG_WARN("Connection in terminal state for fd: ", fd);
+        return defaultMsg();
+    default:
+        LOG_ERROR("Unhandled status in scheduler for fd: ", fd);
+        throw WebServErr::ShouldNotBeHereException("Unhandled status in scheduler");
+    }
 }
