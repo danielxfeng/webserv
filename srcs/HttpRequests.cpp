@@ -42,7 +42,7 @@ HttpRequests::~HttpRequests() {
  * @return nothing
  */
 void HttpRequests::extractRequestLine(size_t &i, size_t requestLength,
-									  const std::string &request)
+									  const std::string_view &request)
 {
 	std::string method;
 	std::string target;
@@ -204,7 +204,7 @@ void HttpRequests::validateRequestLine()
  * @return nothing
  */
 void HttpRequests::extractRequestHeader(size_t &i, size_t requestLength,
-										const std::string &request)
+										const std::string_view &request)
 {
 	bool secondPartBool = false;
 	size_t j;
@@ -456,7 +456,7 @@ void HttpRequests::validateRequestHeader(void)
  * @return nothing it store in the variable.
  */
 void HttpRequests::tillBodyCounter(size_t requestLength,
-								   const std::string &request)
+								   const std::string_view &request)
 {
 	bool found = false;
 	for (size_t i = 0; i <= requestLength; i++)
@@ -477,7 +477,7 @@ void HttpRequests::tillBodyCounter(size_t requestLength,
  * @return nothing it store in the variable.
  */
 void HttpRequests::pre_validator(size_t requestLength,
-								 const std::string &request)
+								 const std::string_view &request)
 {
 	(void)requestLength;
 	for (size_t i = 0; i <= upToBodyCounter; i++)
@@ -523,7 +523,7 @@ void HttpRequests::parse_body_header(std::string_view requestBodyHeader)
 }
 
 void HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
-									  const std::string &request)
+									  const std::string_view &request)
 {
 	size_t pos;
 	size_t boundarySize;
@@ -612,7 +612,7 @@ content-disposition:form-data; name="file"; filename="example.png"*/
  * @param std::string.
  * @return (HttpRequests&);
  */
-HttpRequests &HttpRequests::httpParser(const std::string &request)
+void HttpRequests::httpParser(const std::string_view &request)
 {
 	size_t i;
 	size_t requestLength;
