@@ -20,7 +20,6 @@ typedef enum e_status_error_codes
     ERR_500_INTERNAL_SERVER_ERROR = 500
 } t_status_error_codes;
 
-
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
 constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;       // in milliseconds
 constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 5000u; // in milliseconds
@@ -51,7 +50,9 @@ typedef enum e_buff_error_code
 {
     EOF_REACHED = 0,
     BUFFER_ERROR = -1,
-    BUFFER_FULL = -2
+    BUFFER_FULL = -2,
+    BUFFER_EMPTY = -3,
+    CHUNKED_ERR = -4
 } t_buff_error_code;
 
 typedef enum e_method
@@ -131,4 +132,3 @@ typedef struct s_global_config
 } t_global_config;
 
 t_method convertMethod(const std::string &method_str);
-

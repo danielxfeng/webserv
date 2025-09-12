@@ -76,7 +76,7 @@
       "*.tpp": "cpp",
       "future": "cpp"
     },
-    "cmake.sourceDirectory": "/home/xifeng/webserv",
+    "cmake.sourceDirectory": "/workspace/webserv",
   "cmake.buildDirectory": "${workspaceFolder}/build",
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "cmake.configureArgs": [
