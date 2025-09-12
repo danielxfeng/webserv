@@ -9,10 +9,10 @@
 
  */
 
-std::string HttpResponse::successResponse(t_conn &conn, std::size_t &page_size)
+std::string HttpResponse::successResponse(t_conn *conn, std::size_t &page_size)
 {
     std::string result;
-    auto request = conn.request;
+    auto request = conn->request;
     if (request->getHttpRequestMethod() == "GET")
     {
         result.append(request->getHttpVersion()).append(" 202 OK\r\n");
@@ -43,10 +43,10 @@ std::string HttpResponse::successResponse(t_conn &conn, std::size_t &page_size)
     return (result);
 }
 
-std::string HttpResponse::notFoundResponse(t_conn &conn)
+std::string HttpResponse::notFoundResponse(t_conn *conn)
 {
     std::string result;
-    auto request = conn.request;
+    auto request = conn->request;
     std::string notFound = "<!DOCTYPE html>"
                            "<html>"
                            "<head><title>404 Not Found</title></head>"
@@ -62,10 +62,10 @@ std::string HttpResponse::notFoundResponse(t_conn &conn)
     return (result);
 }
 
-std::string HttpResponse::badRequestResponse(t_conn &conn)
+std::string HttpResponse::badRequestResponse(t_conn *conn)
 {
     std::string result;
-    auto request = conn.request;
+    auto request = conn->request;
     std::string notFound = "<!DOCTYPE html>"
                            "<html>"
                            "<head><title>400 Bad Request</title></head>"
@@ -90,11 +90,11 @@ ERR_301,
     ERR_500
     */
 
-std::string HttpResponse::failedResponse(t_conn &conn, t_status_error_codes error_code, const std::string &error_message)
+std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes error_code, const std::string &error_message)
 {
     std::string result;
     std::string status;
-    auto request = conn.request;
+    auto request = conn->request;
 
     switch (error_code)
     {
