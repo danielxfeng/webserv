@@ -60,7 +60,8 @@ typedef enum e_buff_error_code
     EOF_REACHED = 0,
     BUFFER_ERROR = -1,
     BUFFER_FULL = -2,
-    BUFFER_EMPTY = -3
+    BUFFER_EMPTY = -3,
+    CHUNKED_ERR = -4
 } t_buff_error_code;
 
 /**
