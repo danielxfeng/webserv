@@ -33,6 +33,8 @@ typedef enum e_chunked_status
  * ## Chunked transfer encoding mode
  * - Ensures chunk header and trailing CRLF are not split across blocks.
  * - chunked bodies can span multiple blocks.
+ * - readFdChunked allocates new blocks in case there may be not enough space in the block to read a complete chunk header/delimiter.
+ * - Finite state machine (FSM) handles parsing of chunked data.
  */
 class Buffer
 {
@@ -44,8 +46,8 @@ private:
     size_t write_pos_;                       // The current write position in the last block
     size_t size_;                            // The current size of the buffer.
     size_t block_size_;                      // The size of each block in the buffer.
-    size_t chunked_header_start_pos_;        // The start position of the current chunk in chunked mode.
-    size_t chunked_body_start_pos_;          // The start position of the current chunk body in chunked mode.
+    size_t remain_header_size_;              // The remain size of the incomplete chunk header left in data_.
+    size_t remain_body_size_;                // The remain size of the chunk body which is waiting for the delimiter in data_.
     size_t remain_chunk_size_;               // The remain size of the chunk in chunked mode.
     bool is_chunked_;                        // Whether the buffer is in chunked mode.
     bool is_eof_;                            // Whether the EOF has been reached in chunked mode.
