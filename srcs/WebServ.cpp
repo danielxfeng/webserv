@@ -95,7 +95,7 @@ WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
     // Create server instances based on the configuration.
     for (const auto &server_conf : config_.servers)
     {
-        servers_.push_back(Server(server_conf.second));
+        servers_.push_back(Server(epoll_, server_conf.second));
         LOG_INFO("Created server instance for:", server_conf.first);
     }
 }
@@ -110,9 +110,9 @@ void WebServ::eventLoop()
         RaiiFd serverFd = RaiiFd(epoll_, listenToPort(it->getConfig().port));
         LOG_INFO("Server listening to port:", serverFd);
         serverFd.addToEpoll();
-        fds_.push_back(std::move(serverFd));
-        server_map_[fds_.back().get()] = &(*it);
-        LOG_INFO("Mapped listening fd to server instance:", fds_.back().get());
+        fds_.push_back(std::make_shared<RaiiFd>(std::move(serverFd)));
+        server_map_[fds_.back()->get()] = &(*it);
+        LOG_INFO("Mapped listening fd to server instance:", fds_.back()->get());
     }
 
     while (!stopFlag)
@@ -138,10 +138,10 @@ void WebServ::eventLoop()
                     continue;
                 }
 
-                fds_.push_back(RaiiFd(epoll_, connClientFd));
-                fds_.back().addToEpoll();
-                conn_map_[fds_.back().get()] = server->second;
-                LOG_INFO("Mapped connection fd to server instance:", fds_.back().get());
+                fds_.push_back(std::make_shared<RaiiFd>(epoll_, connClientFd));
+                fds_.back()->addToEpoll();
+                conn_map_[fds_.back()->get()] = server->second;
+                LOG_INFO("Mapped connection fd to server instance:", fds_.back()->get());
             }
             else
             {
@@ -154,17 +154,17 @@ void WebServ::eventLoop()
 
                 if (events[i].events & EPOLLIN)
                 {
-                    auto msg = connServer->second->handleDataIn(connServer->first);
+                    auto msg = connServer->second->scheduler(connServer->first, READ_EVENT);
                     handleServerMsg(msg, connServer->second);
                 }
                 if (events[i].events & EPOLLOUT)
                 {
-                    auto msg = connServer->second->handleDataOut(connServer->first);
+                    auto msg = connServer->second->scheduler(connServer->first, WRITE_EVENT);
                     handleServerMsg(msg, connServer->second);
                 }
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
-                    auto msg = connServer->second->handleDataEnd(connServer->first);
+                    auto msg = connServer->second->scheduler(connServer->first, ERROR_EVENT);
                     handleServerMsg(msg, connServer->second);
                 }
             }
@@ -179,10 +179,10 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, Server *server)
 {
     for (const auto &fd : msg.fds_to_register)
     {
-        fds_.push_back(std::move(fd));
-        fds_.back().addToEpoll();
-        conn_map_[fds_.back().get()] = server;
-        LOG_INFO("Registered fd to epoll:", fds_.back().get());
+        fds_.push_back(fd);
+        fds_.back()->addToEpoll();
+        conn_map_[fds_.back()->get()] = server;
+        LOG_INFO("Registered fd to epoll:", fds_.back()->get());
     }
     for (const auto &fd : msg.fds_to_unregister)
     {

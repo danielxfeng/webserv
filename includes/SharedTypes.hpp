@@ -108,21 +108,22 @@ typedef enum e_status
  */
 typedef struct s_conn
 {
-    int socket_fd;
-    int inner_fd_in;
-    int inner_fd_out;
-    t_status status;
-    t_status_error_codes error_code;
-    time_t start_timestamp;
-    time_t last_heartbeat;
-    size_t content_length;
-    size_t bytes_received;
-    size_t output_length;
-    size_t bytes_sent;
-    std::unique_ptr<Buffer> read_buf;
-    std::unique_ptr<Buffer> write_buf;
-    std::shared_ptr<HttpRequests> request;
-    std::shared_ptr<HttpResponse> response;
+    int socket_fd;                          // Client socket file descriptor
+    int inner_fd_in;                        // Internal file descriptor for reading request body
+    int inner_fd_out;                       // Internal file descriptor for writing response body
+    t_status status;                        // Current status of the connection
+    t_status_error_codes error_code;        // Error code if any error occurs
+    time_t start_timestamp;                 // Timestamp when the connection was established
+    time_t last_heartbeat;                  // Timestamp of the last heartbeat received
+    size_t content_length;                  // Expected content length of the request body
+    size_t bytes_received;                  // Read from socket
+    size_t output_length;                   // Expected output length of the response body
+    size_t bytes_sent;                      // Sent to socket
+    t_file res;                             // File/resource associated with the response
+    std::unique_ptr<Buffer> read_buf;       // Buffer for reading data
+    std::unique_ptr<Buffer> write_buf;      // Buffer for writing data
+    std::shared_ptr<HttpRequests> request;  // Parsed HTTP request
+    std::shared_ptr<HttpResponse> response; // HTTP response generator
 } t_conn;
 
 void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
@@ -137,6 +138,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->bytes_received = 0;
     conn->output_length = max_request_size;
     conn->bytes_sent = 0;
+    conn->res = t_file{nullptr, 0, 0, false, ""};
     conn->read_buf = std::make_unique<Buffer>();
     conn->write_buf = std::make_unique<Buffer>();
     conn->request = std::make_shared<HttpRequests>();
@@ -159,7 +161,7 @@ t_conn make_conn(int socket_fd, size_t max_request_size)
  */
 typedef struct s_msg_from_serv
 {
-    std::vector<RaiiFd> fds_to_register;
+    std::vector<std::shared_ptr<RaiiFd>> fds_to_register;
     std::vector<int> fds_to_unregister;
 } t_msg_from_serv;
 

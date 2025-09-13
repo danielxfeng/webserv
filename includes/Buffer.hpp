@@ -96,6 +96,16 @@ public:
     bool isEmpty() const;
 
     /**
+     * @brief Checks if the buffer is eof.
+     */
+    bool isEOF() const;
+
+    /**
+     * @brief Returns the current size of the buffer.
+     */
+    size_t size() const;
+
+    /**
      * @brief Returns the first string in the buffer without removing it.
      */
     const std::string_view peek() const;

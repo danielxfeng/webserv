@@ -185,7 +185,10 @@ ssize_t Buffer::readFdChunked(int fd)
         return BUFFER_ERROR;
 
     if (read_bytes == 0)
+    {
+        is_eof_ = true;
         return EOF_REACHED;
+    }
 
     // Parse read data, + any unprocessed partial header/body.
     size_t prefix_offset = remain_body_size_ + remain_header_size_;
@@ -242,7 +245,10 @@ ssize_t Buffer::readFd(int fd)
         return BUFFER_ERROR;
 
     if (read_bytes == 0)
+    {
+        is_eof_ = true;
         return EOF_REACHED;
+    }
 
     // Update buffer state
     write_pos_ += read_bytes;
@@ -269,7 +275,10 @@ ssize_t Buffer::writeFd(int fd)
     if (write_bytes < 0)
         return BUFFER_ERROR;
     if (write_bytes == 0)
+    {
+        is_eof_ = true;
         return EOF_REACHED;
+    }
 
     if (write_bytes < block.size())
         block.remove_prefix(write_bytes);
@@ -301,6 +310,16 @@ bool Buffer::isFull() const
 bool Buffer::isEmpty() const
 {
     return size_ == 0;
+}
+
+bool Buffer::isEOF() const
+{
+    return is_eof_;
+}
+
+size_t Buffer::size() const
+{
+    return size_;
 }
 
 const std::string_view Buffer::peek() const
