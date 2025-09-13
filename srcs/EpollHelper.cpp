@@ -1,0 +1,57 @@
+#include "../includes/EpollHelper.hpp"
+
+EpollHelper::EpollHelper()
+{
+    epollFd_ = epoll_create(1);
+    if (epollFd_ == -1)
+        throw WebServErr::SysCallErrException("epoll_create failed");
+}
+
+EpollHelper::~EpollHelper() { cleanup(); }
+
+void EpollHelper::cleanup()
+{
+    if (epollFd_ < 0)
+        return;
+    close(epollFd_);
+    epollFd_ = -1;
+}
+
+int EpollHelper::getEpollFd() const { return epollFd_; }
+
+void EpollHelper::addFd(int fd)
+{
+    if (fd < 0)
+    {
+        LOG_ERROR("Trying to add an invalid fd to epoll", "");
+        return;
+    }
+
+    struct epoll_event event{};
+    event.events = FLAGS;
+    event.data.fd = fd;
+
+    if (epoll_ctl(epollFd_, EPOLL_CTL_MOD, fd, &event) == -1)
+    {
+        if (errno == ENOENT)
+        {
+            if (epoll_ctl(epollFd_, EPOLL_CTL_ADD, fd, &event) == -1)
+                throw WebServErr::SysCallErrException("epoll_ctl ADD failed");
+        }
+        else
+            throw WebServErr::SysCallErrException("epoll_ctl MOD failed");
+    }
+    LOG_INFO("Added fd to epoll: ", fd);
+}
+
+void EpollHelper::removeFd(int fd)
+{
+    if (fd < 0)
+    {
+        LOG_ERROR("Trying to remove an invalid fd from epoll", "");
+        return;
+    }
+    if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr) == -1 && errno != ENOENT)
+        throw WebServErr::SysCallErrException("epoll_ctl failed");
+    LOG_INFO("Connection closed to: ", fd);
+}

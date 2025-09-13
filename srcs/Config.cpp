@@ -19,6 +19,7 @@ void Config::fromJson(const std::string &json_string)
     global_config_.global_request_timeout = TinyJson::as<unsigned int>(json_obj.at("global_request_timeout"), GLOBAL_REQUEST_TIMEOUT);
     global_config_.max_request_size = TinyJson::as<unsigned int>(json_obj.at("max_request_size"), MAX_REQUEST_SIZE);
     global_config_.max_headers_size = TinyJson::as<unsigned int>(json_obj.at("max_headers_size"), MAX_HEADERS_SIZE);
+    global_config_.max_heartbeat_timeout = TinyJson::as<unsigned int>(json_obj.at("max_heartbeat_timeout"), GLOBAL_HEARTBEAT_TIMEOUT);
 
     const JsonArray &server_array = std::get<JsonArray>(json_obj.at("servers"));
     for (const JsonValue &server_value : server_array)
@@ -30,6 +31,9 @@ void Config::fromJson(const std::string &json_string)
 
         const unsigned int max_request_timeout = server_obj.contains("max_request_timeout") ? TinyJson::as<unsigned int>(server_obj.at("max_request_timeout")) : global_config_.global_request_timeout;
         server_config.max_request_timeout = std::min(max_request_timeout, global_config_.global_request_timeout);
+
+        const unsigned int max_heartbeat_timeout = server_obj.contains("max_heartbeat_timeout") ? TinyJson::as<unsigned int>(server_obj.at("max_heartbeat_timeout")) : global_config_.max_heartbeat_timeout;
+        server_config.max_heartbeat_timeout = std::min(max_heartbeat_timeout, global_config_.max_heartbeat_timeout);
 
         const unsigned int max_request_size = server_obj.contains("max_request_size") ? TinyJson::as<unsigned int>(server_obj.at("max_request_size")) : global_config_.max_request_size;
         server_config.max_request_size = std::min(max_request_size, global_config_.max_request_size);

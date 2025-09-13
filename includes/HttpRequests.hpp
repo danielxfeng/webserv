@@ -59,4 +59,5 @@ public:
 	std::string getHttpRequestMethod();
 	std::vector<std::string> stov(std::string &string, char c);
 	bool is_digit_str(std::string &str);
+	bool isChunked();
 };

@@ -81,7 +81,12 @@ public:
     ssize_t readFd(int fd);
 
     /**
-     * @brief Writes data from the buffer to the file descriptor(a file/socket/pipe).
+     * @brief Writes data from the buffer to the socket descriptor(a socket/pipe).
+     */
+    ssize_t writeSocket(int fd);
+
+    /**
+     * @brief Writes data from the buffer to the file descriptor(a file).
      */
     ssize_t writeFd(int fd);
 
@@ -94,6 +99,16 @@ public:
      * @brief Checks if the buffer is empty.
      */
     bool isEmpty() const;
+
+    /**
+     * @brief Checks if the buffer is eof.
+     */
+    bool isEOF() const;
+
+    /**
+     * @brief Returns the current size of the buffer.
+     */
+    size_t size() const;
 
     /**
      * @brief Returns the first string in the buffer without removing it.

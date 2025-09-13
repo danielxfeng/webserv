@@ -1,33 +1,18 @@
 #include "../includes/MethodHandler.hpp"
 
-MethodHandler::MethodHandler()
-	: requested_({-1, 0, 0, false, nullptr})
+MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 {
+	requested_.fileDescriptor = std::make_shared<RaiiFd>(epoll_helper);
+	requested_.expectedSize = 0;
+	requested_.fileSize = 0;
+	requested_.isDynamic = false;
+	requested_.dynamicPage = nullptr;
 	LOG_TRACE("Method Handler created", " Yay!");
-}
-
-MethodHandler::MethodHandler(const MethodHandler &copy)
-{
-	*this = copy;
 }
 
 MethodHandler::~MethodHandler()
 {
 	LOG_TRACE("Method Handler deconstructed", " Yay!");
-}
-
-MethodHandler &MethodHandler::operator=(const MethodHandler &copy)
-{
-	if (this != &copy)
-	{
-		requested_.fd = copy.requested_.fd;
-		requested_.expectedSize = copy.requested_.expectedSize;
-		requested_.fileSize = copy.requested_.fileSize;
-		requested_.isDynamic = copy.requested_.isDynamic;
-		requested_.dynamicPage = copy.requested_.dynamicPage;
-	}
-	LOG_TRACE("Method handler copied", " Yay!");
-	return (*this);
 }
 
 t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
@@ -56,7 +41,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 			case POST:
 			{
 				LOG_TRACE("Calling POST: ", realPath);
-				return (callPostMethod(realPath, server, requestLine, requestBody));
+				return (callPostMethod(realPath, server, requestLine, requestHeader, requestBody));
 			}
 			case DELETE:
 			{
@@ -90,42 +75,47 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 			requested_.fileSize = requested_.dynamicPage.size();
 			return (requested_);
 		}
-		requested_.fd = open("../index/index.html", O_RDONLY | O_NONBLOCK);
-		if (requested_.fd == -1)
-			throw WebServErr::SysCallErrException("Failed to open file with permission");
+		requested_.fileDescriptor->setFd(open("../index/index.html", O_RDONLY | O_NONBLOCK));
 		requested_.fileSize = static_cast<int>(std::filesystem::file_size(index_path));
 		return (requested_);
 	}
 	checkIfRegFile(path);
 	checkIfSymlink(path);
 	if (!access(path.c_str(), R_OK))
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied to file");
-	requested_.fd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-	if (requested_.fd == -1)
-		throw WebServErr::SysCallErrException("Failed to open file with permission");
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannout GET file");
+	requested_.fileDescriptor->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
-	return (requested_);
+	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestBody)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
 	(void)server;
-	(void)requestLine;
 	checkIfLocExists(path);
 	checkIfDirectory(path);
-	// TODO Check if location has permission for POST
-	auto typeCheck = requestBody.find("content-type");
+	if (!access(path.c_str(), W_OK))
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannot POST file");
+	if (requestHeader.find("multipart/form") == requestHeader.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
+	if (requestBody.find("content-type") == requestBody.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content Type");
 	setContentLength(requestBody);
 	if (typeCheck == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Type not found.");
 	checkContentType(requestBody);
-	// TODO get file name from requestBody
-	std::string filename = createFileName(path.c_str());
-	requested_.fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644);
-	if (requested_.fd == -1)
-		throw WebServErr::SysCallErrException("Failed to create file");
+	std::filesystem::path filename = createPostFilename(path, requestBody);
+	requested_.fileDescriptor->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(filename));
-	return (requested_);
+	return (std::move(requested_));
+}
+
+std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody)
+{
+	std::filesystem::path result = path;
+	if (requestBody.find("filename") == requestBody.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Filename not found");
+	result.append(createFileName(requestBody["filename"]->second));
+	return (result);
 }
 
 // Only throw if something is wrong, otherwise success is assumed
@@ -145,7 +135,7 @@ t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_
 {
 	CGIHandler cgi;
 	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody);
-	return (requested_);
+	return (std::move(requested_));
 }
 
 void MethodHandler::setContentLength(std::unordered_map<std::string, std::string> requestBody)
@@ -165,13 +155,18 @@ void MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 
 void MethodHandler::checkContentType(std::unordered_map<std::string, std::string> requestBody) const
 {
-	auto typeCheck = requestBody.find("content-type");
-	if (typeCheck->second.find("multipart/form-data"))
-	{
-		// TODO loop through parts and check MIMETYPE, if not throw bad request
-	}
-	//	else if (/*TODO chceck MIMEType of path against content type*/)
-	//		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Content Type does not match.");
+	if (requestBody.find("disposition-type") == requestBody.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Disposition Type");
+	if (requestBody["disposition-type"]->second != "form-data")
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Wrong Disposition Type");
+	if (requestBody.find("name") == requestBody.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Name Key");
+	if (requestBody["name"]->second == "" || requestBody["name"]->second == nullptr)
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Name Is Empty String");
+	if (requestBody.find("Content-Type") == requestBody.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Content Type");
+	if (requestBody["Content-Type"]->second != "image/png" || requestBody["Content-Type"]->second == nullptr)
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Wrong Content Type");
 }
 
 void MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_FormData> &sections)
@@ -204,16 +199,28 @@ void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Permission Denied, cannot delete selected file");
 }
 
+std::string	MethodHandler::trimPath(const std::string &path)
+{
+	std::string result = path;
+	const std::string extension = ".png";
+	if (result.size() >= extension.size() && result.compare(path.size() - extension.size(), extension.size(), extension) == 0)
+	{
+		result.erase(result.size() - extension.size());
+		LOG_TRACE("Trimmed filename: ", result);
+	}
+	return (result);
+}
+
 std::filesystem::path MethodHandler::createFileName(const std::string &path)
 {
-	// TODO trim .png
+	std::string trimmedPath = trimPath(path);
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 	time_t tt = std::chrono::system_clock::to_time_t(now);
 	tm local_tm = *localtime(&tt);
 	std::string year = std::to_string(local_tm.tm_year + 1900);
 	std::string month = std::to_string(local_tm.tm_mon + 1);
 	std::string day = std::to_string(local_tm.tm_mday);
-	std::filesystem::path filename = /*TODO directory*/ path + '_' + year + '_' + month + '_' + day + ".png";
+	std::filesystem::path filename = "/index/user_content/" + trimmedPath + '_' + year + '_' + month + '_' + day + ".png";
 	checkIfLocExists(filename);
 	return (filename);
 }
