@@ -58,7 +58,7 @@ typedef struct s_file
 typedef enum e_buff_error_code
 {
     EOF_REACHED = 0,
-    BUFFER_ERROR = -1,
+    RW_ERROR = -1,
     BUFFER_FULL = -2,
     BUFFER_EMPTY = -3,
     CHUNKED_ERR = -4
@@ -111,6 +111,7 @@ typedef struct s_conn
     int socket_fd;                          // Client socket file descriptor
     int inner_fd_in;                        // Internal file descriptor for reading request body
     int inner_fd_out;                       // Internal file descriptor for writing response body
+    bool is_cgi;                            // Is this connection handling a CGI request?
     t_status status;                        // Current status of the connection
     t_status_error_codes error_code;        // Error code if any error occurs
     time_t start_timestamp;                 // Timestamp when the connection was established
@@ -131,6 +132,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->socket_fd = socket_fd;
     conn->inner_fd_in = -1;
     conn->inner_fd_out = -1;
+    conn->is_cgi = false;
     conn->status = REQ_HEADER_PARSING;
     conn->start_timestamp = time(NULL);
     conn->last_heartbeat = conn->start_timestamp;

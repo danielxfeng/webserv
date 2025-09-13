@@ -81,7 +81,12 @@ public:
     ssize_t readFd(int fd);
 
     /**
-     * @brief Writes data from the buffer to the file descriptor(a file/socket/pipe).
+     * @brief Writes data from the buffer to the socket descriptor(a socket/pipe).
+     */
+    ssize_t writeSocket(int fd);
+
+    /**
+     * @brief Writes data from the buffer to the file descriptor(a file).
      */
     ssize_t writeFd(int fd);
 

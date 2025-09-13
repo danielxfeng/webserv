@@ -25,6 +25,7 @@ private:
     std::list<t_conn> conns_;
     std::vector<std::string> cookies_;
     std::unordered_map<int, t_conn *> conn_map_;
+    std::unordered_map<int, std::shared_ptr<RaiiFd>> inner_fd_map_;
 
     t_msg_from_serv closeConn(t_conn *conn);
     t_msg_from_serv resetConnMap(t_conn *conn);

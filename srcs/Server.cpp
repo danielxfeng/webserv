@@ -5,7 +5,7 @@ t_msg_from_serv defaultMsg()
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
 }
 
-Server::Server(EpollHelper &epoll, const t_server_config &config) : epoll_(epoll), config_(config) {}
+Server::Server(EpollHelper &epoll, const t_server_config &config) : epoll_(epoll), config_(config), conns_(), conn_map_(), cookies_(), inner_fd_map_() {}
 
 const t_server_config &Server::getConfig() const { return config_; }
 
@@ -29,14 +29,20 @@ t_msg_from_serv Server::resetConnMap(t_conn *conn)
     if (conn->inner_fd_in != -1)
     {
         conn_map_.erase(conn->inner_fd_in);
-        msg.fds_to_unregister.push_back(conn->inner_fd_in);
+        if (conn->is_cgi)
+            msg.fds_to_unregister.push_back(conn->inner_fd_in);
+        else
+            inner_fd_map_.erase(conn->inner_fd_in);
         conn->inner_fd_in = -1;
     }
 
     if (conn->inner_fd_out != -1)
     {
         conn_map_.erase(conn->inner_fd_out);
-        msg.fds_to_unregister.push_back(conn->inner_fd_out);
+        if (conn->is_cgi)
+            msg.fds_to_unregister.push_back(conn->inner_fd_out);
+        else
+            inner_fd_map_.erase(conn->inner_fd_out);
         conn->inner_fd_out = -1;
     }
 
@@ -103,8 +109,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 
     const ssize_t bytes_read = conn->read_buf->readFd(fd);
 
-    // Handle read errors and special conditions
-    if (bytes_read == BUFFER_ERROR)
+    if (bytes_read == RW_ERROR)
     {
         LOG_ERROR("Error reading from socket for fd: ", fd);
         conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
@@ -204,18 +209,28 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     {
         conn->res = MethodHandler(epoll_).handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap());
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
+        conn->is_cgi = (method == CGI);
         switch (method)
         {
         case GET:
+            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
+            conn->inner_fd_out = conn->res.fileDescriptor.get()->get();
+            return resheaderProcessingHandler(conn);
         case DELETE:
             return resheaderProcessingHandler(conn);
         case POST:
+        {
+            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
+            conn->inner_fd_in = conn->res.fileDescriptor.get()->get();
+            conn->status = REQ_BODY_PROCESSING;
+            LOG_INFO("Switching to processing state for fd: ", fd);
+            return defaultMsg();
+        }
         case CGI:
         {
             t_msg_from_serv msg = {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
             conn->inner_fd_in = conn->res.fileDescriptor.get()->get();
             msg.fds_to_register.push_back(std::move(conn->res.fileDescriptor));
-
             conn_map_.emplace(conn->inner_fd_in, conn);
             LOG_INFO("Switching to processing state for fd: ", fd);
             conn->status = REQ_BODY_PROCESSING;
@@ -247,7 +262,7 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
     const ssize_t bytes_read = conn->read_buf->readFd(fd);
 
     // Handle read errors and special conditions
-    if (bytes_read == BUFFER_ERROR)
+    if (bytes_read == RW_ERROR)
     {
         LOG_ERROR("Error reading from socket for fd: ", fd);
         conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
@@ -268,13 +283,30 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
 
     conn->bytes_received += bytes_read;
 
+    if (!conn->is_cgi)
+    {
+        ssize_t written_bytes = conn->read_buf->writeFd(conn->inner_fd_in);
+        if (written_bytes == RW_ERROR)
+        {
+            LOG_ERROR("Error writing to internal fd for fd: ", fd);
+            conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
+            return resheaderProcessingHandler(conn);
+        }
+        LOG_INFO("Data written to internal fd for fd: ", fd, " bytes: ", written_bytes);
+        conn->bytes_sent += written_bytes;
+    }
+
     const bool is_content_length_reached = conn->bytes_received == conn->content_length;
     const bool is_chunked_eof_reached = conn->request->isChunked() && conn->read_buf->isEOF();
 
     if (is_content_length_reached)
     {
         LOG_INFO("Request body fully received for fd: ", fd);
-        return defaultMsg(); // Wait for the main loop to notify when inner fd is ready.
+        if (conn->is_cgi)
+            return defaultMsg(); // Wait for the main loop to notify when inner fd is ready.
+        inner_fd_map_.erase(conn->inner_fd_in);
+        conn->inner_fd_in = -1;
+        return resheaderProcessingHandler(conn);
     }
 
     if (is_chunked_eof_reached)
@@ -299,7 +331,7 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
 t_msg_from_serv Server::reqBodyProcessingOutHandler(int fd, t_conn *conn)
 {
     // Should be the inner fd for writing request body to the file
-    if (fd != conn->inner_fd_in)
+    if (fd != conn->inner_fd_in || !conn->is_cgi)
     {
         LOG_ERROR("Inner fd mismatch for fd: ", fd);
         throw WebServErr::ShouldNotBeHereException("Inner fd mismatch");
@@ -315,12 +347,12 @@ t_msg_from_serv Server::reqBodyProcessingOutHandler(int fd, t_conn *conn)
         return defaultMsg();
     }
 
-    ssize_t bytes_write = conn->read_buf->writeFd(fd);
+    ssize_t bytes_write = conn->read_buf->writeSocket(fd);
 
     LOG_INFO("Data written to internal fd for fd: ", fd, " bytes: ", bytes_write);
 
     // Handle write errors and special conditions
-    if (bytes_write == BUFFER_ERROR || bytes_write == EOF_REACHED)
+    if (bytes_write == RW_ERROR || bytes_write == EOF_REACHED)
     {
         LOG_ERROR("Error writing to internal fd: ", fd);
         conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
@@ -359,10 +391,10 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 
     conn->bytes_sent = 0;
 
-    t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
-
-    if (method != CGI)
+    if (!conn->is_cgi)
         conn->write_buf->insertHeader(header);
+
+    t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
 
     switch (method)
     {
@@ -379,28 +411,18 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         break;
     }
 
-    // Unregister and close the inner fd for reading request body if exists
-    t_msg_from_serv msg = {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
-    if (method != CGI && conn->inner_fd_in != -1) // For CGI, we use same fd for in and out
+    // Register the inner fd for writing response body if CGI method
+    if (method == CGI)
     {
-        conn_map_.erase(conn->inner_fd_in);
-        msg.fds_to_unregister.push_back(conn->inner_fd_in);
-        conn->inner_fd_in = -1;
+        conn->inner_fd_out = conn->inner_fd_in;
     }
 
-    // Register the inner fd for writing response body if GET method
-    if (method == GET)
-    {
-        conn->inner_fd_out = conn->res.fileDescriptor.get()->get();
-        msg.fds_to_register.push_back(std::move(conn->res.fileDescriptor));
-        conn_map_.emplace(conn->inner_fd_out, conn);
-    }
-    return msg;
+    return defaultMsg();
 }
 
 t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
 {
-    if (fd != conn->inner_fd_out)
+    if (fd != conn->inner_fd_out || !conn->is_cgi)
     {
         LOG_ERROR("Inner fd mismatch for fd: ", fd);
         throw WebServErr::ShouldNotBeHereException("Inner fd mismatch");
@@ -417,7 +439,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
 
     LOG_INFO("Data read from internal fd for fd: ", fd, " bytes: ", bytes_read);
 
-    if (bytes_read == BUFFER_ERROR)
+    if (bytes_read == RW_ERROR)
     {
         LOG_ERROR("Error reading from internal fd for fd: ", fd);
         return terminatedHandler(fd, conn);
@@ -440,8 +462,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
         return defaultMsg();
     }
 
-    t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
-    if (conn->status == RES_HEADER_PROCESSING && method == CGI)
+    if (conn->status == RES_HEADER_PROCESSING)
     {
         // TODO: Implement CGI response header parsing
         conn->status = RESPONSE;
@@ -468,6 +489,16 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 
     conn->last_heartbeat = time(NULL);
 
+    if (!conn->is_cgi)
+    {
+        ssize_t read_bytes = conn->write_buf->readFd(conn->inner_fd_out);
+        if (read_bytes == RW_ERROR)
+        {
+            LOG_ERROR("Error reading from internal fd for fd: ", fd);
+            return terminatedHandler(fd, conn);
+        }
+    }
+
     // Skip when buffer is empty
     if (conn->write_buf->isEmpty())
     {
@@ -475,8 +506,8 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
     }
 
     // Write data to socket
-    ssize_t bytes_written = conn->write_buf->writeFd(fd);
-    if (bytes_written == BUFFER_ERROR || bytes_written == EOF_REACHED)
+    ssize_t bytes_written = conn->write_buf->writeSocket(fd);
+    if (bytes_written == RW_ERROR || bytes_written == EOF_REACHED)
     {
         LOG_ERROR("Error writing to socket for fd: ", fd);
         return terminatedHandler(fd, conn);
@@ -491,6 +522,11 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
         // If done, buffer should be empty
         if (conn->write_buf->isEmpty())
         {
+            if (!conn->is_cgi && conn->inner_fd_out != -1)
+            {
+                inner_fd_map_.erase(conn->inner_fd_out);
+                conn->inner_fd_out = -1;
+            }
             return doneHandler(fd, conn);
         }
         else

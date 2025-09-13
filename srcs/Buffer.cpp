@@ -182,7 +182,7 @@ ssize_t Buffer::readFdChunked(int fd)
     ssize_t read_bytes = read(fd, &(buf.data()[write_pos_]), read_size);
 
     if (read_bytes < 0)
-        return BUFFER_ERROR;
+        return RW_ERROR;
 
     if (read_bytes == 0)
     {
@@ -242,7 +242,7 @@ ssize_t Buffer::readFd(int fd)
     ssize_t read_bytes = read(fd, &(buf.data()[write_pos_]), read_size);
 
     if (read_bytes < 0)
-        return BUFFER_ERROR;
+        return RW_ERROR;
 
     if (read_bytes == 0)
     {
@@ -265,7 +265,7 @@ ssize_t Buffer::readFd(int fd)
     return read_bytes;
 }
 
-ssize_t Buffer::writeFd(int fd)
+ssize_t Buffer::writeSocket(int fd)
 {
     if (isEmpty())
         return BUFFER_EMPTY;
@@ -273,7 +273,7 @@ ssize_t Buffer::writeFd(int fd)
     auto &block = data_view_.front();
     ssize_t write_bytes = write(fd, block.data(), block.size());
     if (write_bytes < 0)
-        return BUFFER_ERROR;
+        return RW_ERROR;
     if (write_bytes == 0)
     {
         is_eof_ = true;
@@ -299,6 +299,43 @@ ssize_t Buffer::writeFd(int fd)
         throw WebServErr::ShouldNotBeHereException("Buffer::writeFd: size underflow");
 
     size_ -= write_bytes;
+    return write_bytes;
+}
+
+ssize_t Buffer::writeFd(int fd)
+{
+    if (isEmpty())
+        return BUFFER_EMPTY;
+
+    ssize_t write_bytes = 0;
+
+    if (data_view_.size() > 1)
+    {
+        std::string block;
+        block.reserve(size_);
+        while (!data_view_.empty())
+        {
+            block.append(data_view_.front());
+            data_view_.pop_front();
+        }
+
+        write_bytes = write(fd, block.data(), block.size());
+        if (write_bytes < 0 || write_bytes != static_cast<ssize_t>(block.size()))
+            write_bytes = RW_ERROR;
+    }
+    else
+    {
+        write_bytes = write(fd, data_view_.front().data(), data_view_.front().size());
+        if (write_bytes < 0 || write_bytes != static_cast<ssize_t>(data_view_.front().size()))
+            write_bytes = RW_ERROR;
+        data_view_.clear();
+    }
+
+    data_.clear();
+    ref_.clear();
+    size_ = 0;
+    write_pos_ = 0;
+
     return write_bytes;
 }
 
