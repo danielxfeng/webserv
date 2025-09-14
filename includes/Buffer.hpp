@@ -81,7 +81,7 @@ private:
     ssize_t readFdChunked(int fd);
 
 public:
-    Buffer() = delete;
+    Buffer();
     Buffer(const Buffer &) = default;
     Buffer &operator=(const Buffer &) = default;
     ~Buffer() = default;

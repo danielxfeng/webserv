@@ -443,3 +443,5 @@ bool Buffer::insertHeader(const std::string str)
     size_ += str.size();
     return true;
 }
+
+Buffer::Buffer() : data_(), ref_(), data_view_(), capacity_(8192), write_pos_(0), size_(0), block_size_(4096), remain_header_size_(0), remain_body_size_(0), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}

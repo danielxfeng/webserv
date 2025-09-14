@@ -1,15 +1,5 @@
 #include "../includes/Server.hpp"
 
-/**
- * @brief Helper function to create and initialize a t_conn structure.
- */
-t_conn make_conn(int socket_fd, size_t max_request_size)
-{
-    t_conn conn;
-    resetConn(&conn, socket_fd, max_request_size);
-    return conn;
-}
-
 void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
 {
     conn->socket_fd = socket_fd;
@@ -31,12 +21,22 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->error_code = ERR_NO_ERROR;
 }
 
+/**
+ * @brief Helper function to create and initialize a t_conn structure.
+ */
+t_conn make_conn(int socket_fd, size_t max_request_size)
+{
+    t_conn conn;
+    resetConn(&conn, socket_fd, max_request_size);
+    return conn;
+}
+
 t_msg_from_serv defaultMsg()
 {
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
 }
 
-Server::Server(EpollHelper &epoll, const t_server_config &config) : epoll_(epoll), config_(config), conns_(), conn_map_(), cookies_(), inner_fd_map_() {}
+Server::Server(EpollHelper &epoll, const t_server_config &config) : epoll_(epoll), config_(config), conns_(), cookies_(), conn_map_(), inner_fd_map_() {}
 
 const t_server_config &Server::getConfig() const { return config_; }
 
@@ -279,7 +279,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     conn->status = REQ_HEADER_PROCESSING;
     try
     {
-        conn->res = MethodHandler(epoll_).handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap());
+        conn->res = MethodHandler(epoll_).handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap(), epoll_);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         conn->is_cgi = (method == CGI);
         switch (method)
@@ -512,6 +512,8 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         conn->status = RES_HEADER_PROCESSING;
         conn->output_length = config_.max_request_size; // Unknown length, send until EOF
         break;
+    default:
+        throw WebServErr::ShouldNotBeHereException("Unhandled method in response header processing");
     }
 
     // Register the inner fd for writing response body if CGI method
@@ -707,13 +709,14 @@ t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
  */
 t_msg_from_serv Server::terminatedHandler(int fd, t_conn *conn)
 {
+    (void)fd; // Unused parameter
     conn->status = TERMINATED;
 
-    int fd = conn->socket_fd;
-    LOG_INFO("Connection terminated: ", conn->socket_fd);
+    int sock_fd = conn->socket_fd;
+    LOG_INFO("Connection terminated: ", sock_fd);
     t_msg_from_serv msg = closeConn(conn);
-    conns_.remove_if([fd](const t_conn &c)
-                     { return c.socket_fd == fd; });
+    conns_.remove_if([sock_fd](const t_conn &c)
+                     { return c.socket_fd == sock_fd; });
     return msg;
 }
 
