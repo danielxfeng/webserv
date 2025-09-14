@@ -55,3 +55,49 @@ T TinyJson::as(const JsonValue &jsonValue, T defaultValue)
         return defaultValue;
     }
 }
+
+template <>
+inline JsonArray TinyJson::as<JsonArray>(const JsonValue &jsonValue)
+{
+    if (auto ptr = std::get_if<JsonArray>(&jsonValue))
+    {
+        return *ptr;
+    }
+    throw std::bad_variant_access();
+}
+
+template <>
+inline JsonObject TinyJson::as<JsonObject>(const JsonValue &jsonValue)
+{
+    if (auto ptr = std::get_if<JsonObject>(&jsonValue))
+    {
+        return *ptr;
+    }
+    throw std::bad_variant_access();
+}
+
+template <>
+inline JsonArray TinyJson::as<JsonArray>(const JsonValue &jsonValue, JsonArray defaultValue)
+{
+    try
+    {
+        return TinyJson::as<JsonArray>(jsonValue);
+    }
+    catch (...)
+    {
+        return defaultValue;
+    }
+}
+
+template <>
+inline JsonObject TinyJson::as<JsonObject>(const JsonValue &jsonValue, JsonObject defaultValue)
+{
+    try
+    {
+        return TinyJson::as<JsonObject>(jsonValue);
+    }
+    catch (...)
+    {
+        return defaultValue;
+    }
+}

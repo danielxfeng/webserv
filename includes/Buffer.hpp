@@ -18,7 +18,7 @@ typedef enum e_chunked_status
     BODY_PROCESSING,
     WAITING_DELIMITER,
     CHUNKED_EOF,
-    CHUNKED_ERR
+    CHUNKED_ERROR
 } t_chunked_status;
 
 /**

@@ -1,5 +1,36 @@
 #include "../includes/Server.hpp"
 
+/**
+ * @brief Helper function to create and initialize a t_conn structure.
+ */
+t_conn make_conn(int socket_fd, size_t max_request_size)
+{
+    t_conn conn;
+    resetConn(&conn, socket_fd, max_request_size);
+    return conn;
+}
+
+void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
+{
+    conn->socket_fd = socket_fd;
+    conn->inner_fd_in = -1;
+    conn->inner_fd_out = -1;
+    conn->is_cgi = false;
+    conn->status = REQ_HEADER_PARSING;
+    conn->start_timestamp = time(NULL);
+    conn->last_heartbeat = conn->start_timestamp;
+    conn->content_length = max_request_size;
+    conn->bytes_received = 0;
+    conn->output_length = max_request_size;
+    conn->bytes_sent = 0;
+    conn->res = t_file{nullptr, 0, 0, false, ""};
+    conn->read_buf = std::make_unique<Buffer>();
+    conn->write_buf = std::make_unique<Buffer>();
+    conn->request = std::make_shared<HttpRequests>();
+    conn->response = std::make_shared<HttpResponse>();
+    conn->error_code = ERR_NO_ERROR;
+}
+
 t_msg_from_serv defaultMsg()
 {
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};

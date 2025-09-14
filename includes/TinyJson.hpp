@@ -9,17 +9,18 @@
 #include <charconv>
 #include <stdexcept>
 #include <type_traits>
+#include <memory>
 
 struct JsonValue;
 
 /**
  * @brief A type alias for a JSON array, represented as a vector of JsonValue.
  */
-using JsonArray = std::vector<JsonValue>;
+using JsonArray = std::vector<std::shared_ptr<JsonValue>>;
 /**
  * @brief A type alias for a JSON object, represented as an unordered map from strings to JsonValue.
  */
-using JsonObject = std::unordered_map<std::string, JsonValue>;
+using JsonObject = std::unordered_map<std::string, std::shared_ptr<JsonValue>>;
 
 /**
  * @brief A variant type that can hold any valid JSON value.

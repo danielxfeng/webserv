@@ -188,8 +188,8 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, Server *server)
     {
         server_map_.erase(fd);
         conn_map_.erase(fd);
-        fds_.remove_if([&fd](const RaiiFd &rfd)
-                       { return rfd.get() == fd; });
+        fds_.remove_if([&fd](const std::shared_ptr<RaiiFd> &rfd)
+                       { return rfd->get() == fd; });
         LOG_INFO("Unregistered fd from epoll and removed from maps:", fd);
     }
 }
