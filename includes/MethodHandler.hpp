@@ -29,9 +29,9 @@ private:
 	t_file requested_;
 
 	t_file callGetMethod(std::filesystem::path &path, t_server_config server);
-	t_file callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestBody);
+	t_file callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 	void callDeleteMethod(std::filesystem::path &path);
-	t_file callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
+	t_file callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper);
 
 	void setContentLength(std::unordered_map<std::string, std::string> requestLine);
 	void checkContentType(std::unordered_map<std::string, std::string> requestLine) const;
@@ -40,7 +40,7 @@ private:
 	void checkIfSymlink(const std::filesystem::path &path);
 	void checkIfDirectory(const std::filesystem::path &path);
 	void checkIfLocExists(const std::filesystem::path &path);
-	std::string	MethodHandler::trimPath(const std::string &path);
+	std::string	trimPath(const std::string &path);
 	std::filesystem::path createFileName(const std::string &path);
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
 	std::filesystem::path createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody);
@@ -52,5 +52,5 @@ public:
 	~MethodHandler();
 	MethodHandler &operator=(const MethodHandler &copy) = delete;
 
-	t_file handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
+	t_file handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper);
 };
