@@ -31,10 +31,26 @@ typedef enum e_chunked_status
  * - Blocks are appended as needed, views track the readable region, reference counting ensures blocks are freed when no longer used.
  *
  * ## Chunked transfer encoding mode
- * - Ensures chunk header and trailing CRLF are not split across blocks.
- * - chunked bodies can span multiple blocks.
- * - readFdChunked allocates new blocks in case there may be not enough space in the block to read a complete chunk header/delimiter.
- * - Finite state machine (FSM) handles parsing of chunked data.
+ * It's the tricky part.
+ * For each read, we may receive several chunks, or a partial chunk.
+ * For a partial chunk, it may be a partial header, or a partial body, or a partial CRLF delimiter.
+ *
+ * It would be difficult to parse the chunked data across buffer blocks,
+ * so we use another string_view, a FSM, and some state variables to handle the chunked parsing.
+ *
+ * And we also apply 2 rules during the processing:
+ * 1. Ensure chunk header and trailing CRLF are not split across blocks.
+ * 2. Chunked bodies can span multiple blocks.
+ *
+ * ## Why we couple the chunked parsing with the buffer class?
+ * - We cannot defer parsing with an large buffer, since input may exceed available memory.
+ * - Using a temporary file introduces an extra data copy.
+ * - imo, handling chunked parsing in Buffer is efficient and nearly zero-copy,
+ *   tho brings lots of complexity, and does not follow single-responsibility, as a cost.
+ *   But I don't have better ideas now.
+ *
+ * This trade-off was chosen as the most practical balance between
+ * efficiency and correctness under our constraints.
  */
 class Buffer
 {
@@ -60,7 +76,7 @@ private:
     /**
      * @brief The finite state machine scheduler for parsing chunked data.
      */
-    ssize_t fsmSchduler(t_chunked_status status, std::string_view data);
+    ssize_t fsmScheduler(t_chunked_status status, std::string_view data);
 
     /**
      * @brief Reads data from the file descriptor into the buffer in chunked mode.
@@ -88,7 +104,7 @@ public:
     /**
      * @brief Writes data from the buffer to the file descriptor(a file).
      */
-    ssize_t writeFd(int fd);
+    ssize_t writeFile(int fd);
 
     /**
      * @brief Checks if the buffer is full.

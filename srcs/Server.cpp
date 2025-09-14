@@ -285,7 +285,7 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
 
     if (!conn->is_cgi)
     {
-        ssize_t written_bytes = conn->read_buf->writeFd(conn->inner_fd_in);
+        ssize_t written_bytes = conn->read_buf->writeFile(conn->inner_fd_in);
         if (written_bytes == RW_ERROR)
         {
             LOG_ERROR("Error writing to internal fd for fd: ", fd);
