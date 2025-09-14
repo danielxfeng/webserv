@@ -76,9 +76,9 @@ ssize_t Buffer::handleBodyProcessing(std::string_view data, ssize_t parsed, size
     ssize_t to_read = std::min(remain_chunk_size_ + CRLF, data.size());
 
     // We need to be sure CRLF is not splitted, so at least 1 byte of body stays with CRLF.
-    if (to_read >= remain_chunk_size_)
+    if (to_read >= static_cast<ssize_t>(remain_chunk_size_))
     {
-        if (to_read < remain_chunk_size_ + CRLF)
+        if (to_read < static_cast<ssize_t>(remain_chunk_size_ + CRLF))
         {
             // Not enough to keep body and full CRLF together: leave 1 byte to join with CRLF next time
             to_read = remain_chunk_size_ - 1;
@@ -300,7 +300,7 @@ ssize_t Buffer::writeSocket(int fd)
         return EOF_REACHED;
     }
 
-    if (write_bytes < block.size())
+    if (write_bytes < static_cast<ssize_t>(block.size()))
         block.remove_prefix(write_bytes);
     else
     {
