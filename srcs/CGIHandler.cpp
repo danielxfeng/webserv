@@ -1,4 +1,7 @@
 #include "../includes/CGIHandler.hpp"
+#include <cctype>
+#include <cstring>
+#include <unistd.h>
 
 CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 {
@@ -12,82 +15,72 @@ CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 }
 
 CGIHandler::~CGIHandler()
-{}
+{
+	for (char* ptr : envp)
+	{
+		delete [] ptr;
+		ptr = nullptr;
+	}
+	envp.clear();
+}
 
 void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
-	// Sets requestLine into vector of strings
-	for (auto key : requestLine)
+	auto addToENVP = [this](const std::string &key, const std::string &value)
 	{
 		std::string temp;
-		for (size_t h = 0; h < key.first.size(); h++)
+		for (char c: key) 
 		{
-			if (key.first[h] == '-')
+			if (c == '-')
 				temp.push_back('_');
 			else
-				temp.push_back(std::toupper(key.first.c_str()[h]));
+				temp.push_back(std::toupper(static_cast<unsigned char>(c)));
 		}
 		temp.push_back('=');
-		temp.append(key.second);
-		envp.emplace_back(temp);
-		temp.clear();
+		temp.append(value);
+		char *cstr = new char[temp.size() + 1];
+		std::strcpy(cstr, temp.c_str());
+		envp.push_back(cstr);
+	};
+	// Sets requestLine into vector of strings
+	for (const auto &key : requestLine)
+	{
+		addToENVP(key.first, key.second);
 	}
 	// Sets requestHeader into vector of strings
-	for (auto key : requestHeader)
+	for (const auto &key : requestHeader)
 	{
-		std::string temp;
-		for (size_t i = 0; i < key.first.size(); i++)
+		if (key.first == "boundary" && !key.second.empty())
 		{
-			if (key.first == "boundary" && !key.second.empty())
-			{
-				temp.append("BOUNDARY=");
-				for (size_t j = 0; j < requestHeader["boundary"].size(); j++)
-				{
-					temp += requestHeader["boundary"][j];
-					if (j + 1 != requestHeader["boundary"].size())
-						temp.push_back(';');
-				}
-			}
-			else
-			{
-				for (size_t k = 0; k < key.first.size(); k++)
-				{
-					if (key.first[k] == '-')
-						temp.push_back('_');
-					else
-						temp.push_back(std::toupper(key.first.c_str()[k]));
-				}
-				temp.push_back('=');
-				temp.append(key.second);
-			}
+			std::string boundary = "BOUNDARY=" + key.second;
+			char *cstr = new char[boundary.size() + 1];
+			std::strcpy(cstr, boundary.c_str());
+			envp.push_back(cstr);
 		}
-		envp.emplace_back(temp);
-		temp.clear();
+		else
+		{
+			addToENVP(key.first, key.second);
+		}
 	}
 	// Sets requestBody into vector of strings
-	for (auto key : requestBody)
+	for (const auto &key : requestBody)
 	{
-		std::string temp;
-		for (size_t l = 0; l < key.first.size(); l++)
-		{
-			if (key.first[l] == '-')
-				temp.push_back('_');
-			else
-				temp.push_back(std::toupper(key.first.c_str()[l]));
-		}
-		temp.push_back('=');
-		temp.append(key.second);
-		envp.emplace_back(temp);
-		temp.clear();
+		addToENVP(key.first, key.second);
 	}
+	envp.push_back(nullptr);
 }
 
-void CGIHandler::handleCGIProcess(std::filesystem::path &script, std::filesystem::path &path)
+void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path)
 {
+	char **final_envp = envp.data();
+	std::string scriptStr = script.string();
+	std::vector<char*> argv;
+	argv.push_back(const_cast<char*>(scriptStr.c_str()));
+	argv.push_back(nullptr);
 	if (dup2(fds[1], STDIN_FILENO) == -1)
 		throw WebServErr::CGIException("Dup2 Failure");
 	close(fds[0]);
-	if (execve(path.c_str(), script.c_str(), envp) == -1)
+	if (execve(path.c_str(), argv.data(), final_envp) == -1)
 		throw WebServErr::CGIException("Failed to execute CGI");
 }
 
@@ -103,7 +96,6 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 		throw WebServErr::CGIException("CGI script is a symlink");
 	if (!std::filesystem::is_regular_file(script))
 		throw WebServErr::CGIException("CGI script is not a regular file.");
-	int exit_code = 0;
 	int fds[2];
 	result.fileDescriptor->setFd(socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
 	pid_t pid = fork();
@@ -111,9 +103,6 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 		throw WebServErr::CGIException("Failed to fork");
 	if (pid == 0)
 		handleCGIProcess(script, path);
-	else
-	{
-		close(fds[1]);
-		return (std::move(result));
-	}
+	close(fds[1]);
+	return (result);
 }

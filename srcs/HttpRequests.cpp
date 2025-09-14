@@ -640,7 +640,7 @@ void HttpRequests::httpParser(const std::string_view &request)
 	// 	std::cout << pair.first << ": " << pair.second << std::endl;
 	// for (const auto &pair : requestBodyMap)
 	// 	std::cout << pair.first << ":" << pair.second << std::endl;
-	return (*this);
+	//return (*this);
 }
 
 /**

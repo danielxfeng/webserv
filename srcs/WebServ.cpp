@@ -148,7 +148,7 @@ void WebServ::eventLoop()
                 const auto connServer = conn_map_.find(events[i].data.fd);
                 if (connServer == conn_map_.end())
                 {
-                    LOG_ERROR("Connection not found", events[i].data.fd);
+                    LOG_ERROR("Connection not found", " does not exist");//TODO Double check Daniel
                     continue;
                 }
 
