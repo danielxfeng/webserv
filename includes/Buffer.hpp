@@ -48,9 +48,6 @@ typedef enum e_chunked_status
  * - imo, handling chunked parsing in Buffer is efficient and nearly zero-copy,
  *   tho brings lots of complexity, and does not follow single-responsibility, as a cost.
  *   But I don't have better ideas now.
- *
- * This trade-off was chosen as the most practical balance between
- * efficiency and correctness under our constraints.
  */
 class Buffer
 {
