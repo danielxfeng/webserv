@@ -4,6 +4,23 @@ RaiiFd::RaiiFd(EpollHelper &epoll_helper) : epoll_helper_(epoll_helper), fd_(-1)
 
 RaiiFd::RaiiFd(EpollHelper &epoll_helper, int fd) : epoll_helper_(epoll_helper), fd_(fd) {}
 
+RaiiFd::RaiiFd(RaiiFd&& other) noexcept 
+    : epoll_helper_(other.epoll_helper_), fd_(other.fd_) 
+{
+    other.fd_ = -1; // invalidate the moved-from object
+}
+
+RaiiFd& RaiiFd::operator=(RaiiFd&& other) noexcept 
+{
+    if (this != &other) {
+        cleanUp();
+        epoll_helper_ = std::move(other.epoll_helper_);
+        fd_ = other.fd_;
+        other.fd_ = -1; // invalidate
+    }
+    return *this;
+}
+
 int RaiiFd::get() const { return fd_; }
 void RaiiFd::setFd(int fd)
 {

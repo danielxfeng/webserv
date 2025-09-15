@@ -23,6 +23,10 @@ public:
     EpollHelper();
     EpollHelper(const EpollHelper &) = delete;
     EpollHelper &operator=(const EpollHelper &) = delete;
+
+    EpollHelper(EpollHelper &&) noexcept;
+    EpollHelper &operator=(EpollHelper &&) noexcept;
+
     /**
      * @brief Destructor that cleans up the epoll instance.
      */

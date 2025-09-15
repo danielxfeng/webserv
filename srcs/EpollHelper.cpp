@@ -7,6 +7,23 @@ EpollHelper::EpollHelper()
         throw WebServErr::SysCallErrException("epoll_create failed");
 }
 
+EpollHelper::EpollHelper(EpollHelper&& other) noexcept
+    : epollFd_(other.epollFd_)
+{
+    other.epollFd_ = -1;
+}
+
+EpollHelper& EpollHelper::operator=(EpollHelper&& other) noexcept
+{
+    if (this != &other)
+    {
+        cleanup();
+        epollFd_ = other.epollFd_;
+        other.epollFd_ = -1;
+    }
+    return *this;
+}
+
 EpollHelper::~EpollHelper() { cleanup(); }
 
 void EpollHelper::cleanup()

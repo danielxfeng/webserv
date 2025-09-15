@@ -13,7 +13,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->bytes_received = 0;
     conn->output_length = max_request_size;
     conn->bytes_sent = 0;
-    conn->res = t_file{nullptr, 0, 0, false, ""};
+    conn->res = t_file{nullptr, nullptr,  0, 0, false, ""};
     conn->read_buf = std::make_unique<Buffer>();
     conn->write_buf = std::make_unique<Buffer>();
     conn->request = std::make_shared<HttpRequests>();
@@ -203,7 +203,6 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 
         LOG_INFO("Header parsed successfully for fd: ", fd);
         bool ok = conn->read_buf->removeHeaderAndSetChunked(conn->request->getupToBodyCounter(), conn->request->isChunked());
-
         if (!ok)
         {
             LOG_ERROR("Failed to remove header from buffer for fd: ", fd);
@@ -213,6 +212,17 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 
         // Remove the header size from bytes_received
         conn->bytes_received -= conn->request->getupToBodyCounter(); // Adjust bytes_received after removing header
+
+        for (const auto &pair : conn->request->getrequestHeaderMap())
+        {
+            LOG_INFO("Header: ", pair.first + ": " + pair.second);
+        }
+        for (const auto &pair : conn->request->getrequestLineMap())
+        {
+            LOG_INFO("Request Line: ", pair.first + ": " + pair.second);
+        }
+        LOG_INFO("Adjusted bytes received: ", conn->bytes_received);
+        LOG_INFO("Buffer size after removing header: ", conn->read_buf->size());
 
         return reqHeaderProcessingHandler(fd, conn);
     }
@@ -279,21 +289,25 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     conn->status = REQ_HEADER_PROCESSING;
     try
     {
+        LOG_INFO("Processing request header for fd: ", fd);
         conn->res = MethodHandler(epoll_).handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap(), epoll_);
+        LOG_INFO("Resource prepared for fd: ", fd, " file size: ", conn->res.fileSize, " isDynamic: ", conn->res.isDynamic);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         conn->is_cgi = (method == CGI);
+        LOG_INFO("Method determined: ", conn->request->getrequestLineMap().at("Method"), " for fd: ", fd);
         switch (method)
         {
         case GET:
-            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
-            conn->inner_fd_out = conn->res.fileDescriptor.get()->get();
+            LOG_INFO("FILE: ", conn->res.FD_handler_OUT.get()->get());
+            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), std::move(conn->res.FD_handler_OUT));
+            conn->inner_fd_out = conn->res.FD_handler_OUT.get()->get();
             return resheaderProcessingHandler(conn);
         case DELETE:
             return resheaderProcessingHandler(conn);
         case POST:
         {
-            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
-            conn->inner_fd_in = conn->res.fileDescriptor.get()->get();
+            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), std::move(conn->res.FD_handler_OUT));
+            conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
             conn->status = REQ_BODY_PROCESSING;
             LOG_INFO("Switching to processing state for fd: ", fd);
             return defaultMsg();
@@ -301,8 +315,8 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         case CGI:
         {
             t_msg_from_serv msg = {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
-            conn->inner_fd_in = conn->res.fileDescriptor.get()->get();
-            msg.fds_to_register.push_back(std::move(conn->res.fileDescriptor));
+            conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
+            msg.fds_to_register.push_back(std::move(conn->res.FD_handler_IN));
             conn_map_.emplace(conn->inner_fd_in, conn);
             LOG_INFO("Switching to processing state for fd: ", fd);
             conn->status = REQ_BODY_PROCESSING;
@@ -613,7 +627,7 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 
     conn->last_heartbeat = time(NULL);
 
-    if (!conn->is_cgi)
+    if (!conn->is_cgi && conn->inner_fd_out != -1)
     {
         ssize_t read_bytes = conn->write_buf->readFd(conn->inner_fd_out);
         if (read_bytes == RW_ERROR)
@@ -728,7 +742,7 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
 {
     if (!conn_map_.contains(fd))
     {
-        LOG_WARN("Connection not found for fd: ", fd);
+        // LOG_WARN("Connection not found for fd: ", fd);
         return defaultMsg();
     }
 

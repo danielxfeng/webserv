@@ -141,6 +141,7 @@ void WebServ::eventLoop()
                 fds_.push_back(std::make_shared<RaiiFd>(epoll_, connClientFd));
                 fds_.back()->addToEpoll();
                 conn_map_[fds_.back()->get()] = server->second;
+                server->second->addConn(fds_.back()->get());
                 LOG_INFO("Mapped connection fd to server instance:", fds_.back()->get());
             }
             else
@@ -165,6 +166,7 @@ void WebServ::eventLoop()
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
                     auto msg = connServer->second->scheduler(connServer->first, ERROR_EVENT);
+                    LOG_INFO("Error/Hangup event triggered for connection:", connServer->first);
                     handleServerMsg(msg, connServer->second);
                 }
             }

@@ -468,6 +468,7 @@ void HttpRequests::tillBodyCounter(size_t requestLength,
 		}
 		upToBodyCounter++;
 	}
+	upToBodyCounter += 4;
 	if (!found)
 		throw WebServErr::BadRequestException("Invalid request header");
 }
@@ -628,7 +629,7 @@ void HttpRequests::httpParser(const std::string_view &request)
 	validateRequestLine();
 	extractRequestHeader(i, requestLength, request);
 	validateRequestHeader();
-	if (requestHeaderMap["Method"] == "POST" || requestHeaderMap["Method"] == "DELETE")
+	if (requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
 	{
 		extractRequestBody(i, requestLength, request);
 		validateRequestBody();
@@ -640,7 +641,7 @@ void HttpRequests::httpParser(const std::string_view &request)
 	// 	std::cout << pair.first << ": " << pair.second << std::endl;
 	// for (const auto &pair : requestBodyMap)
 	// 	std::cout << pair.first << ":" << pair.second << std::endl;
-	//return (*this);
+	// return (*this);
 }
 
 /**
@@ -683,7 +684,7 @@ std::string HttpRequests::getHttpRequestMethod()
 	return (requestLineMap["Method"]);
 }
 
-
-bool HttpRequests::isChunked(){
+bool HttpRequests::isChunked()
+{
 	return (is_chunked);
 }

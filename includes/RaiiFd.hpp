@@ -29,8 +29,8 @@ private:
 public:
     RaiiFd() = delete;
     RaiiFd(const RaiiFd &o) = delete;
-    RaiiFd(RaiiFd &&o) noexcept = default;
-    RaiiFd &operator=(RaiiFd &&) noexcept = default;
+    RaiiFd(RaiiFd &&o) noexcept;
+    RaiiFd &operator=(RaiiFd &&o) noexcept;
     RaiiFd &operator=(const RaiiFd &o) = delete;
 
     /**
