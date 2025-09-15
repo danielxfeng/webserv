@@ -298,6 +298,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         switch (method)
         {
         case GET:
+            LOG_INFO("FILE: ", conn->res.fileDescriptor.get()->get());
             inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
             conn->inner_fd_out = conn->res.fileDescriptor.get()->get();
             return resheaderProcessingHandler(conn);
@@ -626,7 +627,7 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 
     conn->last_heartbeat = time(NULL);
 
-    if (!conn->is_cgi)
+    if (!conn->is_cgi && conn->inner_fd_out != -1)
     {
         ssize_t read_bytes = conn->write_buf->readFd(conn->inner_fd_out);
         if (read_bytes == RW_ERROR)
@@ -741,7 +742,7 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
 {
     if (!conn_map_.contains(fd))
     {
-        //LOG_WARN("Connection not found for fd: ", fd);
+        // LOG_WARN("Connection not found for fd: ", fd);
         return defaultMsg();
     }
 
