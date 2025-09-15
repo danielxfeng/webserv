@@ -5,11 +5,11 @@
 
 CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 {
-	result.fileDescriptor = std::make_shared<RaiiFd>(epoll_helper);
+	result.FD_handler_IN = std::make_shared<RaiiFd>(epoll_helper);
+	result.FD_handler_OUT = std::make_shared<RaiiFd>(epoll_helper);
 	result.expectedSize = 0;
 	result.fileSize = 0;
 	result.isDynamic = false;
-	result.dynamicPage = nullptr;
 	fds[0] = -1;
 	fds[1] = -1;
 }
@@ -96,8 +96,9 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 		throw WebServErr::CGIException("CGI script is a symlink");
 	if (!std::filesystem::is_regular_file(script))
 		throw WebServErr::CGIException("CGI script is not a regular file.");
+	//TODO Pipes
 	int fds[2];
-	result.fileDescriptor->setFd(socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+	result.fileDescriptor->setFd(socketpair(AF_UNIX, SOCK_STREAM, 0, fds));//TODO change
 	pid_t pid = fork();
 	if (pid == -1)
 		throw WebServErr::CGIException("Failed to fork");

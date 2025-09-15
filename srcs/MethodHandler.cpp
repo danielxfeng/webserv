@@ -2,11 +2,11 @@
 
 MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 {
-	requested_.fileDescriptor = std::make_shared<RaiiFd>(epoll_helper);
+	requested_.FD_handler_IN = std::make_shared<RaiiFd>(epoll_helper);
+	requested_.FD_handler_OUT = std::make_shared<RaiiFd>(epoll_helper);
 	requested_.expectedSize = 0;
 	requested_.fileSize = 0;
 	requested_.isDynamic = false;
-	//requested_.dynamicPage = nullptr;
 	LOG_TRACE("Method Handler created", " Yay!");
 }
 
@@ -80,7 +80,7 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 			requested_.fileSize = requested_.dynamicPage.size();
 			return (requested_);
 		}
-		requested_.fileDescriptor->setFd(open("../index/index.html", O_RDONLY | O_NONBLOCK));
+		requested_.FD_handler_OUT->setFd(open("../index/index.html", O_RDONLY | O_NONBLOCK));
 		requested_.fileSize = static_cast<int>(std::filesystem::file_size(index_path));
 		return (requested_);
 	}
@@ -88,7 +88,7 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 	checkIfSymlink(path);
 	if (!access(path.c_str(), R_OK))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannout GET file");
-	requested_.fileDescriptor->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
+	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
 	return (std::move(requested_));
 }
@@ -108,7 +108,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	setContentLength(requestBody);
 	checkContentType(requestBody);
 	std::filesystem::path filename = createPostFilename(path, requestBody);
-	requested_.fileDescriptor->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
+	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(filename));
 	return (std::move(requested_));
 }
