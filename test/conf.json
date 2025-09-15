@@ -15,8 +15,8 @@
         "max_headers_size": 99999999,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET", "POST"], "root": "/var/www/app", "index": "index.html" },
-          "/static": { "methods": ["GET"], "root": "/var/www/app/static" }
+          "/":       { "methods": ["GET", "POST"], "root": "/goinfre/www/app", "index": "index.html" },
+          "/static": { "methods": ["GET"], "root": "/goinfre/www/app/static" }
         }
       },
       {
