@@ -4,11 +4,11 @@
 
 MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 {
-	requested_.fileDescriptor = std::make_shared<RaiiFd>(epoll_helper);
+	requested_.FD_handler_IN = std::make_shared<RaiiFd>(epoll_helper);
+	requested_.FD_handler_OUT = std::make_shared<RaiiFd>(epoll_helper);
 	requested_.expectedSize = 0;
 	requested_.fileSize = 0;
 	requested_.isDynamic = false;
-	//requested_.dynamicPage = nullptr;
 	LOG_TRACE("Method Handler created", " Yay!");
 }
 
@@ -111,8 +111,8 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	}
 	LOG_WARN("Path.c_str: ", path.c_str());
 	if (!access(path.c_str(), R_OK))
+	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout GET file");
-	requested_.fileDescriptor->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
 	return (std::move(requested_));
 }
@@ -131,7 +131,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	setContentLength(requestBody);
 	checkContentType(requestBody);
 	std::filesystem::path filename = createPostFilename(path, requestBody);
-	requested_.fileDescriptor->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
+	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	LOG_TRACE("GET FD: ", requested_.fileDescriptor);
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(filename));
 	return (std::move(requested_));

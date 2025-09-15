@@ -44,7 +44,8 @@ typedef struct s_FormData
 
 typedef struct s_file
 {
-    std::shared_ptr<RaiiFd> fileDescriptor;
+    std::shared_ptr<RaiiFd> FD_handler_IN;
+    std::shared_ptr<RaiiFd> FD_handler_OUT;
     size_t expectedSize;
     size_t fileSize;
     bool isDynamic;
