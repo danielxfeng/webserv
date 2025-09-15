@@ -17,34 +17,76 @@
 
 class Config;
 
+/**
+ * @brief Server class to manage connections.
+ * @details
+ * Implemented by a finite state machine (FSM).
+ * The scheduler method routes events to state handlers.
+ * Each handler processes events and may transition the state.
+ */
 class Server
 {
 private:
-    EpollHelper &epoll_;            // Reference to the epoll helper
-    const t_server_config &config_; // Server configuration
-    std::list<t_conn> conns_;
-    std::vector<std::string> cookies_;
-    std::unordered_map<int, t_conn *> conn_map_;
-    std::unordered_map<int, std::shared_ptr<RaiiFd>> inner_fd_map_;
+    EpollHelper &epoll_;                                            // Reference to the epoll helper
+    const t_server_config &config_;                                 // Server configuration
+    std::list<t_conn> conns_;                                       // List of active connections
+    std::vector<std::string> cookies_;                              // List of cookies for session management
+    std::unordered_map<int, t_conn *> conn_map_;                    // Map of fds(in epoll) to connections
+    std::unordered_map<int, std::shared_ptr<RaiiFd>> inner_fd_map_; // Map of internal fds to RaiiFd objects
+
+    //
+    // Helper functions
+    //
 
     t_msg_from_serv closeConn(t_conn *conn);
     t_msg_from_serv resetConnMap(t_conn *conn);
 
+    //
+    // Finite State Machine (FSM) Handlers
+    //
+
+    /**
+     * @brief Handler for parsing request headers.
+     */
     t_msg_from_serv reqHeaderParsingHandler(int fd, t_conn *conn);
+
+    /**
+     * @brief Handler for processing request headers.
+     */
     t_msg_from_serv reqHeaderProcessingHandler(int fd, t_conn *conn);
+
+    /**
+     * @brief Handler for processing request body.
+     */
     t_msg_from_serv reqBodyProcessingInHandler(int fd, t_conn *conn);
+
+    /**
+     * @brief Handler for processing request body (for CGI).
+     */
     t_msg_from_serv reqBodyProcessingOutHandler(int fd, t_conn *conn);
+
+    /**
+     * @brief Handler for processing response headers.
+     */
     t_msg_from_serv resheaderProcessingHandler(t_conn *conn);
+
+    /**
+     * @brief Handler for receiving response data from pipe (for CGI).
+     */
     t_msg_from_serv responseInHandler(int fd, t_conn *conn);
+
+    /**
+     * @brief Handler for sending response data to the client.
+     */
     t_msg_from_serv responseOutHandler(int fd, t_conn *conn);
+
+    /**
+     * @brief Handler for completed connections.
+     */
     t_msg_from_serv doneHandler(int fd, t_conn *conn);
 
     /**
      * @brief Handler for terminated connections.
-     * @details
-     * Removes the conn from all the maps, and lists, fds are closed by RaiiFd.
-     * Be called in scheduler when event_type is ERROR_EVENT, or when a connection should be terminated in FSM.
-     * Will not send any response to the client.
      */
     t_msg_from_serv terminatedHandler(int fd, t_conn *conn);
 
@@ -57,9 +99,23 @@ public:
     Server &operator=(const Server &) = delete;
     ~Server() = default;
 
+    /**
+     * @brief Returns the server configuration.
+     */
     const t_server_config &getConfig() const;
 
-    void addConn(int fd);
-    t_msg_from_serv scheduler(int fd, t_event_type event_type);
+    /**
+     * @brief Checks for timed-out connections and closes them.
+     */
     t_msg_from_serv timeoutKiller();
+
+    /**
+     * @brief Creates and adds a new connection for the given fd.
+     */
+    void addConn(int fd);
+
+    /**
+     * @brief A fsm scheduler to handle events for connections.
+     */
+    t_msg_from_serv scheduler(int fd, t_event_type event_type);
 };

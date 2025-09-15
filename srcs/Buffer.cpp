@@ -2,6 +2,14 @@
 
 Buffer::Buffer(size_t capacity, size_t block_size) : data_(), ref_(), data_view_(), capacity_(capacity), write_pos_(0), size_(0), block_size_(block_size), remain_header_size_(0), remain_body_size_(0), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}
 
+/**
+ * @details
+ * This function handles the chunk header parsing.
+ * The given `data` should contain the full chunk header,
+ * and may also contain the chunk body, or next chunks.
+ *
+ * If the chunk size is zero, it means the last chunk has been reached.
+ */
 ssize_t Buffer::handleNextHeader(std::string_view data, ssize_t parsed, size_t skipped)
 {
     size_t pos = data.find("\r\n");
@@ -52,6 +60,17 @@ ssize_t Buffer::handleNextHeader(std::string_view data, ssize_t parsed, size_t s
     }
 }
 
+/**
+ * @details
+ * This function handles the chunk body processing.
+ * The given `data` should contain part or all of the chunk body,
+ * or the next chunks. But it should contain the full CRLF if the chunk body is complete.
+ *
+ * If the chunk body is not fully available, it will read as much as possible,
+ * and update the remain_chunk_size_ accordingly.
+ * If the chunk body is fully available, it will check for the trailing CRLF,
+ * and then call handleNextHeader to process the next chunk header.
+ */
 ssize_t Buffer::handleBodyProcessing(std::string_view data, ssize_t parsed, size_t skipped)
 {
     ssize_t to_read = std::min(remain_chunk_size_ + CRLF, data.size());
@@ -117,7 +136,7 @@ ssize_t Buffer::handleChunkedError()
     return CHUNKED_ERR;
 }
 
-ssize_t Buffer::fsmSchduler(t_chunked_status status, std::string_view data)
+ssize_t Buffer::fsmScheduler(t_chunked_status status, std::string_view data)
 {
     switch (status)
     {
@@ -126,17 +145,18 @@ ssize_t Buffer::fsmSchduler(t_chunked_status status, std::string_view data)
     case BODY_PROCESSING:
         return handleBodyProcessing(data, 0, 0);
     default:
-        throw WebServErr::ShouldNotBeHereException("Buffer::fsmSchduler: invalid state");
+        throw WebServErr::ShouldNotBeHereException("Buffer::fsmScheduler: invalid state");
     }
 }
 
 /**
- * @brief Reads data from the file descriptor into the buffer in chunked mode.
  * @details
- * 1 Ensures there is enough space for chunk header and trailing CRLF,
- * if not, allocates a new block and copies any remaining header part.
- * 2 Reads data into the last block.
- * 3 Call fsmSchduler to parse the chunked data.
+ * This function handles the epollin event on the socket.
+ * The most important responsibility of this function is to ensure
+ * that no incomplete-chunk-header/chunk-body-awaiting-its-trailing-delimiter
+ * is sent to the FSM scheduler.
+ * So if the buffer block may not have enough space, we create a new one here,
+ * and copy any remaining partial header/body to the string_view, then send to FSM.
  */
 ssize_t Buffer::readFdChunked(int fd)
 {
@@ -207,7 +227,7 @@ ssize_t Buffer::readFdChunked(int fd)
     else
         status = NEXT_HEADER;
 
-    ssize_t parsed = fsmSchduler(status, chunked_data);
+    ssize_t parsed = fsmScheduler(status, chunked_data);
     if (parsed == CHUNKED_ERR)
         return CHUNKED_ERR;
 
@@ -302,7 +322,15 @@ ssize_t Buffer::writeSocket(int fd)
     return write_bytes;
 }
 
-ssize_t Buffer::writeFd(int fd)
+/**
+ * @details
+ * Since NON-BLOCKING does not apply to regular files,
+ * we can simply drain all data in the buffer to the file.
+ *
+ * Extra copy here since we are not allowed to call `write` in a loop
+ * in this project.
+ */
+ssize_t Buffer::writeFile(int fd)
 {
     if (isEmpty())
         return BUFFER_EMPTY;

@@ -99,6 +99,23 @@ t_msg_from_serv Server::timeoutKiller()
 // Finite State Machine
 //
 
+/**
+ * @details
+ * Reads data into the request buffer; if the buffer is full, waits for the next read event.
+ * On read error, sets error code 500 and transitions to resheaderProcessing.
+ * On unexpected EOF before header completion, sets error code 400 and transitions to resheaderProcessing.
+ * Attempts to parse the header:
+ *    - If complete and valid:
+ *        - Determines the method and calculates content_length
+ *          (special handling for GET/DELETE and chunked POST/CGI).
+ *        - Removes the parsed header from the buffer and adjusts counters.
+ *        - Transitions to reqHeaderProcessingHandler for method-specific setup.
+ *    - If incomplete:
+ *        - Continues waiting unless the header size exceeds the configured limit,
+ *          in which case sets error code 400 and transitions to resheaderProcessing.
+ *    - On invalid or malformed headers, sets error code 400.
+ *    - On unexpected exceptions, sets error code 500.
+ */
 t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 {
     if (fd != conn->socket_fd)
@@ -202,6 +219,30 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
     }
 }
 
+/**
+ * @details
+ * Processes the parsed request headers and prepares for response handling.
+ *
+ * - GET:
+ *   Registers the response file descriptor as `inner_fd_out`,
+ *   stores it in `inner_fd_map_`, and transitions directly to resheaderProcessing.
+ *
+ * - DELETE:
+ *   No internal fd setup needed, transitions directly to resheaderProcessing.
+ *
+ * - POST:
+ *   Registers the response file descriptor as `inner_fd_in`,
+ *   stores it in `inner_fd_map_`, sets status to REQ_BODY_PROCESSING,
+ *   and waits for the request body to be received.
+ *
+ * - CGI:
+ *   Registers the CGI input pipe fd as `inner_fd_in`, pushes it to
+ *   `fds_to_register` and `conn_map_`, sets status to REQ_BODY_PROCESSING,
+ *   and waits for the request body to be sent to CGI.
+ *
+ * On method handling error, sets the connection error_code and
+ * transitions to resheaderProcessing.
+ */
 t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
 {
     conn->status = REQ_HEADER_PROCESSING;
@@ -248,6 +289,19 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     }
 }
 
+/**
+ * @details
+ * Reads data from the client socket into the request read buffer.
+ * Writes data to the internal fd for POST requests.
+ * If the buffer is full, waits for the next read event.
+ * If data is successfully read, updates the byte counter,
+ *   and transitions to resheaderProcessing.
+ * If the read size exceeds the declared Content-Length,
+ *   sets error code 400 and transitions to resheaderProcessing.
+ * If the full Content-Length is reached, transitions to resheaderProcessing.
+ * On read error or unexpected EOF, sets error code 500 and
+ *   transitions to resheaderProcessing.
+ */
 t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
 {
     if (fd != conn->socket_fd)
@@ -285,7 +339,7 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
 
     if (!conn->is_cgi)
     {
-        ssize_t written_bytes = conn->read_buf->writeFd(conn->inner_fd_in);
+        ssize_t written_bytes = conn->read_buf->writeFile(conn->inner_fd_in);
         if (written_bytes == RW_ERROR)
         {
             LOG_ERROR("Error writing to internal fd for fd: ", fd);
@@ -328,6 +382,17 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
     return defaultMsg(); // Continue reading
 }
 
+/**
+ * @details
+ * Writes data from the request read buffer to the CGI input pipe.
+ * If the read buffer is empty, waits for the next write event.
+ * If data is successfully written, updates the byte counter.
+ * If the written size exceeds the declared Content-Length,
+ *   sets error code 400 and transitions to resheaderProcessing.
+ * If the full Content-Length is reached, transitions to resheaderProcessing.
+ * On write error or unexpected EOF, sets error code 500 and
+ *   transitions to resheaderProcessing.
+ */
 t_msg_from_serv Server::reqBodyProcessingOutHandler(int fd, t_conn *conn)
 {
     // Should be the inner fd for writing request body to the file
@@ -380,6 +445,13 @@ t_msg_from_serv Server::reqBodyProcessingOutHandler(int fd, t_conn *conn)
     return defaultMsg();
 }
 
+/**
+ * @details
+ * Prepares the response headers based on the request processing outcome.
+ * Sets the connection status to `RESPONSE`.
+ * Initializes the output length based on the request method and response size.
+ * For CGI, sets the inner fd for reading
+ */
 t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 {
     conn->status = RES_HEADER_PROCESSING;
@@ -420,6 +492,16 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     return defaultMsg();
 }
 
+/**
+ * @details
+ * Reads data from the pipe into the write buffer.
+ * If the data is chunked, updates the `output_length` when eof is reached,
+ * and transitions to the `response` state.
+ * If the entire response has been read, closes the pipe.
+ * If buffer is full, waits for the next read event.
+ * If an error occurs during reading, transitions to the terminated state.
+ * Errors includes: size exceeds, read error.
+ */
 t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
 {
     if (fd != conn->inner_fd_out || !conn->is_cgi)
@@ -478,6 +560,15 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
     return defaultMsg();
 }
 
+/**
+ * @details
+ * Reads required data from file server for GET.
+ * Sends data from the write buffer to the client socket.
+ * If the entire response has been sent, transitions to the done state.
+ * If buffer is empty, waits for the next write event.
+ * If an error occurs during reading or sending, transitions to the terminated state.
+ * Errors includes: size exceeds, write error.
+ */
 t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 {
     // Should be the socket fd
@@ -547,6 +638,12 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
     return defaultMsg();
 }
 
+/**
+ * @details
+ * Closes and removes any internal fds.
+ * Resets the connection to initial state for keep-alive.
+ * Otherwise, closes the connection.
+ */
 t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
 {
     conn->status = DONE;
@@ -571,6 +668,12 @@ t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
     return msg;
 }
 
+/**
+ * @details
+ * Removes the conn from all the maps, and lists, fds are closed by RaiiFd.
+ * Be called in scheduler when event_type is ERROR_EVENT, or when a connection should be terminated in FSM.
+ * Will not send any response to the client.
+ */
 t_msg_from_serv Server::terminatedHandler(int fd, t_conn *conn)
 {
     conn->status = TERMINATED;
