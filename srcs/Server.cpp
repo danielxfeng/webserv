@@ -13,7 +13,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->bytes_received = 0;
     conn->output_length = max_request_size;
     conn->bytes_sent = 0;
-    conn->res = t_file{nullptr, 0, 0, false, ""};
+    conn->res = t_file{nullptr, nullptr,  0, 0, false, ""};
     conn->read_buf = std::make_unique<Buffer>();
     conn->write_buf = std::make_unique<Buffer>();
     conn->request = std::make_shared<HttpRequests>();
@@ -298,16 +298,16 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         switch (method)
         {
         case GET:
-            LOG_INFO("FILE: ", conn->res.fileDescriptor.get()->get());
-            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
-            conn->inner_fd_out = conn->res.fileDescriptor.get()->get();
+            LOG_INFO("FILE: ", conn->res.FD_handler_OUT.get()->get());
+            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), std::move(conn->res.FD_handler_OUT));
+            conn->inner_fd_out = conn->res.FD_handler_OUT.get()->get();
             return resheaderProcessingHandler(conn);
         case DELETE:
             return resheaderProcessingHandler(conn);
         case POST:
         {
-            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
-            conn->inner_fd_in = conn->res.fileDescriptor.get()->get();
+            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), std::move(conn->res.FD_handler_OUT));
+            conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
             conn->status = REQ_BODY_PROCESSING;
             LOG_INFO("Switching to processing state for fd: ", fd);
             return defaultMsg();
@@ -315,8 +315,8 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         case CGI:
         {
             t_msg_from_serv msg = {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
-            conn->inner_fd_in = conn->res.fileDescriptor.get()->get();
-            msg.fds_to_register.push_back(std::move(conn->res.fileDescriptor));
+            conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
+            msg.fds_to_register.push_back(std::move(conn->res.FD_handler_IN));
             conn_map_.emplace(conn->inner_fd_in, conn);
             LOG_INFO("Switching to processing state for fd: ", fd);
             conn->status = REQ_BODY_PROCESSING;
