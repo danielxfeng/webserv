@@ -27,6 +27,7 @@ int main(int argc, char **argv)
 		return (1);
 	}
 
+	/**
 	try
 	{
 		std::string_view fileName = argv[1];
@@ -40,6 +41,12 @@ int main(int argc, char **argv)
 		std::cerr << "Error: " << e.what() << std::endl;
 		return (1);
 	}
+	*/
+	std::string_view fileName = argv[1];
+	if (!validateConfigFile(fileName))
+		throw std::invalid_argument("Invalid configuration file.");
+	auto webserv = WebServ(argv[1]);
+	webserv.eventLoop();
 
 	return (0);
 }

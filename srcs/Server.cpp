@@ -203,7 +203,6 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 
         LOG_INFO("Header parsed successfully for fd: ", fd);
         bool ok = conn->read_buf->removeHeaderAndSetChunked(conn->request->getupToBodyCounter(), conn->request->isChunked());
-
         if (!ok)
         {
             LOG_ERROR("Failed to remove header from buffer for fd: ", fd);
@@ -213,6 +212,17 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 
         // Remove the header size from bytes_received
         conn->bytes_received -= conn->request->getupToBodyCounter(); // Adjust bytes_received after removing header
+
+        for (const auto &pair : conn->request->getrequestHeaderMap())
+        {
+            LOG_INFO("Header: ", pair.first + ": " + pair.second);
+        }
+        for (const auto &pair : conn->request->getrequestLineMap())
+        {
+            LOG_INFO("Request Line: ", pair.first + ": " + pair.second);
+        }
+        LOG_INFO("Adjusted bytes received: ", conn->bytes_received);
+        LOG_INFO("Buffer size after removing header: ", conn->read_buf->size());
 
         return reqHeaderProcessingHandler(fd, conn);
     }
@@ -279,9 +289,12 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     conn->status = REQ_HEADER_PROCESSING;
     try
     {
+        LOG_INFO("Processing request header for fd: ", fd);
         conn->res = MethodHandler(epoll_).handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap(), epoll_);
+        LOG_INFO("Resource prepared for fd: ", fd, " file size: ", conn->res.fileSize, " isDynamic: ", conn->res.isDynamic);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         conn->is_cgi = (method == CGI);
+        LOG_INFO("Method determined: ", conn->request->getrequestLineMap().at("Method"), " for fd: ", fd);
         switch (method)
         {
         case GET:
@@ -728,7 +741,7 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
 {
     if (!conn_map_.contains(fd))
     {
-        LOG_WARN("Connection not found for fd: ", fd);
+        //LOG_WARN("Connection not found for fd: ", fd);
         return defaultMsg();
     }
 

@@ -5,6 +5,7 @@
     "global_request_timeout": 2000,
     "max_request_size": 1024,
     "max_headers_size": 4096,
+    "max_heartbeat_timeout": 1000,
     "servers": [
       {
         "server_name": "localhost",
