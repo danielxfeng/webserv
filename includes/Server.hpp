@@ -94,7 +94,6 @@ public:
     Server() = delete;
     Server(EpollHelper &epoll, const t_server_config &config);
     Server(const Server &) = default;
-    Server(const Server &&) = default;
     Server(Server &&) = default;
     Server &operator=(const Server &) = delete;
     ~Server() = default;

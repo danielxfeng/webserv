@@ -59,24 +59,24 @@ public:
         const char *what() const noexcept override;
     };
 
-	// class MethodException: public std::exception
-	// {
-	// 	private:
-	// 		std::string what_;
-	// 	public:
-	// 		MethodException() = delete;
-	// 		explicit MethodException(t_status_error_codes code, const std::string &what_arg);
-	// 		MethodException(const MethodException &other) = default;
-	// 		MethodException &operator=(const MethodException &other) = delete;
-	// 		~MethodException() override = default;
-	// };
-
+    // class MethodException: public std::exception
+    // {
+    // 	private:
+    // 		std::string what_;
+    // 	public:
+    // 		MethodException() = delete;
+    // 		explicit MethodException(t_status_error_codes code, const std::string &what_arg);
+    // 		MethodException(const MethodException &other) = default;
+    // 		MethodException &operator=(const MethodException &other) = delete;
+    // 		~MethodException() override = default;
+    // };
 
     class MethodException : public std::exception
     {
     private:
         std::string what_;
         t_status_error_codes code_;
+
     public:
         MethodException() = delete;
         explicit MethodException(t_status_error_codes code, const std::string &what_arg);
@@ -88,10 +88,6 @@ public:
 
         const char *what() const noexcept override;
     };
-
-
-
-
 
     class InvalidRequestHeader : public std::exception
     {
@@ -108,7 +104,6 @@ public:
         const char *what() const noexcept override;
     };
 
-
     class UtilsException : public std::exception
     {
     private:
@@ -124,17 +119,17 @@ public:
         const char *what() const noexcept override;
     };
 
-	class CGIException: public std::exception
-	{
-		private:
-			std::string what_;
-		public:
-			CGIException() = delete;
-			explicit CGIException(const std::string &what_arg);
-			CGIException(const CGIException &other) = default;
-			CGIException &operator=(const CGIException &other) = delete;
-			~CGIException() override = default;
-			const char *what() const noexcept override;
+    class CGIException : public std::exception
+    {
+    private:
+        std::string what_;
 
-	};
+    public:
+        CGIException() = delete;
+        explicit CGIException(const std::string &what_arg);
+        CGIException(const CGIException &other) = default;
+        CGIException &operator=(const CGIException &other) = delete;
+        ~CGIException() override = default;
+        const char *what() const noexcept override;
+    };
 };

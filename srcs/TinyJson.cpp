@@ -174,7 +174,7 @@ std::pair<JsonValue, std::string_view> parseArray(const std::string_view sv)
         JsonValue value;
 
         std::tie(value, rest) = parseJson(rest);
-        array.push_back(std::move(value));
+        array.push_back(std::make_shared<JsonValue>(std::move(value)));
         rest = skipWhitespace(rest);
 
         if (rest.empty())
@@ -227,7 +227,7 @@ std::pair<JsonValue, std::string_view> parseObject(const std::string_view sv)
 
         JsonValue value;
         std::tie(value, rest) = parseJson(rest);
-        object.emplace(std::get<std::string>(key), std::move(value));
+        object.emplace(std::get<std::string>(key), std::make_shared<JsonValue>(std::move(value)));
 
         rest = skipWhitespace(rest);
         if (rest.empty())
@@ -289,4 +289,3 @@ JsonValue TinyJson::parse(const std::string &jsonString)
 
     return value;
 }
-

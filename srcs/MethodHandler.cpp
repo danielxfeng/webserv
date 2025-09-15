@@ -15,7 +15,7 @@ MethodHandler::~MethodHandler()
 	LOG_TRACE("Method Handler deconstructed", " Yay!");
 }
 
-t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
 {
 	std::string targetRef = requestLine.find("Target") != requestLine.end() ? targetRef = requestLine.find("Target")->second : "";
 	if (targetRef == "")
@@ -52,7 +52,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 			case CGI:
 			{
 				LOG_TRACE("Calling CGI: ", realPath);
-				return (callCGIMethod(realPath, requestLine, requestHeader, requestBody));
+				return (callCGIMethod(realPath, requestLine, requestHeader, requestBody, epoll_helper));
 			}
 			default:
 				throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
@@ -91,6 +91,7 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
 	(void)server;
+	(void)requestLine;//TODO remove the parameters if unneeded
 	checkIfLocExists(path);
 	checkIfDirectory(path);
 	if (!access(path.c_str(), W_OK))
@@ -100,8 +101,6 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	if (requestBody.find("content-type") == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content Type");
 	setContentLength(requestBody);
-	if (typeCheck == requestBody.end())
-		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Type not found.");
 	checkContentType(requestBody);
 	std::filesystem::path filename = createPostFilename(path, requestBody);
 	requested_.fileDescriptor->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
@@ -114,7 +113,7 @@ std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &p
 	std::filesystem::path result = path;
 	if (requestBody.find("filename") == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Filename not found");
-	result.append(createFileName(requestBody["filename"]->second));
+	result += createFileName(requestBody["filename"]);
 	return (result);
 }
 
@@ -131,9 +130,9 @@ void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }
 
-t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
 {
-	CGIHandler cgi;
+	CGIHandler cgi(epoll_helper);
 	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody);
 	return (std::move(requested_));
 }
@@ -157,15 +156,15 @@ void MethodHandler::checkContentType(std::unordered_map<std::string, std::string
 {
 	if (requestBody.find("disposition-type") == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Disposition Type");
-	if (requestBody["disposition-type"]->second != "form-data")
+	if (requestBody["disposition-type"] != "form-data")
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Wrong Disposition Type");
 	if (requestBody.find("name") == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Name Key");
-	if (requestBody["name"]->second == "" || requestBody["name"]->second == nullptr)
+	if (requestBody["name"] == "" || requestBody["name"].empty())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Name Is Empty String");
 	if (requestBody.find("Content-Type") == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Content Type");
-	if (requestBody["Content-Type"]->second != "image/png" || requestBody["Content-Type"]->second == nullptr)
+	if (requestBody["Content-Type"] != "image/png" || requestBody["Content-Type"].empty())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Wrong Content Type");
 }
 

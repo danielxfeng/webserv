@@ -17,7 +17,7 @@
 class CGIHandler
 {
 private:
-    std::vector<std::string> envp;
+    std::vector<char*> envp;
     t_file result;
     int fds[2];
 
@@ -25,7 +25,7 @@ private:
     void setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 
     // Processes
-    void handleCGIProcess(std::filesystem::path &script, std::filesystem::path &path);
+    void handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path);
 
 public:
     CGIHandler() = delete;

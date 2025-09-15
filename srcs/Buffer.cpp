@@ -76,9 +76,9 @@ ssize_t Buffer::handleBodyProcessing(std::string_view data, ssize_t parsed, size
     ssize_t to_read = std::min(remain_chunk_size_ + CRLF, data.size());
 
     // We need to be sure CRLF is not splitted, so at least 1 byte of body stays with CRLF.
-    if (to_read >= remain_chunk_size_)
+    if (to_read >= static_cast<ssize_t>(remain_chunk_size_))
     {
-        if (to_read < remain_chunk_size_ + CRLF)
+        if (to_read < static_cast<ssize_t>(remain_chunk_size_ + CRLF))
         {
             // Not enough to keep body and full CRLF together: leave 1 byte to join with CRLF next time
             to_read = remain_chunk_size_ - 1;
@@ -133,7 +133,7 @@ ssize_t Buffer::handleChunkedError()
 {
     remain_header_size_ = 0;
     remain_body_size_ = 0;
-    return CHUNKED_ERR;
+    return CHUNKED_ERROR;
 }
 
 ssize_t Buffer::fsmScheduler(t_chunked_status status, std::string_view data)
@@ -228,8 +228,8 @@ ssize_t Buffer::readFdChunked(int fd)
         status = NEXT_HEADER;
 
     ssize_t parsed = fsmScheduler(status, chunked_data);
-    if (parsed == CHUNKED_ERR)
-        return CHUNKED_ERR;
+    if (parsed == CHUNKED_ERROR)
+        return CHUNKED_ERROR;
 
     write_pos_ += read_bytes;
     size_ += parsed;
@@ -300,7 +300,7 @@ ssize_t Buffer::writeSocket(int fd)
         return EOF_REACHED;
     }
 
-    if (write_bytes < block.size())
+    if (write_bytes < static_cast<ssize_t>(block.size()))
         block.remove_prefix(write_bytes);
     else
     {
@@ -424,7 +424,7 @@ bool Buffer::removeHeaderAndSetChunked(const std::size_t size, bool is_chunked)
 
         // The good thing is that we can be sure we can start from a new chunk header.
         ssize_t chunk_size = handleNextHeader(rest, 0, 0);
-        if (chunk_size == CHUNKED_ERR)
+        if (chunk_size == CHUNKED_ERROR)
             return false;
         size_ = chunk_size;
     }
@@ -443,3 +443,5 @@ bool Buffer::insertHeader(const std::string str)
     size_ += str.size();
     return true;
 }
+
+Buffer::Buffer() : data_(), ref_(), data_view_(), capacity_(8192), write_pos_(0), size_(0), block_size_(4096), remain_header_size_(0), remain_body_size_(0), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}

@@ -18,7 +18,7 @@ typedef enum e_chunked_status
     BODY_PROCESSING,
     WAITING_DELIMITER,
     CHUNKED_EOF,
-    CHUNKED_ERR
+    CHUNKED_ERROR
 } t_chunked_status;
 
 /**
@@ -81,7 +81,7 @@ private:
     ssize_t readFdChunked(int fd);
 
 public:
-    Buffer() = delete;
+    Buffer();
     Buffer(const Buffer &) = default;
     Buffer &operator=(const Buffer &) = default;
     ~Buffer() = default;
