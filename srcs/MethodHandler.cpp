@@ -6,7 +6,7 @@ MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 	requested_.expectedSize = 0;
 	requested_.fileSize = 0;
 	requested_.isDynamic = false;
-	requested_.dynamicPage = nullptr;
+	//requested_.dynamicPage = nullptr;
 	LOG_TRACE("Method Handler created", " Yay!");
 }
 
@@ -17,11 +17,16 @@ MethodHandler::~MethodHandler()
 
 t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
 {
-	std::string targetRef = requestLine.find("Target") != requestLine.end() ? targetRef = requestLine.find("Target")->second : "";
-	if (targetRef == "")
+	std::string targetRef;
+
+	if (requestLine.find("Target") != requestLine.end())
+		targetRef = requestLine["Target"];
+	else
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Path does not exist");
-	std::string chosenMethod = requestLine.find("Method") != requestLine.end() ? chosenMethod = requestLine.find("Method")->second : "";
-	if (chosenMethod == "")
+	std::string chosenMethod; 
+	if (requestLine.find("Method") != requestLine.end()) 
+		chosenMethod = requestLine["Method"];
+	else	
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Method does not exist");
 	t_method realMethod = convertMethod(chosenMethod);
 	std::string &rootRef = server.locations[targetRef].root;
