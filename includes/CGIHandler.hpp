@@ -14,6 +14,9 @@
 #include "SharedTypes.hpp"
 #include "RaiiFd.hpp"
 
+#define READ 0
+#define WRITE 1
+
 class CGIHandler
 {
 private:
@@ -24,7 +27,7 @@ private:
     void setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 
     // Processes
-    void handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path);
+    void handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path, int inPipe[2], int outPipe[2]);
 
 public:
     CGIHandler() = delete;
