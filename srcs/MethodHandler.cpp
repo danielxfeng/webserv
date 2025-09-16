@@ -1,4 +1,5 @@
 #include "../includes/MethodHandler.hpp"
+#include <filesystem>
 
 MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 {
@@ -17,50 +18,47 @@ MethodHandler::~MethodHandler()
 
 t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
 {
+	LOG_TRACE("Handle Request Started: ", "Let's see what happens...");
 	std::string targetRef;
 
 	if (requestLine.find("Target") != requestLine.end())
+	{
 		targetRef = requestLine["Target"];
+		LOG_TRACE("Target found: ", targetRef);
+	}
 	else
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Path does not exist");
 	std::string chosenMethod; 
-	if (requestLine.find("Method") != requestLine.end()) 
+	if (requestLine.find("Method") != requestLine.end())
+	{
 		chosenMethod = requestLine["Method"];
+		LOG_TRACE("Method found: ", chosenMethod);
+	}
 	else	
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Method does not exist");
 	t_method realMethod = convertMethod(chosenMethod);
 	std::string &rootRef = server.locations[targetRef].root;
 	std::filesystem::path realPath = createRealPath(rootRef, targetRef);
-
+	LOG_TRACE("Real Path created: ", realPath);
 	for (size_t i = 0; i < server.locations[targetRef].methods.size(); i++)
 	{
 		if (server.locations[targetRef].methods[i] == realMethod)
 		{
 			switch (realMethod)
 			{
-			case GET:
-			{
-				LOG_TRACE("Calling GET: ", realPath);
-				return (callGetMethod(realPath, server));
-			}
-			case POST:
-			{
-				LOG_TRACE("Calling POST: ", realPath);
-				return (callPostMethod(realPath, server, requestLine, requestHeader, requestBody));
-			}
-			case DELETE:
-			{
-				LOG_TRACE("Calling DELETE: ", realPath);
-				callDeleteMethod(realPath);
-				return (requested_);
-			}
-			case CGI:
-			{
-				LOG_TRACE("Calling CGI: ", realPath);
-				return (callCGIMethod(realPath, requestLine, requestHeader, requestBody, epoll_helper));
-			}
-			default:
-				throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
+				case GET:
+					return (callGetMethod(realPath, server));
+				case POST:
+					return (callPostMethod(realPath, server, requestLine, requestHeader, requestBody));
+				case DELETE:
+				{
+					callDeleteMethod(realPath);
+					return (requested_);
+				}
+				case CGI:
+					return (callCGIMethod(realPath, requestLine, requestHeader, requestBody, epoll_helper));
+				default:
+					throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 			}
 		}
 	}
@@ -69,12 +67,15 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 
 t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config server)
 {
+	LOG_TRACE("Calling GET: ", path);
 	checkIfLocExists(path);
 	if (std::filesystem::is_directory(path))
 	{
+		LOG_TRACE("Getting Directory...", path);
 		std::filesystem::path index_path = std::filesystem::path(server.locations[path].index);
 		if (index_path == "")
 		{
+			LOG_TRACE("Directory is: ", "auto-index");
 			requested_.dynamicPage = generateDynamicPage(path);
 			requested_.isDynamic = true;
 			requested_.fileSize = requested_.dynamicPage.size();
@@ -95,6 +96,7 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 
 t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
+	LOG_TRACE("Calling POST: ", path);
 	(void)server;
 	(void)requestLine;//TODO remove the parameters if unneeded
 	checkIfLocExists(path);
@@ -125,6 +127,7 @@ std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &p
 // Only throw if something is wrong, otherwise success is assumed
 void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 {
+	LOG_TRACE("Calling DELETE: ", path);
 	checkIfLocExists(path);
 	checkIfDirectory(path);
 	checkIfRegFile(path);
@@ -137,6 +140,7 @@ void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 
 t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
 {
+	LOG_TRACE("Calling CGI: ", path);
 	CGIHandler cgi(epoll_helper);
 	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody);
 	return (std::move(requested_));
@@ -144,6 +148,7 @@ t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_
 
 void MethodHandler::setContentLength(std::unordered_map<std::string, std::string> requestBody)
 {
+	LOG_TRACE("Setting Content Length", "... let's see how big this sucker gets");
 	auto check = requestBody.find("content-length");
 	if (check == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Failed to get content length."); // TODO double check error code
@@ -159,6 +164,7 @@ void MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 
 void MethodHandler::checkContentType(std::unordered_map<std::string, std::string> requestBody) const
 {
+	LOG_TRACE("Checking content type", "... again");
 	if (requestBody.find("disposition-type") == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Disposition Type");
 	if (requestBody["disposition-type"] != "form-data")
@@ -181,26 +187,49 @@ void MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_F
 
 void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 {
+	LOG_TRACE("Checking if this is a regular file: ", path);
 	if (!std::filesystem::is_regular_file(path))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
 void MethodHandler::checkIfSymlink(const std::filesystem::path &path)
 {
+	LOG_TRACE("Checking if this is a symlink: ", path);
 	if (std::filesystem::is_symlink(path))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
 }
 
 void MethodHandler::checkIfDirectory(const std::filesystem::path &path)
 {
+	LOG_TRACE("Checking if this is a directory: ", path);
 	if (std::filesystem::is_directory(path))
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a directory");
 }
 
 void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
 {
-	if (!std::filesystem::exists(path))
-		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Permission Denied, cannot delete selected file");
+	LOG_TRACE("Checking if this location exists: ", path);
+/*	std::error_code ec;
+
+	std::cout << "---- Diagnostics ----\n";
+	std::cout << "Input path:      " << path << "\n";
+	std::cout << "Absolute path:   " << std::filesystem::absolute(path, ec) << "\n";
+	std::cout << "Current dir:     " << std::filesystem::current_path() << "\n";
+
+	bool ex = std::filesystem::exists(path, ec);
+	std::cout << "Exists?          " << (ex ? "YES" : "NO");
+	if (ec) std::cout << " (error: " << ec.message() << ")";
+	std::cout << "\n";
+
+	if (ex) {
+		std::cout << "Is regular file? " << (std::filesystem::is_regular_file(path) ? "YES" : "NO") << "\n";
+		std::cout << "Is directory?    " << (std::filesystem::is_directory(path) ? "YES" : "NO") << "\n";
+		std::cout << "Is symlink?      " << (std::filesystem::is_symlink(path) ? "YES" : "NO") << "\n";
+	}
+
+	std::cout << "--------------------\n";
+*/	if (!std::filesystem::exists(path))
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Location does not exist");
 }
 
 std::string	MethodHandler::trimPath(const std::string &path)
@@ -217,6 +246,7 @@ std::string	MethodHandler::trimPath(const std::string &path)
 
 std::filesystem::path MethodHandler::createFileName(const std::string &path)
 {
+	LOG_TRACE("Creating the File name for: ", path);
 	std::string trimmedPath = trimPath(path);
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 	time_t tt = std::chrono::system_clock::to_time_t(now);
@@ -231,6 +261,7 @@ std::filesystem::path MethodHandler::createFileName(const std::string &path)
 
 std::filesystem::path MethodHandler::createRealPath(const std::string &server, const std::string &target)
 {
+	LOG_TRACE("Creating real path for: ", target);
 	std::filesystem::path root = std::filesystem::path(server);
 	std::filesystem::path sought = std::filesystem::path(target).lexically_normal();
 	if (sought.is_absolute())
@@ -249,6 +280,7 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 
 std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
 {
+	LOG_TRACE("Dynamically generating page: ", path);
 	std::string str;
 	for (const auto &entry : std::filesystem::directory_iterator(path))
 	{
