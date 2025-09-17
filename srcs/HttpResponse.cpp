@@ -22,8 +22,9 @@ std::string HttpResponse::successResponse(t_conn *conn)
             result.append(conn->res.dynamicPage);
         else
         {
-            //TODO Read from fd then append
-            result.append()
+            char buffer[conn->res.fileSize];
+            if(read(conn->res.fileDescriptor->get(), buffer, conn->res.fileSize))
+                result.append(buffer);
         }
     }
     else if (request->getHttpRequestMethod() == "POST")
