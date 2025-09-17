@@ -28,14 +28,18 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	}
 	else
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Path does not exist");
-	std::string chosenMethod; 
+	std::string chosenMethod;
 	if (requestLine.find("Method") != requestLine.end())
 	{
 		chosenMethod = requestLine["Method"];
 		LOG_TRACE("Method found: ", chosenMethod);
 	}
-	else	
+	else
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Method does not exist");
+	if (!server.locations.contains(targetRef))
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Target Location not found");
+	if (server.locations[targetRef].root == "")
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Root address does not exist");
 	t_method realMethod = convertMethod(chosenMethod);
 	std::string &rootRef = server.locations[targetRef].root;
 	std::filesystem::path realPath = createRealPath(rootRef, targetRef);
@@ -79,6 +83,7 @@ t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config
 			requested_.dynamicPage = generateDynamicPage(path);
 			requested_.isDynamic = true;
 			requested_.fileSize = requested_.dynamicPage.size();
+			LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
 			return (requested_);
 		}
 		requested_.fileDescriptor->setFd(open("../index/index.html", O_RDONLY | O_NONBLOCK));
@@ -263,13 +268,16 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 {
 	LOG_TRACE("Creating real path for: ", target);
 	std::filesystem::path root = std::filesystem::path(server);
+	LOG_TRACE("Root: ", root);
 	std::filesystem::path sought = std::filesystem::path(target).lexically_normal();
+	LOG_TRACE("Sought: ", sought);
 	if (sought.is_absolute())
 		sought = sought.relative_path();
 	if (!sought.empty() && root.filename() == (*sought.begin()))
 		sought = sought.lexically_relative(*sought.begin());
-	std::filesystem::path realPath = (root / sought).lexically_normal();
-
+	std::string tempPath = root.string() + sought.string();
+	std::filesystem::path realPath = std::filesystem::path(tempPath);
+	LOG_TRACE("Real Path: ", realPath);
 	std::filesystem::path canonicalRoot = std::filesystem::weakly_canonical(root);
 	std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(realPath);
 	auto mismatch = std::mismatch(canonicalRoot.begin(), canonicalRoot.end(), canonicalPath.begin());
@@ -281,12 +289,14 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
 {
 	LOG_TRACE("Dynamically generating page: ", path);
-	std::string str;
+	std:: string page = "<ul>";
 	for (const auto &entry : std::filesystem::directory_iterator(path))
 	{
-		str += entry.path();
-		str += ' ';
+		page.append("<li>");
+		page.append(entry.path());
+		page.append("</li>");
 	}
-	str += '\0';
-	return (str);
+	page.append("</ul>");
+	std::cout << "Page Size: " << page.size() << std::endl;
+	return (page);
 }

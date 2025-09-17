@@ -499,9 +499,10 @@ t_msg_from_serv Server::reqBodyProcessingOutHandler(int fd, t_conn *conn)
  */
 t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 {
+	LOG_TRACE("Response Header Processing: ", "Starting...");
     conn->status = RES_HEADER_PROCESSING;
     const std::string header = (conn->error_code == ERR_NO_ERROR)
-                                   ? conn->response->successResponse(conn, conn->res.fileSize)
+                                   ? conn->response->successResponse(conn)
                                    : conn->response->failedResponse(conn, conn->error_code, "Error");
 
     conn->status = RESPONSE;
