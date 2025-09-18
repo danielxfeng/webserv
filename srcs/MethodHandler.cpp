@@ -27,31 +27,35 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		LOG_TRACE("Target found: ", targetRef);
 	}
 	else
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Path does not exist");
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Target does not exist");
 	std::string chosenMethod;
+	std::cout << requestLine["Method"] << std::endl;
 	if (requestLine.find("Method") != requestLine.end())
 	{
 		chosenMethod = requestLine["Method"];
 		LOG_TRACE("Method found: ", chosenMethod);
 	}
 	else
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Method does not exist");
-	if (!server.locations.contains(targetRef))
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Target Location not found");
-	if (server.locations[targetRef].root == "")
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Root address does not exist");
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Method does not exist");
+	std::string rootDestination = matchLocation(server.locations, targetRef);// Find best matching location
+	std::string targetPath = rootDestination + targetRef;
+	LOG_TRACE("Target Path: ", targetPath);
+	checkIfSymlink(targetPath);
+	std::filesystem::path realPath = createRealPath(rootDestination, targetRef);
+	checkIfLocExists(realPath);
+	bool useAutoIndex = checkIfDirectory(server.locations, realPath);//TODO do we need a check for auto-index or can we just do it automatically?
+	if (!useAutoIndex)
+		checkIfRegFile(realPath);
 	t_method realMethod = convertMethod(chosenMethod);
-	std::string &rootRef = server.locations[targetRef].root;
-	std::filesystem::path realPath = createRealPath(rootRef, targetRef);
-	LOG_TRACE("Real Path created: ", realPath);
-	for (size_t i = 0; i < server.locations[targetRef].methods.size(); i++)
+	for (size_t i = 0; i < server.locations[rootDestination].methods.size(); i++)
 	{
-		if (server.locations[targetRef].methods[i] == realMethod)
+		std::cout << "Server methods: " << server.locations[rootDestination].methods[i] << std::endl;
+		if (server.locations[rootDestination].methods[i] == realMethod)
 		{
 			switch (realMethod)
 			{
 				case GET:
-					return (callGetMethod(realPath, server));
+					return (callGetMethod(useAutoIndex, realPath));
 				case POST:
 					return (callPostMethod(realPath, server, requestLine, requestHeader, requestBody));
 				case DELETE:
@@ -66,32 +70,51 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 			}
 		}
 	}
-	throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
+	throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Handle Request failing everything!");
 }
 
-t_file MethodHandler::callGetMethod(std::filesystem::path &path, t_server_config server)
+std::string	MethodHandler::matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef)
+{
+	LOG_TRACE("Matching Location for: ", targetRef);
+	std::string bestMatch = "";
+	size_t	longestMatchLength = 0;
+	std::string normalizedTargetPath = targetRef;
+	if (normalizedTargetPath.back() != '/')
+			normalizedTargetPath += '/';
+	for (auto it = locations.begin();  it != locations.end(); it++)
+	{
+		const std::string &locPath = it->second.root;
+		std::string normalizedLocPath = locPath;
+		if (normalizedLocPath.back() != '/')
+			normalizedLocPath += '/';
+		if (normalizedTargetPath.find(normalizedLocPath) == 0)
+		{
+			if (normalizedLocPath.length() > longestMatchLength)
+			{
+				bestMatch = it->second.root;
+				longestMatchLength = normalizedLocPath.length();
+			}
+		}
+	}
+	if (bestMatch == "")
+		bestMatch = "/";
+	LOG_TRACE("Best Location Match: ", bestMatch);
+	return (bestMatch);
+}
+
+t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path)
 {
 	LOG_TRACE("Calling GET: ", path);
-	checkIfLocExists(path);
-	if (std::filesystem::is_directory(path))
+	if (useAutoIndex)
 	{
-		LOG_TRACE("Getting Directory...", path);
-		std::filesystem::path index_path = std::filesystem::path(server.locations[path].index);
-		if (index_path == "")
-		{
-			LOG_TRACE("Directory is: ", "auto-index");
-			requested_.dynamicPage = generateDynamicPage(path);
-			requested_.isDynamic = true;
-			requested_.fileSize = requested_.dynamicPage.size();
-			LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
+		LOG_TRACE("Directory is: ", "auto-index");
+		//TODO Deal with FD, probably need a pipe
+		requested_.dynamicPage = generateDynamicPage(path);
+		requested_.isDynamic = true;
+		requested_.fileSize = requested_.dynamicPage.size();
+		LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
 			return (requested_);
-		}
-		requested_.fileDescriptor->setFd(open("../index/index.html", O_RDONLY | O_NONBLOCK));
-		requested_.fileSize = static_cast<int>(std::filesystem::file_size(index_path));
-		return (requested_);
 	}
-	checkIfRegFile(path);
-	checkIfSymlink(path);
 	if (!access(path.c_str(), R_OK))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannout GET file");
 	requested_.fileDescriptor->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
@@ -104,8 +127,6 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	LOG_TRACE("Calling POST: ", path);
 	(void)server;
 	(void)requestLine;//TODO remove the parameters if unneeded
-	checkIfLocExists(path);
-	checkIfDirectory(path);
 	if (!access(path.c_str(), W_OK))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannot POST file");
 	if (requestHeader.find("multipart/form") == requestHeader.end())
@@ -133,10 +154,6 @@ std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &p
 void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 {
 	LOG_TRACE("Calling DELETE: ", path);
-	checkIfLocExists(path);
-	checkIfDirectory(path);
-	checkIfRegFile(path);
-	checkIfSymlink(path);
 	if (!access(path.c_str(), X_OK))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied to file");
 	if (!std::filesystem::remove(path))
@@ -184,12 +201,6 @@ void MethodHandler::checkContentType(std::unordered_map<std::string, std::string
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Wrong Content Type");
 }
 
-void MethodHandler::parseBoundaries(const std::string &boundary, std::vector<t_FormData> &sections)
-{
-	(void)boundary;
-	(void)sections;
-}
-
 void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 {
 	LOG_TRACE("Checking if this is a regular file: ", path);
@@ -197,18 +208,30 @@ void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
-void MethodHandler::checkIfSymlink(const std::filesystem::path &path)
+void MethodHandler::checkIfSymlink(const std::string &path)
 {
 	LOG_TRACE("Checking if this is a symlink: ", path);
 	if (std::filesystem::is_symlink(path))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
 }
 
-void MethodHandler::checkIfDirectory(const std::filesystem::path &path)
+bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, const std::filesystem::path &path)
 {
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (std::filesystem::is_directory(path))
+	{
+		if (path.string().back() != '/')
+			throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
+		if (locations.contains(path))
+		{
+			std::string tempDir = path.string() + locations[path].index;
+			if (!std::filesystem::exists(tempDir))
+				return (true);
+			return (false);
+		}
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a directory");
+	}
+	return (false);
 }
 
 void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
@@ -267,23 +290,29 @@ std::filesystem::path MethodHandler::createFileName(const std::string &path)
 std::filesystem::path MethodHandler::createRealPath(const std::string &server, const std::string &target)
 {
 	LOG_TRACE("Creating real path for: ", target);
-	std::filesystem::path root = std::filesystem::path(server);
+	LOG_TRACE("Server Root: ", server);
+	std::filesystem::path root = std::filesystem::weakly_canonical(server);
 	LOG_TRACE("Root: ", root);
-	std::filesystem::path sought = std::filesystem::path(target).lexically_normal();
-	LOG_TRACE("Sought: ", sought);
-	if (sought.is_absolute())
-		sought = sought.relative_path();
-	if (!sought.empty() && root.filename() == (*sought.begin()))
-		sought = sought.lexically_relative(*sought.begin());
-	std::string tempPath = root.string() + sought.string();
-	std::filesystem::path realPath = std::filesystem::path(tempPath);
-	LOG_TRACE("Real Path: ", realPath);
-	std::filesystem::path canonicalRoot = std::filesystem::weakly_canonical(root);
-	std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(realPath);
-	auto mismatch = std::mismatch(canonicalRoot.begin(), canonicalRoot.end(), canonicalPath.begin());
-	if (mismatch.first != canonicalRoot.end())
+	std::filesystem::path targetPath = std::filesystem::path(target).lexically_normal();
+	LOG_TRACE("Sought: ", targetPath);
+	if (targetPath.is_absolute())
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target path must be relative");
+	std::filesystem::path combined = root / targetPath;
+	std::filesystem::path canonicalCombined;
+	try
+	{
+		canonicalCombined = std::filesystem::canonical(combined);
+	}
+	catch (const std::filesystem::filesystem_error &e)
+	{
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Target path does not exist");
+	}
+
+	LOG_TRACE("Canonical Root: ", root);
+	LOG_TRACE("Canonical Combined: ", canonicalCombined);
+	if (canonicalCombined.string().compare(0, root.string().size(), root.string()) != 0 || (canonicalCombined.string().size() > root.string().size() && canonicalCombined.string()[root.string().size()] != std::filesystem::path::preferred_separator))
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Security Warning: Path escapes server root");
-	return (realPath);
+	return (canonicalCombined);
 }
 
 std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
