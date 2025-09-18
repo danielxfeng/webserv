@@ -38,11 +38,11 @@ private:
 	void setContentLength(std::unordered_map<std::string, std::string> requestLine);
 	void checkContentType(std::unordered_map<std::string, std::string> requestLine) const;
 	void checkIfRegFile(const std::filesystem::path &path);
-	void checkIfSymlink(const std::string &path);
 	bool checkIfDirectory( std::unordered_map<std::string, t_location_config> &locations, const std::filesystem::path &path);
 	void checkIfLocExists(const std::filesystem::path &path);
 
 	std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
+	std::string	stripLocation(const std::string &server, const std::string &target);
 	std::string	trimPath(const std::string &path);
 	std::filesystem::path createFileName(const std::string &path);
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);

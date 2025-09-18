@@ -1,4 +1,5 @@
 #include "../includes/MethodHandler.hpp"
+#include <algorithm>
 #include <filesystem>
 
 MethodHandler::MethodHandler(EpollHelper &epoll_helper)
@@ -38,9 +39,6 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	else
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Method does not exist");
 	std::string rootDestination = matchLocation(server.locations, targetRef);// Find best matching location
-	std::string targetPath = rootDestination + targetRef;
-	LOG_TRACE("Target Path: ", targetPath);
-	checkIfSymlink(targetPath);
 	std::filesystem::path realPath = createRealPath(rootDestination, targetRef);
 	checkIfLocExists(realPath);
 	bool useAutoIndex = checkIfDirectory(server.locations, realPath);//TODO do we need a check for auto-index or can we just do it automatically?
@@ -79,27 +77,26 @@ std::string	MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 	std::string bestMatch = "";
 	size_t	longestMatchLength = 0;
 	std::string normalizedTargetPath = targetRef;
-	if (normalizedTargetPath.back() != '/')
+	if (!normalizedTargetPath.empty() && normalizedTargetPath.back() != '/')
 			normalizedTargetPath += '/';
 	for (auto it = locations.begin();  it != locations.end(); it++)
 	{
-		const std::string &locPath = it->second.root;
-		std::string normalizedLocPath = locPath;
-		if (normalizedLocPath.back() != '/')
+		std::string normalizedLocPath = it->first;
+		if (!normalizedLocPath.empty() && normalizedLocPath.back() != '/')
 			normalizedLocPath += '/';
 		if (normalizedTargetPath.find(normalizedLocPath) == 0)
 		{
 			if (normalizedLocPath.length() > longestMatchLength)
 			{
-				bestMatch = it->second.root;
+				bestMatch = it->first;
 				longestMatchLength = normalizedLocPath.length();
 			}
 		}
 	}
-	if (bestMatch == "")
+	if (bestMatch.empty() && locations.count("/") > 0)
 		bestMatch = "/";
-	LOG_TRACE("Best Location Match: ", bestMatch);
-	return (bestMatch);
+	LOG_TRACE("Best Location Match: ", locations[bestMatch].root);
+	return (locations[bestMatch].root);
 }
 
 t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path)
@@ -108,7 +105,6 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	if (useAutoIndex)
 	{
 		LOG_TRACE("Directory is: ", "auto-index");
-		//TODO Deal with FD, probably need a pipe
 		requested_.dynamicPage = generateDynamicPage(path);
 		requested_.isDynamic = true;
 		requested_.fileSize = requested_.dynamicPage.size();
@@ -208,13 +204,6 @@ void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
-void MethodHandler::checkIfSymlink(const std::string &path)
-{
-	LOG_TRACE("Checking if this is a symlink: ", path);
-	if (std::filesystem::is_symlink(path))
-		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
-}
-
 bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, const std::filesystem::path &path)
 {
 	LOG_TRACE("Checking if this is a directory: ", path);
@@ -287,32 +276,38 @@ std::filesystem::path MethodHandler::createFileName(const std::string &path)
 	return (filename);
 }
 
+std::string	MethodHandler::stripLocation(const std::string &server, const std::string &target)
+{
+	LOG_TRACE("Stripping Location: ", server);
+	std::filesystem::path targetPath(target);
+	std::filesystem::path locationPath(server);
+
+	targetPath = targetPath.lexically_normal();
+	locationPath = locationPath.lexically_normal();
+	
+	auto mismatchPair = std::mismatch(locationPath.begin(), locationPath.end(), targetPath.begin(), targetPath.end());
+
+	if (mismatchPair.first != locationPath.end())
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Target not under location");
+	std::filesystem::path relative = std::filesystem::relative(targetPath, locationPath);	
+	return (relative.string());
+}
+
 std::filesystem::path MethodHandler::createRealPath(const std::string &server, const std::string &target)
 {
 	LOG_TRACE("Creating real path for: ", target);
-	LOG_TRACE("Server Root: ", server);
-	std::filesystem::path root = std::filesystem::weakly_canonical(server);
-	LOG_TRACE("Root: ", root);
-	std::filesystem::path targetPath = std::filesystem::path(target).lexically_normal();
-	LOG_TRACE("Sought: ", targetPath);
-	if (targetPath.is_absolute())
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target path must be relative");
-	std::filesystem::path combined = root / targetPath;
-	std::filesystem::path canonicalCombined;
-	try
-	{
-		canonicalCombined = std::filesystem::canonical(combined);
-	}
-	catch (const std::filesystem::filesystem_error &e)
-	{
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Target path does not exist");
-	}
-
-	LOG_TRACE("Canonical Root: ", root);
-	LOG_TRACE("Canonical Combined: ", canonicalCombined);
-	if (canonicalCombined.string().compare(0, root.string().size(), root.string()) != 0 || (canonicalCombined.string().size() > root.string().size() && canonicalCombined.string()[root.string().size()] != std::filesystem::path::preferred_separator))
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Security Warning: Path escapes server root");
-	return (canonicalCombined);
+	std::filesystem::path targetPath(stripLocation(server, target));
+	LOG_TRACE("Relative Path: ", targetPath);
+	std::filesystem::path root(server);
+	std::filesystem::path combinedPath = root / targetPath;
+	LOG_TRACE("Checking if this is a symlink: ", combinedPath);
+	if (std::filesystem::is_symlink(combinedPath))
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
+	std::filesystem::path canonical = std::filesystem::weakly_canonical(combinedPath);
+	LOG_TRACE("Checking if path is canonical: ", combinedPath, canonical);
+	if (canonical != combinedPath)
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Path is not canonical");
+	return (combinedPath);
 }
 
 std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
