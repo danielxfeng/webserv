@@ -13,6 +13,7 @@
 #include <chrono>
 #include <ctime>
 #include <algorithm>
+#include <fstream>
 
 #include "SharedTypes.hpp"
 #include "LogSys.hpp"
@@ -42,6 +43,7 @@ private:
 	void checkIfLocExists(const std::filesystem::path &path);
 
 	std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
+	std::vector<std::filesystem::path>	splitPath(const std::filesystem::path &path);
 	std::string	stripLocation(const std::string &server, const std::string &target);
 	std::string	trimPath(const std::string &path);
 	std::filesystem::path createFileName(const std::string &path);
