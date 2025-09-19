@@ -801,7 +801,6 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         case READ_EVENT:
             if (fd != conn->inner_fd_out)
             {
-                LOG_WARN("Invalid fd for RESPONSE READ_EVENT for fd: ", fd);
                 return defaultMsg();
             }
             return responseInHandler(fd, conn);
