@@ -299,14 +299,17 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         {
         case GET:
             LOG_INFO("FILE: ", conn->res.fileDescriptor.get()->get());
-            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
+            if (conn->res.isDynamic)
+                return resheaderProcessingHandler(conn);
+            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), conn->res.fileDescriptor);
             conn->inner_fd_out = conn->res.fileDescriptor.get()->get();
+            LOG_INFO("Switching to response header processing for fd: ", fd);
             return resheaderProcessingHandler(conn);
         case DELETE:
             return resheaderProcessingHandler(conn);
         case POST:
         {
-            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), std::move(conn->res.fileDescriptor));
+            inner_fd_map_.emplace(conn->res.fileDescriptor.get()->get(), conn->res.fileDescriptor);
             conn->inner_fd_in = conn->res.fileDescriptor.get()->get();
             conn->status = REQ_BODY_PROCESSING;
             LOG_INFO("Switching to processing state for fd: ", fd);
@@ -499,7 +502,7 @@ t_msg_from_serv Server::reqBodyProcessingOutHandler(int fd, t_conn *conn)
  */
 t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 {
-	LOG_TRACE("Response Header Processing: ", "Starting...");
+    LOG_TRACE("Response Header Processing: ", "Starting...");
     conn->status = RES_HEADER_PROCESSING;
     const std::string header = (conn->error_code == ERR_NO_ERROR)
                                    ? conn->response->successResponse(conn)
