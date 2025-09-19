@@ -109,9 +109,9 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 		LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
 			return (requested_);
 	}
-	LOG_WARN("Path.c_str: ", path.c_str(), "end");
-	//if (!access(path.c_str(), R_OK))
-	//	throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout GET file");
+	LOG_WARN("Path.c_str: ", path.c_str());
+	if (!access(path.c_str(), R_OK))
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout GET file");
 	requested_.fileDescriptor->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
 	return (std::move(requested_));
@@ -324,7 +324,7 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 	return (canonical);
 }
 
-std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
+std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)//TODO Fix generator to return links and only within the provided directory
 {
 	LOG_TRACE("Dynamically generating page: ", path);
 	std:: string page = "<ul>";
@@ -338,3 +338,53 @@ std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
 	std::cout << "Page Size: " << page.size() << std::endl;
 	return (page);
 }
+
+// bool	canAccess(std::filesystem::path &path, t_access access_type)
+// {
+// 	struct stat st;
+// 	if (stat(path.c_str(), &st) < 0)
+// 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Cannot check access permissions");
+// 	uid_t uid = getuid();
+// 	gid_t gid = getgid();
+// 	if (access_type == READ_ONLY)
+// 	{
+// 		bool canRead = false;
+//     	if (uid == st.st_uid)
+//        		canRead = (st.st_mode & S_IRUSR);
+//     	else if (gid == st.st_gid)
+//      	   canRead = (st.st_mode & S_IRGRP);
+//     	else
+//         	canRead = (st.st_mode & S_IROTH);
+// 		if (canRead)
+// 			return (true);
+// 		return (false);
+// 	}
+// 	else if (access_type == WRITE_N_READ)
+// 	{
+// 		bool canWrite = false;
+//     	if (uid == st.st_uid)
+//         	canWrite = (st.st_mode & S_IWUSR);
+//     	else if (gid == st.st_gid)
+//        		canWrite = (st.st_mode & S_IWGRP);
+//     	else
+//         	canWrite = (st.st_mode & S_IWOTH);
+// 		if (canWrite);
+// 			return (true);
+// 		return (false);
+// 	}
+// 	else if (access_type == EXECUTE)
+// 	{
+// 		bool canExec = false;
+//     	if (uid == st.st_uid)
+//         	canExec = (st.st_mode & S_IXUSR);
+//     	else if (gid == st.st_gid)
+//         	canExec = (st.st_mode & S_IXGRP);
+//     	else
+//         	canExec = (st.st_mode & S_IXOTH);
+// 		if (canExec)
+// 			return (true);
+// 		return (false);
+// 	}
+// 	else
+// 		return (false);
+// }

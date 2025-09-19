@@ -14,6 +14,7 @@
 #include <ctime>
 #include <algorithm>
 #include <fstream>
+#include <unistd.h>
 
 #include "SharedTypes.hpp"
 #include "LogSys.hpp"
@@ -24,7 +25,12 @@
 
 #define MAX_BODY_SIZE 1024
 
-
+typedef enum e_access
+{
+	READ_ONLY,
+	WRITE_N_READ,
+	EXECUTE,
+}	t_access;
 
 class MethodHandler
 {	
@@ -50,6 +56,7 @@ private:
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
 	std::filesystem::path createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody);
 	std::string generateDynamicPage(std::filesystem::path &path);
+	bool	canAccess(std::filesystem::path &path, t_access access_type);
 public:
 	MethodHandler() = delete;
 	MethodHandler(EpollHelper &epoll_helper);
