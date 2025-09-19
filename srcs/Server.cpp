@@ -299,8 +299,11 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         {
         case GET:
             LOG_INFO("FILE: ", conn->res.FD_handler_OUT.get()->get());
+            if (conn->res.isDynamic)
+                return resheaderProcessingHandler(conn);
             inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), std::move(conn->res.FD_handler_OUT));
             conn->inner_fd_out = conn->res.FD_handler_OUT.get()->get();
+            LOG_INFO("Switching to response header processing for fd: ", fd);
             return resheaderProcessingHandler(conn);
         case DELETE:
             return resheaderProcessingHandler(conn);
@@ -499,9 +502,10 @@ t_msg_from_serv Server::reqBodyProcessingOutHandler(int fd, t_conn *conn)
  */
 t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 {
+    LOG_TRACE("Response Header Processing: ", "Starting...");
     conn->status = RES_HEADER_PROCESSING;
     const std::string header = (conn->error_code == ERR_NO_ERROR)
-                                   ? conn->response->successResponse(conn, conn->res.fileSize)
+                                   ? conn->response->successResponse(conn)
                                    : conn->response->failedResponse(conn, conn->error_code, "Error");
 
     conn->status = RESPONSE;
@@ -797,7 +801,6 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         case READ_EVENT:
             if (fd != conn->inner_fd_out)
             {
-                LOG_WARN("Invalid fd for RESPONSE READ_EVENT for fd: ", fd);
                 return defaultMsg();
             }
             return responseInHandler(fd, conn);

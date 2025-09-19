@@ -9,15 +9,23 @@
 
  */
 
-std::string HttpResponse::successResponse(t_conn *conn, std::size_t &page_size)
+std::string HttpResponse::successResponse(t_conn *conn)
 {
     std::string result;
     auto request = conn->request;
     if (request->getHttpRequestMethod() == "GET")
     {
-        result.append(request->getHttpVersion()).append(" 202 OK\r\n");
+        result.append(request->getHttpVersion()).append(" 200 OK\r\n");
         result.append("Content-Type: text/html\r\n");
-        result.append("Content-Length: ").append(std::to_string(page_size)).append("\r\n\r\n");
+        result.append("Content-Length: ").append(std::to_string(conn->res.fileSize)).append("\r\n\r\n");
+        if (conn->res.isDynamic)
+            result.append(conn->res.dynamicPage);
+        else
+        {
+            char buffer[conn->res.fileSize];
+            if(read(conn->res.FD_handler_OUT->get(), buffer, conn->res.fileSize))
+                result.append(buffer);
+        }
     }
     else if (request->getHttpRequestMethod() == "POST")
     {
@@ -40,6 +48,7 @@ std::string HttpResponse::successResponse(t_conn *conn, std::size_t &page_size)
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
     }
+    std::cout << result << std::endl;
     return (result);
 }
 
