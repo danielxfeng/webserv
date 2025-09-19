@@ -110,8 +110,8 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 			return (requested_);
 	}
 	LOG_WARN("Path.c_str: ", path.c_str());
-	if (!access(path.c_str(), R_OK))
-	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
+	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));	
+	if (requested_.FD_handler_OUT.get()->get() == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout GET file");
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
 	return (std::move(requested_));
@@ -132,7 +132,9 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	checkContentType(requestBody);
 	std::filesystem::path filename = createPostFilename(path, requestBody);
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
-	LOG_TRACE("GET FD: ", requested_.fileDescriptor);
+	if (requested_.FD_handler_OUT.get()->get() == -1)
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout POST file");
+	LOG_TRACE("GET FD: ", requested_.FD_handler_OUT->get());
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(filename));
 	return (std::move(requested_));
 }
@@ -150,8 +152,6 @@ std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &p
 void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 {
 	LOG_TRACE("Calling DELETE: ", path);
-	if (!access(path.c_str(), X_OK))
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied to file");
 	if (!std::filesystem::remove(path))
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }
@@ -269,44 +269,32 @@ std::vector<std::filesystem::path> MethodHandler::splitPath(const std::filesyste
 std::string	MethodHandler::stripLocation(const std::string &server, const std::string &target)
 {
 	LOG_TRACE("Stripping Location: ", server);
-	 auto norm_target = std::filesystem::weakly_canonical(target);
-    auto norm_location = std::filesystem::weakly_canonical(server);
-    std::cout << "Weakly Canonical Target: " << norm_target << std::endl;
-    std::cout << "Weakly Canonical Location: " << norm_location << std::endl;
-    auto target_parts = splitPath(norm_target);
-    auto location_parts = splitPath(norm_location);
-    std::cout << "Target parts: ";
-    for (const auto &part : target_parts)
-        std::cout << part;
-    std::cout << std::endl;
-    std::cout << "Location parts: ";
-    for (const auto &part : location_parts)
-        std::cout << part;
-    std::cout << std::endl;
-
-    //Check if target is empty 
-    if (target_parts.empty())
-        return ("/");
-    //Checks if target is at root
-    if (target_parts.size() == 1)
-        return (target_parts[0].string());
-    
-    std::filesystem::path result = "";
-    //Finds which parts of target overlaps with location
-    for (ssize_t i = static_cast<ssize_t>(location_parts.size() - 1); i != -1 ; i--)
-    {
-        for (ssize_t k = static_cast<ssize_t>(target_parts.size() - 1); k != -1; k--)
-        {
-            if (target_parts[k] != location_parts[i])
-                continue ;
-            else if (target_parts[k] == location_parts[i])
-            {
-                for (size_t x = k + 1; x < target_parts.size(); x++)
-                    result = result / target_parts[x];
-                break;
-            }
-        }
-    }
+	auto norm_target = std::filesystem::weakly_canonical(target);
+	auto norm_location = std::filesystem::weakly_canonical(server);
+	auto target_parts = splitPath(norm_target);
+	auto location_parts = splitPath(norm_location);
+	//Check if target is empty 
+	if (target_parts.empty())
+		return ("/");
+	//Checks if target is at root
+	if (target_parts.size() == 1)
+		return (target_parts[0].string());
+	std::filesystem::path result = "";
+	//Finds which parts of target overlaps with location
+	for (ssize_t i = static_cast<ssize_t>(location_parts.size() - 1); i != -1 ; i--)
+	{
+		for (ssize_t k = static_cast<ssize_t>(target_parts.size() - 1); k != -1; k--)
+		{
+			if (target_parts[k] != location_parts[i])
+				continue ;
+			else if (target_parts[k] == location_parts[i])
+			{
+				for (size_t x = k + 1; x < target_parts.size(); x++)
+					result = result / target_parts[x];
+				break;
+			}
+		}
+	}
     return (result.string());
 }
 
@@ -338,53 +326,3 @@ std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)//TOD
 	std::cout << "Page Size: " << page.size() << std::endl;
 	return (page);
 }
-
-// bool	canAccess(std::filesystem::path &path, t_access access_type)
-// {
-// 	struct stat st;
-// 	if (stat(path.c_str(), &st) < 0)
-// 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Cannot check access permissions");
-// 	uid_t uid = getuid();
-// 	gid_t gid = getgid();
-// 	if (access_type == READ_ONLY)
-// 	{
-// 		bool canRead = false;
-//     	if (uid == st.st_uid)
-//        		canRead = (st.st_mode & S_IRUSR);
-//     	else if (gid == st.st_gid)
-//      	   canRead = (st.st_mode & S_IRGRP);
-//     	else
-//         	canRead = (st.st_mode & S_IROTH);
-// 		if (canRead)
-// 			return (true);
-// 		return (false);
-// 	}
-// 	else if (access_type == WRITE_N_READ)
-// 	{
-// 		bool canWrite = false;
-//     	if (uid == st.st_uid)
-//         	canWrite = (st.st_mode & S_IWUSR);
-//     	else if (gid == st.st_gid)
-//        		canWrite = (st.st_mode & S_IWGRP);
-//     	else
-//         	canWrite = (st.st_mode & S_IWOTH);
-// 		if (canWrite);
-// 			return (true);
-// 		return (false);
-// 	}
-// 	else if (access_type == EXECUTE)
-// 	{
-// 		bool canExec = false;
-//     	if (uid == st.st_uid)
-//         	canExec = (st.st_mode & S_IXUSR);
-//     	else if (gid == st.st_gid)
-//         	canExec = (st.st_mode & S_IXGRP);
-//     	else
-//         	canExec = (st.st_mode & S_IXOTH);
-// 		if (canExec)
-// 			return (true);
-// 		return (false);
-// 	}
-// 	else
-// 		return (false);
-// }
