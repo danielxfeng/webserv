@@ -5,13 +5,11 @@
 
 CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 {
-	result.fileDescriptor = std::make_shared<RaiiFd>(epoll_helper);
+	result.FD_handler_IN = std::make_shared<RaiiFd>(epoll_helper);
+	result.FD_handler_OUT = std::make_shared<RaiiFd>(epoll_helper);
 	result.expectedSize = 0;
 	result.fileSize = 0;
 	result.isDynamic = false;
-	result.dynamicPage = nullptr;
-	fds[0] = -1;
-	fds[1] = -1;
 }
 
 CGIHandler::~CGIHandler()
@@ -70,16 +68,19 @@ void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLin
 	envp.push_back(nullptr);
 }
 
-void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path)
+void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path, int inPipe[2], int outPipe[2])
 {
 	char **final_envp = envp.data();
 	std::string scriptStr = script.string();
 	std::vector<char*> argv;
 	argv.push_back(const_cast<char*>(scriptStr.c_str()));
 	argv.push_back(nullptr);
-	if (dup2(fds[1], STDIN_FILENO) == -1)
-		throw WebServErr::CGIException("Dup2 Failure");
-	close(fds[0]);
+	if (dup2(inPipe[READ], STDIN_FILENO) == -1)
+		throw WebServErr::CGIException("Dup2 inPipe Failure");
+	close(inPipe[WRITE]);
+	if (dup2(outPipe[WRITE], STDOUT_FILENO) == -1)
+		throw WebServErr::CGIException("Dup2 outPipe Failure");
+	close(outPipe[READ]);
 	if (execve(path.c_str(), argv.data(), final_envp) == -1)
 		throw WebServErr::CGIException("Failed to execute CGI");
 }
@@ -96,13 +97,20 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 		throw WebServErr::CGIException("CGI script is a symlink");
 	if (!std::filesystem::is_regular_file(script))
 		throw WebServErr::CGIException("CGI script is not a regular file.");
-	int fds[2];
-	result.fileDescriptor->setFd(socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+	int inPipe[2] = {-1, -1};
+	int outPipe[2] = {-1, -1};
+	if (pipe(inPipe) == -1)
+		throw WebServErr::CGIException("inPipe failed to initialize");
+	if (pipe(outPipe) == -1)
+		throw WebServErr::CGIException("outPipe failed to initialize");
+	result.FD_handler_IN->setFd(inPipe[WRITE]);
+	result.FD_handler_OUT->setFd(outPipe[READ]);
 	pid_t pid = fork();
 	if (pid == -1)
 		throw WebServErr::CGIException("Failed to fork");
 	if (pid == 0)
-		handleCGIProcess(script, path);
-	close(fds[1]);
+		handleCGIProcess(script, path, inPipe, outPipe);
+	close(inPipe[READ]);
+	close(outPipe[WRITE]);
 	return (result);
 }

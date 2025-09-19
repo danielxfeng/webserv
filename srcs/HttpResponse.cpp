@@ -23,7 +23,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
         else
         {
             char buffer[conn->res.fileSize];
-            if(read(conn->res.fileDescriptor->get(), buffer, conn->res.fileSize))
+            if(read(conn->res.FD_handler_OUT->get(), buffer, conn->res.fileSize))
                 result.append(buffer);
         }
     }
