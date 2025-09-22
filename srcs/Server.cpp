@@ -508,12 +508,21 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
                                    ? conn->response->successResponse(conn)
                                    : conn->response->failedResponse(conn, conn->error_code, "Error");
 
+    LOG_INFO("Response header prepared for fd: ", conn->socket_fd, "\n", header);
+        
     conn->status = RESPONSE;
 
     conn->bytes_sent = 0;
 
     if (!conn->is_cgi)
         conn->write_buf->insertHeader(header);
+
+    if (conn->error_code != ERR_NO_ERROR)
+    {
+        LOG_ERROR("Error occurred, preparing error response: ", conn->error_code);
+        conn->output_length = header.size();
+        return defaultMsg();
+    }
 
     t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
 
