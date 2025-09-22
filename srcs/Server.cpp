@@ -13,7 +13,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->bytes_received = 0;
     conn->output_length = max_request_size;
     conn->bytes_sent = 0;
-    conn->res = t_file{nullptr, nullptr,  0, 0, false, ""};
+    conn->res = t_file{nullptr, nullptr, 0, 0, false, ""};
     conn->read_buf = std::make_unique<Buffer>();
     conn->write_buf = std::make_unique<Buffer>();
     conn->request = std::make_shared<HttpRequests>();
@@ -509,7 +509,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
                                    : conn->response->failedResponse(conn, conn->error_code, "Error");
 
     LOG_INFO("Response header prepared for fd: ", conn->socket_fd, "\n", header);
-       
+
     conn->status = RESPONSE;
     conn->bytes_sent = 0;
 
@@ -539,7 +539,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     default:
         throw WebServErr::ShouldNotBeHereException("Unhandled method in response header processing");
     }
-    
+
     // Register the inner fd for writing response body if CGI method
     if (method == CGI)
     {
@@ -662,7 +662,7 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
     }
 
     conn->bytes_sent += bytes_written;
-    LOG_INFO("Data written to fd: ", fd, " bytes: ", bytes_written, " total: ", conn->bytes_sent);
+    LOG_INFO("Data written to fd: ", fd, " bytes: ", bytes_written, " total: ", conn->bytes_sent, " / ", conn->output_length);
 
     // Check if done
     if (conn->bytes_sent == conn->output_length)
@@ -704,7 +704,8 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
 {
     conn->status = DONE;
-    const bool keep_alive = conn->request->getrequestHeaderMap().contains("Connection") && conn->request->getrequestHeaderMap().at("Connection") != "close";
+    const bool keep_alive = !conn->request->getrequestHeaderMap().contains("Connection") || conn->request->getrequestHeaderMap().at("Connection") != "close";
+    LOG_INFO("Request fully processed for fd: ", fd, " keep-alive: ", keep_alive);
 
     // Terminate the connection if error occurred or not keep-alive
     if (conn->error_code != ERR_NO_ERROR || !keep_alive)

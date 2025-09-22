@@ -142,5 +142,5 @@ public:
     /**
      * @brief Inserts a header string into the buffer.
      */
-    bool insertHeader(const std::string str);
+    bool insertHeader(std::string str);
 };
