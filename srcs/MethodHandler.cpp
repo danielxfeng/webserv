@@ -204,7 +204,7 @@ void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
-bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, const std::filesystem::path &path)
+bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path)
 {
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (std::filesystem::is_directory(path))
@@ -216,6 +216,7 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 			std::string tempDir = path.string() + locations[path].index;
 			if (!std::filesystem::exists(tempDir))
 				return (true);
+			path = std::filesystem::path(tempDir);
 			return (false);
 		}
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a directory");
@@ -295,6 +296,8 @@ std::string	MethodHandler::stripLocation(const std::string &server, const std::s
 			}
 		}
 	}
+	// if (result == "")
+	// 	result = norm_target;
     return (result.string());
 }
 
@@ -302,9 +305,17 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 {
 	LOG_TRACE("Creating real path for: ", target);
 	std::filesystem::path targetPath(stripLocation(server, target));
+	if (targetPath == "")
+	{
+		LOG_TRACE("Strip Location returned: ", "Empty");
+		targetPath = std::filesystem::path(target);
+		targetPath = std::filesystem::weakly_canonical(targetPath);
+	}
 	LOG_TRACE("Relative Path: ", targetPath);
 	std::filesystem::path root(server);
-	std::filesystem::path combinedPath = root / targetPath;
+//	root = std::filesystem::weakly_canonical(root);
+	LOG_TRACE("Root Path: ", root);
+	std::filesystem::path combinedPath = root / targetPath;//std::filesystem::path(root.string() + targetPath.string());
 	LOG_TRACE("Checking if this is a symlink: ", combinedPath);
 	if (std::filesystem::is_symlink(combinedPath))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
