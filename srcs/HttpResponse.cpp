@@ -11,8 +11,8 @@
 
 std::string HttpResponse::successResponse(t_conn *conn)
 {
-    std::string_view res_target = conn->request->getrequestLineMap()["Target"];
-    std::string_view content_type;
+    std::string res_target = conn->request->getrequestLineMap()["Target"];
+    std::string content_type;
     if(res_target.find(".png") != std::string::npos)
         content_type = "image/png";
     else if(res_target.find(".jpeg") != std::string::npos)
@@ -55,7 +55,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
                                     "<p>The requested resource has been deleted.</p>"
                                     "</body>"
                                     "</html>";
-        result.append("1.1").append(" 200 OK\r\n");
+        result.append("HTTP/1.1").append(" 200 OK\r\n");
         result.append("Content-Type: text/html\r\n");
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
@@ -76,7 +76,7 @@ std::string HttpResponse::notFoundResponse(t_conn *conn)
                            "<p>The requested resource was not found on this server.</p>"
                            "</body>"
                            "</html>";
-    result.append("1.1").append(" ").append("404 Not Found").append("\r\n");
+    result.append("HTTP/1.1").append(" ").append("404 Not Found").append("\r\n");
     result.append("Content-Type: text/html\r\n");
     result.append("Content-Length: ").append(std::to_string(notFound.size())).append("\r\n\r\n");
     result.append(notFound);
@@ -95,7 +95,7 @@ std::string HttpResponse::badRequestResponse(t_conn *conn)
                            "<p>The requested has problems.</p>"
                            "</body>"
                            "</html>";
-    result.append("1.1").append(" ").append("400 Bad Request").append("\r\n");
+    result.append("HTTP/1.1").append(" ").append("400 Bad Request").append("\r\n");
     result.append("Content-Type: text/html\r\n");
     result.append("Content-Length: ").append(std::to_string(notFound.size())).append("\r\n\r\n");
     result.append(notFound);
