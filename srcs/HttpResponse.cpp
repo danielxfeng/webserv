@@ -13,11 +13,16 @@ std::string HttpResponse::successResponse(t_conn *conn)
 {
     std::string_view res_target = conn->request->getrequestLineMap()["Target"];
     std::string_view content_type;
-    if(res_target == "/")
-        content_type = "text/html";
+    if(res_target.find(".png") != std::string::npos)
+        content_type = "image/png";
+    else if(res_target.find(".jpeg") != std::string::npos)
+        content_type = "image/jpeg";
+    else if(res_target.find(".txt") != std::string::npos)
+        content_type = "text/plain";
     else
-        content_type = res_target;
-
+        content_type = "text/html";
+    
+    
     std::string result;
     auto request = conn->request;
     if (request->getHttpRequestMethod() == "GET")
@@ -27,12 +32,12 @@ std::string HttpResponse::successResponse(t_conn *conn)
         result.append("Content-Length: ").append(std::to_string(conn->res.fileSize)).append("\r\n\r\n");
         if (conn->res.isDynamic)
             result.append(conn->res.dynamicPage);
-        else
-        {
-            char buffer[conn->res.fileSize];
-            if(read(conn->res.FD_handler_OUT->get(), buffer, conn->res.fileSize))
-                result.append(buffer);
-        }
+        // else
+        // {
+        //     char buffer[conn->res.fileSize];
+        //     if(read(conn->res.FD_handler_OUT->get(), buffer, conn->res.fileSize))
+        //         result.append(buffer);
+        // }
     }
     else if (request->getHttpRequestMethod() == "POST")
     {
