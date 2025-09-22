@@ -136,7 +136,7 @@ def run():
     #test_get_autoindex()
     test_get_404()
     test_get_content_length_too_large()
-    #test_get_incorrect_http_version()
+    test_get_incorrect_http_version()
     test_get_incorrect_method()
     test_get_no_method()
     test_get_no_http_version()
