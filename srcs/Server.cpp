@@ -514,8 +514,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 
     conn->bytes_sent = 0;
 
-    if (!conn->is_cgi)
-        conn->write_buf->insertHeader(header);
+    conn->write_buf->insertHeader(header);
 
     if (conn->error_code != ERR_NO_ERROR)
     {
