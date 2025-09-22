@@ -11,12 +11,19 @@
 
 std::string HttpResponse::successResponse(t_conn *conn)
 {
+    std::string_view res_target = conn->request->getrequestLineMap()["Target"];
+    std::string_view content_type;
+    if(res_target == "/")
+        content_type = "text/html";
+    else
+        content_type = res_target;
+
     std::string result;
     auto request = conn->request;
     if (request->getHttpRequestMethod() == "GET")
     {
         result.append("1.1").append(" 200 OK\r\n");
-        result.append("Content-Type: text/html\r\n");
+        result.append("Content-Type: ").append(content_type).append("\r\n");
         result.append("Content-Length: ").append(std::to_string(conn->res.fileSize)).append("\r\n\r\n");
         if (conn->res.isDynamic)
             result.append(conn->res.dynamicPage);
@@ -30,7 +37,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
     else if (request->getHttpRequestMethod() == "POST")
     {
         result.append("1.1").append(" 201 Created\r\n");
-        result.append("Content-Type: text/html\r\n");
+        result.append("Content-Type: ").append(content_type).append("\r\n");
     }
     else if (request->getHttpRequestMethod() == "DELETE")
     {
