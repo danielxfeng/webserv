@@ -22,7 +22,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
     auto request = conn->request;
     if (request->getHttpRequestMethod() == "GET")
     {
-        result.append("1.1").append(" 200 OK\r\n");
+        result.append("HTTP/1.1").append(" 200 OK\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
         result.append("Content-Length: ").append(std::to_string(conn->res.fileSize)).append("\r\n\r\n");
         if (conn->res.isDynamic)
@@ -36,7 +36,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
     }
     else if (request->getHttpRequestMethod() == "POST")
     {
-        result.append("1.1").append(" 201 Created\r\n");
+        result.append("HTTP/1.1").append(" 201 Created\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
     }
     else if (request->getHttpRequestMethod() == "DELETE")
@@ -142,7 +142,7 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
                     "<head><title>");
     htmlPage.append(status).append("</title></head><body><h1>").append(status).append("</h1><p>").append(error_message).append("</p></body></html>");
 
-    result.append("1.1").append(" ").append(status).append("\r\n");
+    result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
     result.append("Content-Type: text/html\r\n");
     result.append("Content-Length: ").append(std::to_string(htmlPage.size())).append("\r\n\r\n");
     result.append(htmlPage);
