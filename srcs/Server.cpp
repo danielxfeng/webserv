@@ -509,9 +509,8 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
                                    : conn->response->failedResponse(conn, conn->error_code, "Error");
 
     LOG_INFO("Response header prepared for fd: ", conn->socket_fd, "\n", header);
-        
+       
     conn->status = RESPONSE;
-
     conn->bytes_sent = 0;
 
     if (!conn->is_cgi)
@@ -523,7 +522,6 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         conn->output_length = header.size();
         return defaultMsg();
     }
-
     t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
 
     switch (method)
@@ -542,13 +540,13 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     default:
         throw WebServErr::ShouldNotBeHereException("Unhandled method in response header processing");
     }
-
+    
     // Register the inner fd for writing response body if CGI method
     if (method == CGI)
     {
         conn->inner_fd_out = conn->inner_fd_in;
     }
-
+    LOG_INFO(" REMOVE DEBUG MK TEST: ", conn->output_length, "\n", header);
     return defaultMsg();
 }
 
