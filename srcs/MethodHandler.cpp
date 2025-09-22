@@ -213,7 +213,8 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 			throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
 		if (locations.contains(path))
 		{
-			std::string tempDir = path.string() + locations[path].index;
+			std::filesystem::path tempDir = path;
+			tempDir.append("index.html");
 			if (!std::filesystem::exists(tempDir))
 				return (true);
 			path = std::filesystem::path(tempDir);
@@ -310,6 +311,13 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 		LOG_TRACE("Strip Location returned: ", "Empty");
 		targetPath = std::filesystem::path(target);
 		targetPath = std::filesystem::weakly_canonical(targetPath);
+	}
+	if (targetPath.has_filename())
+	{
+		std::string filename = targetPath.filename();
+		LOG_TRACE("TargetPath Filename: ", filename);
+		if (filename == "index")
+			targetPath += ".html";
 	}
 	LOG_TRACE("Relative Path: ", targetPath);
 	std::filesystem::path root(server);
