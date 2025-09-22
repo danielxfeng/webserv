@@ -301,7 +301,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
             LOG_INFO("FILE: ", conn->res.FD_handler_OUT.get()->get());
             if (conn->res.isDynamic)
                 return resheaderProcessingHandler(conn);
-            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), std::move(conn->res.FD_handler_OUT));
+            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), conn->res.FD_handler_OUT);
             conn->inner_fd_out = conn->res.FD_handler_OUT.get()->get();
             LOG_INFO("Switching to response header processing for fd: ", fd);
             return resheaderProcessingHandler(conn);
@@ -309,7 +309,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
             return resheaderProcessingHandler(conn);
         case POST:
         {
-            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), std::move(conn->res.FD_handler_OUT));
+            inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), conn->res.FD_handler_OUT);
             conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
             conn->status = REQ_BODY_PROCESSING;
             LOG_INFO("Switching to processing state for fd: ", fd);
