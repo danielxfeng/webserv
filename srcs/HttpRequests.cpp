@@ -539,9 +539,9 @@ void HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 	requestBody = sv.substr(i, request.size());
 	posToRawFile = request.find("\r\n\r\n");
 	if (posToRawFile == std::string::npos)
-		throw WebServErr::BadRequestException("no end for the deader part of the body");
+		throw WebServErr::BadRequestException("no end for the header part of the body");
 	boundarySize = requestHeaderMap.contains("boundary") ? requestHeaderMap["boundary"].size() : 0;
-	if (boundarySize == 0 || boundarySize > requestBody.size())
+	if (requestHeaderMap.contains("boundary") && (boundarySize == 0 || boundarySize > requestBody.size()))
 		throw WebServErr::BadRequestException("must have boundary");
 	// extract the first boundary line
 	requestBodyHeader = requestBody.substr(boundarySize + 4, requestLength);
@@ -629,7 +629,7 @@ void HttpRequests::httpParser(const std::string_view &request)
 	validateRequestLine();
 	extractRequestHeader(i, requestLength, request);
 	validateRequestHeader();
-	if (requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
+	if (requestLineMap["Method"] == "POST")
 	{
 		extractRequestBody(i, requestLength, request);
 		validateRequestBody();
