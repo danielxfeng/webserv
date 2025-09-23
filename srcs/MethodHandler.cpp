@@ -1,5 +1,6 @@
 #include "../includes/MethodHandler.hpp"
 #include <algorithm>
+#include <cstddef>
 #include <filesystem>
 
 MethodHandler::MethodHandler(EpollHelper &epoll_helper)
@@ -38,24 +39,54 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	LOG_TRACE("Method found: ", chosenMethod);
 		
 	std::string rootDestination = matchLocation(server.locations, targetRef);// Find best matching location
-	std::string value = server.locations[rootDestination].root;
-	LOG_DEBUG("Root Value: ", value);
+	std::string root = server.locations[rootDestination].root;
+	LOG_DEBUG("rootDestination: ", rootDestination);
+	LOG_DEBUG("Root: ", root);
 	t_method realMethod = convertMethod(chosenMethod);
-	for (size_t i = 0; i < server.locations[rootDestination].methods.size(); i++)
+	LOG_DEBUG("Real Method: ", realMethod);
+	for (size_t i = 0; i < server.locations[root].methods.size(); i++)
 	{
-		std::cout << "Server methods: " << server.locations[rootDestination].methods[i] << std::endl;
-		if (server.locations[rootDestination].methods[i] != realMethod)
+		std::cout << "Server methods: " << server.locations[root].methods[i] << std::endl;
+		if (server.locations[root].methods[i] != realMethod)
 			throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 	}
 
-	std::filesystem::path realPath = createRealPath(rootDestination, targetRef);
+	//Clean target - removing overlap with root
+	std::string temp = targetRef;
+	std::string &toRemove = rootDestination;
+	size_t pos = temp.find(toRemove);
+	if (pos != std::string::npos)
+		temp.erase(pos, toRemove.length());
+	if (temp.empty())
+		temp = "/";
+	LOG_TRACE("Cleaned target: ", temp);
+
+	//TODO maybe check here if there's an index
+	if (temp == "/" && !server.locations[rootDestination].index.empty())
+		temp += server.locations[rootDestination].index;
+
+	//Create realPath
+	std::filesystem::path realPath(root + temp);
+	LOG_DEBUG("Real Path: ", realPath);
+//		createRealPath(root, temp);
 	
+	//Check if location exists
 	checkIfLocExists(realPath);
 	
-	bool useAutoIndex = checkIfDirectory(server.locations, realPath, rootDestination);//TODO do we need a check for auto-index or can we just do it automatically?
-	if (!useAutoIndex)
-		checkIfRegFile(realPath);
+	//Make canonical
+	std::filesystem::path canonical = std::filesystem::weakly_canonical(realPath);
+	LOG_DEBUG("Canonical Path: ", canonical);
 	
+
+	//Check if Symlink
+	if (std::filesystem::is_symlink(canonical))
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Destination is a symlink");
+
+	//Check if Directory
+	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination);//TODO do we need a check for auto-index or can we just do it automatically?
+	if (!useAutoIndex)
+		checkIfRegFile(canonical);
+
 	switch (realMethod)
 	{
 		case GET:
@@ -102,7 +133,7 @@ std::string	MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 	}
 	if (bestMatch.empty() && locations.count("/") > 0)
 		bestMatch = "/";
-	LOG_TRACE("Best Location Match: ", locations[bestMatch].root);
+	LOG_TRACE("Best Location Match: ", bestMatch, " Root: ", locations[bestMatch].root);
 	return (bestMatch);
 }
 
@@ -225,8 +256,8 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (std::filesystem::is_directory(path))
 	{
-		if (path.string().back() != '/')
-			throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
+//		if (path.string().back() != '/')
+//			throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
 		if (locations.contains(path))
 		{
 			std::filesystem::path tempDir(rootDestination);
@@ -319,10 +350,10 @@ std::string	MethodHandler::stripLocation(const std::string &server, const std::s
     return (result.string());
 }
 
-std::filesystem::path MethodHandler::createRealPath(const std::string &server, const std::string &target)
+std::filesystem::path MethodHandler::createRealPath(const std::string &root, const std::string &target)
 {
 	LOG_TRACE("Creating real path for: ", target);
-	std::filesystem::path targetPath(stripLocation(server, target));
+/*	std::filesystem::path targetPath(stripLocation(root, target));
 	if (targetPath == "")
 	{
 		LOG_TRACE("Strip Location returned: ", "Empty");
@@ -337,11 +368,19 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 				targetPath.remove_filename();
 		}
 	}
-	
-	LOG_TRACE("Relative Path: ", targetPath);
-	std::filesystem::path root(server);
-	LOG_TRACE("Root Path: ", root);
-	std::filesystem::path combinedPath = root / targetPath;
+*/	
+
+	std::filesystem::path targetPath(target);
+
+//	targetPath = std::filesystem::weakly_canonical(targetPath);
+	LOG_TRACE("Weakly Canonical Target Path: ", targetPath);
+	std::filesystem::path prefix(root);
+	LOG_TRACE("Root Path: ", prefix);
+	std::filesystem::path combinedPath;
+	if (targetPath == "/")
+		combinedPath = root + '/';
+	else
+		combinedPath = prefix / targetPath;
 	LOG_TRACE("Checking if this is a symlink: ", combinedPath);
 	if (std::filesystem::is_symlink(combinedPath))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
