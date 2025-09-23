@@ -31,13 +31,12 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Target does not exist");
 	std::string chosenMethod;
 	std::cout << requestLine["Method"] << std::endl;
-	if (requestLine.contains("Method"))
-	{
-		chosenMethod = requestLine["Method"];
-		LOG_TRACE("Method found: ", chosenMethod);
-	}
-	else
+	
+	if (!requestLine.contains("Method"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Method does not exist");
+	chosenMethod = requestLine["Method"];
+	LOG_TRACE("Method found: ", chosenMethod);
+		
 	std::string rootDestination = matchLocation(server.locations, targetRef);// Find best matching location
 	t_method realMethod = convertMethod(chosenMethod);
 	for (size_t i = 0; i < server.locations[rootDestination].methods.size(); i++)
@@ -46,11 +45,15 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		if (server.locations[rootDestination].methods[i] != realMethod)
 			throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 	}
+
 	std::filesystem::path realPath = createRealPath(rootDestination, targetRef);
+	
 	checkIfLocExists(realPath);
+	
 	bool useAutoIndex = checkIfDirectory(server.locations, realPath, rootDestination);//TODO do we need a check for auto-index or can we just do it automatically?
 	if (!useAutoIndex)
 		checkIfRegFile(realPath);
+	
 	switch (realMethod)
 	{
 		case GET:
@@ -299,12 +302,13 @@ std::string	MethodHandler::stripLocation(const std::string &server, const std::s
 			{
 				for (size_t x = k + 1; x < target_parts.size(); x++)
 						result = result / target_parts[x];
+				// if (result.empty() && k == 0)
+				// 	result = "/";
 				break;
 			}
 		}
 	}
-	if (result.empty())
-		result = "/";
+	
 	LOG_DEBUG("Stripped Target: ", result);
     return (result.string());
 }
@@ -318,14 +322,16 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 		LOG_TRACE("Strip Location returned: ", "Empty");
 		targetPath = std::filesystem::path(target);
 		targetPath = std::filesystem::weakly_canonical(targetPath);
+		LOG_TRACE("Backup targetPath: ", targetPath);
+		if (targetPath.has_filename())
+		{
+			std::string filename = targetPath.filename();
+			LOG_TRACE("TargetPath Filename: ", filename);
+			if (filename == "index")
+				targetPath.remove_filename();
+		}
 	}
-	if (targetPath.has_filename())
-	{
-		std::string filename = targetPath.filename();
-		LOG_TRACE("TargetPath Filename: ", filename);
-		if (filename == "index")
-			targetPath += ".html";
-	}
+	
 	LOG_TRACE("Relative Path: ", targetPath);
 	std::filesystem::path root(server);
 	LOG_TRACE("Root Path: ", root);
