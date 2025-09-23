@@ -48,7 +48,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	}
 	std::filesystem::path realPath = createRealPath(rootDestination, targetRef);
 	checkIfLocExists(realPath);
-	bool useAutoIndex = checkIfDirectory(server.locations, realPath);//TODO do we need a check for auto-index or can we just do it automatically?
+	bool useAutoIndex = checkIfDirectory(server.locations, realPath, rootDestination);//TODO do we need a check for auto-index or can we just do it automatically?
 	if (!useAutoIndex)
 		checkIfRegFile(realPath);
 	switch (realMethod)
@@ -103,11 +103,18 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	if (useAutoIndex)
 	{
 		LOG_TRACE("Directory is: ", "auto-index");
-		requested_.dynamicPage = generateDynamicPage(path, rootDestination);
-		requested_.isDynamic = true;
-		requested_.fileSize = requested_.dynamicPage.size();
-		LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
-			return (requested_);
+		try
+		{
+			requested_.dynamicPage = generateDynamicPage(path, rootDestination);
+			requested_.isDynamic = true;
+			requested_.fileSize = requested_.dynamicPage.size();
+			LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
+		}
+		catch(...)
+		{
+			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Auto-index failed");
+		}
+		return (requested_);
 	}
 	LOG_WARN("Path.c_str: ", path.c_str());
 	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
@@ -204,7 +211,7 @@ void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
-bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path)
+bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination)
 {
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (std::filesystem::is_directory(path))
@@ -213,8 +220,9 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 			throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
 		if (locations.contains(path))
 		{
-			std::filesystem::path tempDir = path;
-			tempDir.append("index.html");
+			std::filesystem::path tempDir(rootDestination);
+			tempDir /= std::filesystem::path(locations[path].index);
+			LOG_TRACE("Attempting to add index.html: ", tempDir);
 			if (!std::filesystem::exists(tempDir))
 				return (true);
 			path = std::filesystem::path(tempDir);
@@ -278,27 +286,26 @@ std::string	MethodHandler::stripLocation(const std::string &server, const std::s
 	//Check if target is empty
 	if (target_parts.empty())
 		return ("/");
-	//Checks if target is at root
-	if (target_parts.size() == 1)
-		return (target_parts[0].string());
 	std::filesystem::path result = "";
 	//Finds which parts of target overlaps with location
 	for (ssize_t i = static_cast<ssize_t>(location_parts.size() - 1); i != -1 ; i--)
 	{
 		for (ssize_t k = static_cast<ssize_t>(target_parts.size() - 1); k != -1; k--)
 		{
+			LOG_DEBUG("Stripping Loc: ", location_parts[i], " Target: ", target_parts[k]);
 			if (target_parts[k] != location_parts[i])
 				continue ;
 			else if (target_parts[k] == location_parts[i])
 			{
 				for (size_t x = k + 1; x < target_parts.size(); x++)
-					result = result / target_parts[x];
+						result = result / target_parts[x];
 				break;
 			}
 		}
 	}
-	// if (result == "")
-	// 	result = norm_target;
+	if (result.empty())
+		result = "/";
+	LOG_DEBUG("Stripped Target: ", result);
     return (result.string());
 }
 
@@ -321,9 +328,8 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 	}
 	LOG_TRACE("Relative Path: ", targetPath);
 	std::filesystem::path root(server);
-//	root = std::filesystem::weakly_canonical(root);
 	LOG_TRACE("Root Path: ", root);
-	std::filesystem::path combinedPath = root / targetPath;//std::filesystem::path(root.string() + targetPath.string());
+	std::filesystem::path combinedPath = root / targetPath;
 	LOG_TRACE("Checking if this is a symlink: ", combinedPath);
 	if (std::filesystem::is_symlink(combinedPath))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
@@ -331,7 +337,7 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 	return (canonical);
 }
 
-std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, const std::string &urlPrefix)//TODO Fix generator to return links and only within the provided directory
+std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, const std::string &urlPrefix)
 {
 	std::filesystem::path currentPath = path;
 	currentPath = std::filesystem::current_path();

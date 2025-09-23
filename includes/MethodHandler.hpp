@@ -45,7 +45,7 @@ private:
 	void setContentLength(std::unordered_map<std::string, std::string> requestLine);
 	void checkContentType(std::unordered_map<std::string, std::string> requestLine) const;
 	void checkIfRegFile(const std::filesystem::path &path);
-	bool checkIfDirectory( std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path);
+	bool checkIfDirectory( std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination);
 	void checkIfLocExists(const std::filesystem::path &path);
 
 	std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
