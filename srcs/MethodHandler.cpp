@@ -38,6 +38,8 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	LOG_TRACE("Method found: ", chosenMethod);
 		
 	std::string rootDestination = matchLocation(server.locations, targetRef);// Find best matching location
+	std::string value = server.locations[rootDestination].root;
+	LOG_DEBUG("Root Value: ", value);
 	t_method realMethod = convertMethod(chosenMethod);
 	for (size_t i = 0; i < server.locations[rootDestination].methods.size(); i++)
 	{
@@ -91,13 +93,17 @@ std::string	MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 			{
 				bestMatch = it->first;
 				longestMatchLength = normalizedLocPath.length();
+				//TODO save somewhere normalizedLocPath aka bestMatch
+				//TODO use normalizedLocPath aka bestMatch : aa = length to remove the prefix from targets
+				// root = locations[bestMatch].root
+				// realPath = root +  aa
 			}
 		}
 	}
 	if (bestMatch.empty() && locations.count("/") > 0)
 		bestMatch = "/";
 	LOG_TRACE("Best Location Match: ", locations[bestMatch].root);
-	return (locations[bestMatch].root);
+	return (bestMatch);
 }
 
 t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path, const std::string &rootDestination)
