@@ -1,4 +1,5 @@
 #include "Buffer.hpp"
+#include <LogSys.hpp>
 
 Buffer::Buffer(size_t capacity, size_t block_size) : data_(), ref_(), data_view_(), capacity_(capacity), write_pos_(0), size_(0), block_size_(block_size), remain_header_size_(0), remain_body_size_(0), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}
 
@@ -248,7 +249,7 @@ ssize_t Buffer::readFd(int fd)
     bool new_block = false;
 
     // Allocate a new block if needed
-    if (data_.empty() || write_pos_ == block_size_)
+    if (data_.empty() || write_pos_ >= block_size_)
     {
         data_.push_back(std::string(block_size_, '\0'));
         write_pos_ = 0;
@@ -432,15 +433,23 @@ bool Buffer::removeHeaderAndSetChunked(const std::size_t size, bool is_chunked)
     return true;
 }
 
-bool Buffer::insertHeader(const std::string str)
+bool Buffer::insertHeader(std::string str)
 {
     if (str.size() + size_ > capacity_)
         return false;
 
+    size_t write_size = str.size();
+
+    if (write_size < block_size_)
+    {
+        str.resize(block_size_, '\0');
+        write_pos_ = write_size;
+    }
+
     data_.push_front(str);
-    data_view_.push_front(std::string_view(data_.front()));
+    data_view_.push_front(std::string_view(data_.front().data(), write_size));
     ref_.push_front(1);
-    size_ += str.size();
+    size_ += write_size;
     return true;
 }
 
