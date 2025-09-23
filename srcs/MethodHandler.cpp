@@ -54,7 +54,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	switch (realMethod)
 	{
 		case GET:
-			return (callGetMethod(useAutoIndex, realPath));
+			return (callGetMethod(useAutoIndex, realPath, rootDestination));
 		case POST:
 			return (callPostMethod(realPath, server, requestLine, requestHeader, requestBody));
 		case DELETE:
@@ -97,20 +97,20 @@ std::string	MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 	return (locations[bestMatch].root);
 }
 
-t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path)
+t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path, const std::string &rootDestination)
 {
 	LOG_TRACE("Calling GET: ", path);
 	if (useAutoIndex)
 	{
 		LOG_TRACE("Directory is: ", "auto-index");
-		requested_.dynamicPage = generateDynamicPage(path);
+		requested_.dynamicPage = generateDynamicPage(path, rootDestination);
 		requested_.isDynamic = true;
 		requested_.fileSize = requested_.dynamicPage.size();
 		LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
 			return (requested_);
 	}
 	LOG_WARN("Path.c_str: ", path.c_str());
-	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));	
+	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 	if (requested_.FD_handler_OUT.get()->get() == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout GET file");
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
@@ -275,7 +275,7 @@ std::string	MethodHandler::stripLocation(const std::string &server, const std::s
 	auto norm_location = std::filesystem::weakly_canonical(server);
 	auto target_parts = splitPath(norm_target);
 	auto location_parts = splitPath(norm_location);
-	//Check if target is empty 
+	//Check if target is empty
 	if (target_parts.empty())
 		return ("/");
 	//Checks if target is at root
@@ -331,15 +331,32 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &server, c
 	return (canonical);
 }
 
-std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)//TODO Fix generator to return links and only within the provided directory
+std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, const std::string &urlPrefix)//TODO Fix generator to return links and only within the provided directory
 {
-	LOG_TRACE("Dynamically generating page: ", path);
+	std::filesystem::path currentPath = path;
+	currentPath = std::filesystem::current_path();
+	LOG_TRACE("Dynamically generating page for: ", currentPath);
+	LOG_TRACE("URLPrefix: ", urlPrefix);
 	std:: string page = "<ul>";
-	for (const auto &entry : std::filesystem::directory_iterator(path))
+
+	for (const auto &entry : std::filesystem::directory_iterator(urlPrefix))
 	{
-		page.append("<li>");
-		page.append(entry.path());
-		page.append("</li>");
+		std::string name = entry.path().filename().string();
+		std::filesystem::path full_path(urlPrefix);
+		std::filesystem::path trimmed;
+		auto it = std::find(full_path.begin(), full_path.end(), "webserv");
+		if (it != full_path.end())
+		{
+			for (auto part = std::next(it); part != full_path.end(); part++)
+				trimmed /= *part;
+		}
+		if (!trimmed.empty() && trimmed.string().back() != '/')
+			trimmed += "/";
+		trimmed += name;
+		if (entry.is_directory())
+			trimmed += "/";
+		std::string link = "<a href=\"" + trimmed.string() + "\">" + name + "</a>";
+		page.append("<li>" + link + "</li>");
 	}
 	page.append("</ul>");
 	std::cout << "Page Size: " << page.size() << std::endl;
