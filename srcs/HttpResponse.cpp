@@ -131,15 +131,14 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
     case ERR_404_NOT_FOUND:
         status = "404 Not Found";
         break;
+    case ERR_405_METHOD_NOT_ALLOWED:
+        status = "405 METHOD NOT ALLOWED";
+        break;
     case ERR_409_CONFLICT:
         status = "409 Conflict";
         break;
-    case ERR_500_INTERNAL_SERVER_ERROR:
-        status = "500 Internal Server Error";
-        break;
-
     default:
-        break;
+        status = "500 Internal Server Error";
     }
     std::string htmlPage;
     htmlPage.append("<!DOCTYPE html>"
