@@ -47,6 +47,7 @@ private:
 	void checkIfRegFile(const std::filesystem::path &path);
 	bool checkIfDirectory( std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination);
 	void checkIfLocExists(const std::filesystem::path &path);
+	bool checkIfSafe(const std::filesystem::path &root, const std::filesystem::path &path);
 
 	std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
 	std::vector<std::filesystem::path>	splitPath(const std::filesystem::path &path);

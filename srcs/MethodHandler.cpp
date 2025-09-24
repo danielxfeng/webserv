@@ -74,6 +74,10 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	if (std::filesystem::is_symlink(canonical))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Destination is a symlink");
 
+	//Check if safe
+	if (!checkIfSafe(rootDestination, canonical))
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Path goes beyond root");
+
 	//Check if Directory
 	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination);
 	if (!useAutoIndex)
@@ -371,4 +375,21 @@ std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
 	page.append("</ul>\n</body>\n</html>\n");
 	std::cout << "Page Size: " << page.size() << std::endl;
 	return (page);
+}
+
+bool MethodHandler::checkIfSafe(const std::filesystem::path &root, const std::filesystem::path &path)
+{
+	LOG_TRACE("Checking if path is safe: ", path, " Root is: ", root);
+	try
+	{
+		std::filesystem::path fullPath = std::filesystem::weakly_canonical(root / path.relative_path());
+
+		return (std::mismatch(root.begin(), root.end(), fullPath.begin()).first == root.end());
+	}
+	catch(const std::filesystem::filesystem_error &e)
+	{
+		LOG_TRACE("Forbidden Path: ", e.what());
+		return (false);
+	}
+		
 }
