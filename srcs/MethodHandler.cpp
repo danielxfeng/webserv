@@ -32,12 +32,12 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Target does not exist");
 	std::string chosenMethod;
 	std::cout << requestLine["Method"] << std::endl;
-	
+
 	if (!requestLine.contains("Method"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Method does not exist");
 	chosenMethod = requestLine["Method"];
 	LOG_TRACE("Method found: ", chosenMethod);
-		
+
 	std::string rootDestination = matchLocation(server.locations, targetRef);// Find best matching location
 	std::string root = server.locations[rootDestination].root;
 	LOG_DEBUG("rootDestination: ", rootDestination);
@@ -52,54 +52,46 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	}
 
 	//Clean target - removing overlap with root
-	std::string temp = targetRef;
-	std::string &toRemove = rootDestination;
-	size_t pos = temp.find(toRemove);
-	if (pos != std::string::npos)
-		temp.erase(pos, toRemove.length());
-	if (temp.empty())
-		temp = "/";
-	LOG_TRACE("Cleaned target: ", temp);
-
+	std::string  path = stripLocation(rootDestination, targetRef);
+	
 	//TODO maybe check here if there's an index
-	if (temp == "/" && !server.locations[rootDestination].index.empty())
-		temp += server.locations[rootDestination].index;
+	if (path == "/" && !server.locations[rootDestination].index.empty())
+		path += server.locations[rootDestination].index;
 
 	//Create realPath
-	std::filesystem::path realPath(root + temp);
+	std::filesystem::path realPath(root + path);
 	LOG_DEBUG("Real Path: ", realPath);
-//		createRealPath(root, temp);
-	
+
 	//Check if location exists
 	checkIfLocExists(realPath);
-	
+
 	//Make canonical
 	std::filesystem::path canonical = std::filesystem::weakly_canonical(realPath);
 	LOG_DEBUG("Canonical Path: ", canonical);
-	
+
 
 	//Check if Symlink
 	if (std::filesystem::is_symlink(canonical))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Destination is a symlink");
 
 	//Check if Directory
-	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination);//TODO do we need a check for auto-index or can we just do it automatically?
+	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination);
 	if (!useAutoIndex)
 		checkIfRegFile(canonical);
 
 	switch (realMethod)
 	{
 		case GET:
-			return (callGetMethod(useAutoIndex, realPath, rootDestination));
+			return (callGetMethod(useAutoIndex, canonical));
 		case POST:
-			return (callPostMethod(realPath, server, requestLine, requestHeader, requestBody));
+			return (callPostMethod(canonical, server, requestLine, requestHeader, requestBody));
 		case DELETE:
 		{
-			callDeleteMethod(realPath);
+			callDeleteMethod(canonical);
 			return (requested_);
 		}
 		case CGI:
-			return (callCGIMethod(realPath, requestLine, requestHeader, requestBody, epoll_helper));
+			return (callCGIMethod(canonical, requestLine, requestHeader, requestBody, epoll_helper));
 		default:
 			throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 	}
@@ -124,10 +116,6 @@ std::string	MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 			{
 				bestMatch = it->first;
 				longestMatchLength = normalizedLocPath.length();
-				//TODO save somewhere normalizedLocPath aka bestMatch
-				//TODO use normalizedLocPath aka bestMatch : aa = length to remove the prefix from targets
-				// root = locations[bestMatch].root
-				// realPath = root +  aa
 			}
 		}
 	}
@@ -137,7 +125,7 @@ std::string	MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 	return (bestMatch);
 }
 
-t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path, const std::string &rootDestination)
+t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path)
 {
 	LOG_TRACE("Calling GET: ", path);
 	if (useAutoIndex)
@@ -145,7 +133,7 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 		LOG_TRACE("Directory is: ", "auto-index");
 		try
 		{
-			requested_.dynamicPage = generateDynamicPage(path, rootDestination);
+			requested_.dynamicPage = generateDynamicPage(path);
 			requested_.isDynamic = true;
 			requested_.fileSize = requested_.dynamicPage.size();
 			LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
@@ -256,19 +244,25 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (std::filesystem::is_directory(path))
 	{
-//		if (path.string().back() != '/')
-//			throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
-		if (locations.contains(path))
+		LOG_TRACE("This is a directory: ", path);
+		
+		if (locations.contains(rootDestination))
 		{
 			std::filesystem::path tempDir(rootDestination);
 			tempDir /= std::filesystem::path(locations[path].index);
 			LOG_TRACE("Attempting to add index.html: ", tempDir);
 			if (!std::filesystem::exists(tempDir))
+			{
+				LOG_TRACE("Auto Index set to: ", "ON");
 				return (true);
+			}
 			path = std::filesystem::path(tempDir);
+			LOG_TRACE("Auto Index set to: ", "OFF");
 			return (false);
 		}
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a directory");
+		if (path.string().back() != '/')
+				throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a forbidden directory");
 	}
 	return (false);
 }
@@ -316,63 +310,28 @@ std::vector<std::filesystem::path> MethodHandler::splitPath(const std::filesyste
     return (parts);
 }
 
-std::string	MethodHandler::stripLocation(const std::string &server, const std::string &target)
+std::string	MethodHandler::stripLocation(const std::string &rootDestination, const std::string &targetRef)
 {
-	LOG_TRACE("Stripping Location: ", server);
-	auto norm_target = std::filesystem::weakly_canonical(target);
-	auto norm_location = std::filesystem::weakly_canonical(server);
-	auto target_parts = splitPath(norm_target);
-	auto location_parts = splitPath(norm_location);
-	//Check if target is empty
-	if (target_parts.empty())
-		return ("/");
-	std::filesystem::path result = "";
-	//Finds which parts of target overlaps with location
-	for (ssize_t i = static_cast<ssize_t>(location_parts.size() - 1); i != -1 ; i--)
-	{
-		for (ssize_t k = static_cast<ssize_t>(target_parts.size() - 1); k != -1; k--)
-		{
-			LOG_DEBUG("Stripping Loc: ", location_parts[i], " Target: ", target_parts[k]);
-			if (target_parts[k] != location_parts[i])
-				continue ;
-			else if (target_parts[k] == location_parts[i])
-			{
-				for (size_t x = k + 1; x < target_parts.size(); x++)
-						result = result / target_parts[x];
-				// if (result.empty() && k == 0)
-				// 	result = "/";
-				break;
-			}
-		}
-	}
-	
-	LOG_DEBUG("Stripped Target: ", result);
-    return (result.string());
+	std::string path = targetRef;
+	LOG_TRACE("Target to be cleaned: ", path);
+	std::string toRemove = rootDestination;
+	size_t pos = path.find(toRemove);
+	LOG_DEBUG("Size of pos: ", pos);
+	if (pos != std::string::npos)
+		path.erase(pos, toRemove.length());
+	if (path.empty())
+		path = "/";
+	else if (path.front() != '/')
+		path = '/' + path;
+	LOG_TRACE("Cleaned target: ", path);
+	return (path);
 }
 
 std::filesystem::path MethodHandler::createRealPath(const std::string &root, const std::string &target)
 {
 	LOG_TRACE("Creating real path for: ", target);
-/*	std::filesystem::path targetPath(stripLocation(root, target));
-	if (targetPath == "")
-	{
-		LOG_TRACE("Strip Location returned: ", "Empty");
-		targetPath = std::filesystem::path(target);
-		targetPath = std::filesystem::weakly_canonical(targetPath);
-		LOG_TRACE("Backup targetPath: ", targetPath);
-		if (targetPath.has_filename())
-		{
-			std::string filename = targetPath.filename();
-			LOG_TRACE("TargetPath Filename: ", filename);
-			if (filename == "index")
-				targetPath.remove_filename();
-		}
-	}
-*/	
-
 	std::filesystem::path targetPath(target);
 
-//	targetPath = std::filesystem::weakly_canonical(targetPath);
 	LOG_TRACE("Weakly Canonical Target Path: ", targetPath);
 	std::filesystem::path prefix(root);
 	LOG_TRACE("Root Path: ", prefix);
@@ -388,34 +347,28 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &root, con
 	return (canonical);
 }
 
-std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, const std::string &urlPrefix)
+std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
 {
-	std::filesystem::path currentPath = path;
-	currentPath = std::filesystem::current_path();
-	LOG_TRACE("Dynamically generating page for: ", currentPath);
-	LOG_TRACE("URLPrefix: ", urlPrefix);
-	std:: string page = "<ul>";
+	std::string base = path.string();
+	if (base.empty() || base[0] != '/')
+		base = '/' + base;
+	std::filesystem::path fullPath(base);
+	LOG_TRACE("Dynamically generating page for: ", fullPath);
+	std:: string page = "<!DOCTYPE html>\n<html>\n<head><title>Directory Structure of " + path.string() + "</title></head>\n";
+	page += "<body>\n<h1>" + path.string() + "</h1>\n<ul>\n";
 
-	for (const auto &entry : std::filesystem::directory_iterator(urlPrefix))
+	for (const auto &entry : std::filesystem::directory_iterator(fullPath))
 	{
 		std::string name = entry.path().filename().string();
-		std::filesystem::path full_path(urlPrefix);
-		std::filesystem::path trimmed;
-		auto it = std::find(full_path.begin(), full_path.end(), "webserv");
-		if (it != full_path.end())
-		{
-			for (auto part = std::next(it); part != full_path.end(); part++)
-				trimmed /= *part;
-		}
-		if (!trimmed.empty() && trimmed.string().back() != '/')
-			trimmed += "/";
-		trimmed += name;
-		if (entry.is_directory())
-			trimmed += "/";
-		std::string link = "<a href=\"" + trimmed.string() + "\">" + name + "</a>";
+		if (std::filesystem::is_directory(name))
+			name += '/';
+		if (!path.empty() && path.string().back() != '/')
+			name += '/';
+		std::string link = "<a href=\"" + name + "\">" + name + "</a>";
 		page.append("<li>" + link + "</li>");
 	}
-	page.append("</ul>");
+
+	page.append("</ul>\n</body>\n</html>\n");
 	std::cout << "Page Size: " << page.size() << std::endl;
 	return (page);
 }
