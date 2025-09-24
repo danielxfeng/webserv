@@ -144,9 +144,9 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 		return (requested_);
 	}
 	LOG_WARN("Path.c_str: ", path.c_str());
-	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
-	if (requested_.FD_handler_OUT.get()->get() == -1)
+	if (access(path.string().c_str(), R_OK) == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout GET file");
+	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(path));
 	return (std::move(requested_));
 }
@@ -156,7 +156,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 	LOG_TRACE("Calling POST: ", path);
 	(void)server;
 	(void)requestLine; // TODO remove the parameters if unneeded
-	if (!access(path.c_str(), W_OK))
+	if (access(path.c_str(), W_OK) == -1)//TODO Is this necessary?
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannot POST file");
 	if (requestHeader.find("multipart/form") == requestHeader.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
@@ -186,6 +186,8 @@ std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &p
 void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 {
 	LOG_TRACE("Calling DELETE: ", path);
+	if (access(path.c_str(), X_OK) == -1)
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission Denied: cannot delete selected file");
 	if (!std::filesystem::remove(path))
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }
