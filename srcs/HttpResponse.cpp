@@ -122,9 +122,6 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
     case ERR_301_REDIRECT:
         status = "301 Moved Permanently";
         break;
-    case ERR_400_BAD_REQUEST:
-        status = "400 BAD REQUEST";
-        break;
     case ERR_401_UNAUTHORIZED:
         status = "401 Unauthorized";
         break;
