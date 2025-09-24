@@ -11,6 +11,7 @@
 
 std::string HttpResponse::successResponse(t_conn *conn)
 {
+    std::cout<<"RUN fom Response"<<std::endl;
     std::string res_target = conn->request->getrequestLineMap()["Target"];
     std::string content_type;
     if(res_target.find(".png") != std::string::npos)
@@ -46,7 +47,6 @@ std::string HttpResponse::successResponse(t_conn *conn)
     }
     else if (request->getHttpRequestMethod() == "DELETE")
     {
-        std::string result;
         std::string deleteSuccess = "<!DOCTYPE html>"
                                     "<html>"
                                     "<head><title>200 OK</title></head>"

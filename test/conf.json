@@ -15,7 +15,7 @@
         "max_headers_size": 99999999,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET", "POST"], "root": "/home/mkhlouf/goinfre/www/app", "index": "index.html" },
+          "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app", "index": "index.html" },
           "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/static" }
         }
       },
