@@ -301,7 +301,7 @@ void HttpRequests::content_length_validator(void)
 	size_t content_length_var;
 
 	content_length_var = 0;
-	if (requestLineMap["Method"] == "POST" || requestLineMap["Method"] == "DELETE")
+	if (requestLineMap["Method"] == "POST")
 	{
 		if (!requestHeaderMap.contains("content-length") && !requestHeaderMap.contains("transfer-encoding"))
 			throw WebServErr::BadRequestException("content-length is needed");
