@@ -186,8 +186,10 @@ std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &p
 void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 {
 	LOG_TRACE("Calling DELETE: ", path);
-	if (access(path.c_str(), X_OK) == -1)
+	if (access(path.c_str(), W_OK) == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission Denied: cannot delete selected file");
+	if (std::filesystem::is_directory(path))
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a directory, cannot DELETE");
 	if (!std::filesystem::remove(path))
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }

@@ -26,7 +26,7 @@ def send_raw(raw_bytes: bytes) -> bytes:
 def test_get_html():
     r = requests.get(f"{BASE}/index.html")
     assert r.status_code == 200
-    with open(f"{HOME}/goinfre/www/app/index.html", "r") as f:
+    with open(f"{HOME}/www/app/index.html", "r") as f:
         expected_content = f.read()
     assert expected_content in r.text
     print("GET HTML test passed.")
@@ -34,16 +34,15 @@ def test_get_html():
 def test_default_html():
     r = requests.get(f"{BASE}/")
     assert r.status_code == 200
-    with open(f"{HOME}/goinfre/www/app/index.html", "r") as f:
+    with open(f"{HOME}/www/app/index.html", "r") as f:
         expected_content = f.read()
     assert expected_content in r.text
     print("GET default HTML test passed.")
 
 def test_get_txt():
     r = requests.get(f"{BASE}/second/test.txt")
-    print(r.status_code)
     assert r.status_code == 200
-    with open(f"{HOME}/goinfre/www/app/second/test.txt", "r") as f:
+    with open(f"{HOME}/www/app/second/test.txt", "r") as f:
         expected_content = f.read()
     assert expected_content in r.text
     print("GET TXT test passed.")
@@ -78,7 +77,7 @@ def test_get_content_length_too_large():
 def test_get_large_file():
     r = requests.get(f"{BASE}/pic.png")
     assert r.status_code == 200
-    with open(f"{HOME}/goinfre/www/app/pic.png", "rb") as f:
+    with open(f"{HOME}/www/app/pic.png", "rb") as f:
         expected_content = f.read()
     assert r.content == expected_content
     print("GET large file test passed.")
@@ -141,35 +140,37 @@ def test_get_incorrect_protocol():
 def test_get_not_allowed_method():
     r = requests.get(f"{BASE}/uploads/test.txt")
 
-    print(r.status_code)
     assert r.status_code == 405
     print("GET not allowed method test passed.")
 
 def test_delete_not_allowed_method():
-    r = requests.delete(f"{BASE}/pic.png")
+    r = requests.delete(f"{BASE}/second/pic.png")
     assert r.status_code == 405
     print("DELETE not allowed method test passed.")
 
 def test_delete_ok():
-    shutil.copy(f"{HOME}/goinfre/www/app/test.txt", f"{HOME}/goinfre/www/app/uploads/test.txt")
+    shutil.copy(f"{HOME}/www/app/test.txt", f"{HOME}/www/app/uploads/test.txt")
     r = requests.delete(f"{BASE}/uploads/test.txt")
     assert r.status_code == 204
     r = requests.delete(f"{BASE}/uploads/test.txt")
     assert r.status_code == 404
-    r = requests.get(f"{BASE}/uploads/test.txt")
-    assert r.status_code == 404
     print("DELETE ok test passed.")
+
+def test_delete_nonexistent_file():
+    r = requests.delete(f"{BASE}/uploads/nonexistent.txt")
+    assert r.status_code == 404
+    print("DELETE nonexistent file test passed.")
 
 def test_delete_folder():
     r = requests.delete(f"{BASE}/uploads/")
-    assert r.status_code == 405
+    assert r.status_code == 403
     print("DELETE folder test passed.")
 
 
 def test_delete_folder_more():
-    os.mkdir(f"{HOME}/goinfre/www/app/uploads/more/")
+    os.mkdir(f"{HOME}/www/app/uploads/more/")
     r = requests.delete(f"{BASE}/uploads/more/")
-    assert r.status_code == 405
+    assert r.status_code == 403
     print("DELETE folder without slash test passed.")
 
 def test_delete_with_body():
@@ -192,7 +193,7 @@ def test_simple_post():
     r = requests.get(f"{BASE}/uploads/uploaded.txt")
     assert r.status_code == 200
     assert r.text == "Hello, World!"
-    os.remove(f"{HOME}/goinfre/www/app/uploads/uploaded.txt")
+    os.remove(f"{HOME}/www/app/uploads/uploaded.txt")
     print("Simple POST test passed.")
 
 def test_post_large_file():
@@ -202,7 +203,7 @@ def test_post_large_file():
     r = requests.get(f"{BASE}/uploads/large.txt")
     assert r.status_code == 200
     assert r.text == large_content
-    os.remove(f"{HOME}/goinfre/www/app/uploads/large.txt")
+    os.remove(f"{HOME}/www/app/uploads/large.txt")
     print("POST large file test passed.")
 
 def test_post_without_content_length():
@@ -254,7 +255,7 @@ def test_post_chunked_transfer():
     r = requests.get(f"{BASE}/uploads/chunked.txt")
     assert r.status_code == 200
     assert r.text == "MozillaDeveloperNetwork"
-    os.remove(f"{HOME}/goinfre/www/app/uploads/chunked.txt")
+    os.remove(f"{HOME}/www/app/uploads/chunked.txt")
     print("POST chunked transfer test passed.")
 
 def test_post_chunked_large_file():
@@ -279,7 +280,7 @@ def test_post_chunked_large_file():
     r = requests.get(f"{BASE}/uploads/chunked_large.txt")
     assert r.status_code == 200
     assert r.text == large_content
-    os.remove(f"{HOME}/goinfre/www/app/uploads/chunked_large.txt")
+    os.remove(f"{HOME}/www/app/uploads/chunked_large.txt")
     print("POST chunked transfer large file test passed.")
 
 def test_post_chunked_transfer_invalid_header():
@@ -376,15 +377,20 @@ def run_all():
     test_get_no_method()
     test_get_no_http_version()
     test_get_incorrect_protocol()
-    #test_get_not_allowed_method()
+    test_get_not_allowed_method()
 
-    #test_delete_not_allowed_method()
-    #test_delete_ok()
-    #test_delete_folder()
-    #test_delete_folder_more()
-    #test_delete_with_body()
+    test_delete_not_allowed_method()
+    test_delete_ok()
+    test_delete_nonexistent_file()
+    test_delete_folder()
+    test_delete_folder_more()
+    test_delete_with_body()
     print("All tests passed.")
+
+def run_one():
+    test_get_html()
 
 
 if __name__=="__main__":
     run_all()
+    #run_one()
