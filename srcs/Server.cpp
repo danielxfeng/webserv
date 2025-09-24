@@ -515,6 +515,9 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 
     conn->write_buf->insertHeader(header);
 
+    LOG_INFO("Response header size for fd: ", conn->socket_fd, " size: ", header.size());
+    LOG_INFO("Header content:\n", header);
+
     if (conn->error_code != ERR_NO_ERROR)
     {
         LOG_ERROR("Error occurred, preparing error response: ", conn->error_code);

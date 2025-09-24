@@ -49,13 +49,13 @@ std::string HttpResponse::successResponse(t_conn *conn)
     {
         std::string deleteSuccess = "<!DOCTYPE html>"
                                     "<html>"
-                                    "<head><title>200 OK</title></head>"
+                                    "<head><title>204 OK</title></head>"
                                     "<body>"
                                     "<h1>DELETE Success</h1>"
                                     "<p>The requested resource has been deleted.</p>"
                                     "</body>"
                                     "</html>";
-        result.append("HTTP/1.1").append(" 200 OK\r\n");
+        result.append("HTTP/1.1").append(" 204 OK\r\n");
         result.append("Content-Type: text/html\r\n");
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
