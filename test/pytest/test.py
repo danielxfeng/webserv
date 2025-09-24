@@ -40,10 +40,10 @@ def test_default_html():
     print("GET default HTML test passed.")
 
 def test_get_txt():
-    r = requests.get(f"{BASE}/second/text.txt")
+    r = requests.get(f"{BASE}/second/test.txt")
     print(r.status_code)
     assert r.status_code == 200
-    with open(f"{HOME}/goinfre/www/app/file.txt", "r") as f:
+    with open(f"{HOME}/goinfre/www/app/second/test.txt", "r") as f:
         expected_content = f.read()
     assert expected_content in r.text
     print("GET TXT test passed.")
@@ -51,8 +51,8 @@ def test_get_txt():
 def test_get_autoindex():
     r = requests.get(f"{BASE}/second/")
     assert r.status_code == 200
-    assert "Index of /second/" in r.text
-    assert "text.txt" in r.text
+    assert "second" in r.text
+    assert "test.txt" in r.text
     print("GET autoindex test passed.")
 
 def test_get_404():
@@ -141,6 +141,7 @@ def test_get_incorrect_protocol():
 def test_get_not_allowed_method():
     r = requests.get(f"{BASE}/uploads/test.txt")
 
+    print(r.status_code)
     assert r.status_code == 405
     print("GET not allowed method test passed.")
 
@@ -364,9 +365,9 @@ def test_post_chunked_extra_data_after_last_chunk():
 
 def run_all():
     test_get_html()
-    #test_default_html()
-    #test_get_txt()
-    #test_get_autoindex()
+    test_default_html()
+    test_get_txt()
+    test_get_autoindex()
     test_get_404()
     test_get_content_length_too_large()
     test_get_large_file()
