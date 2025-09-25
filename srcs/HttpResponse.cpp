@@ -11,19 +11,27 @@
 
 std::string HttpResponse::successResponse(t_conn *conn)
 {
-    std::cout<<"RUN fom Response"<<std::endl;
+    std::cout << "RUN fom Response" << std::endl;
     std::string res_target = conn->request->getrequestLineMap()["Target"];
     std::string content_type;
-    if(res_target.find(".png") != std::string::npos)
-        content_type = "image/png";
-    else if(res_target.find(".jpeg") != std::string::npos)
-        content_type = "image/jpeg";
-    else if(res_target.find(".txt") != std::string::npos)
-        content_type = "text/plain";
+    if (!conn->res.isDynamic && res_target.find(".") != std::string::npos)
+    {
+        if (res_target.find(".png") != std::string::npos)
+            content_type = "image/png";
+        else if (res_target.find(".jpeg") != std::string::npos)
+            content_type = "image/jpeg";
+        else if (res_target.find(".jpg") != std::string::npos)
+            content_type = "image/jpg";
+        else if (res_target.find(".txt") != std::string::npos)
+            content_type = "text/plain";
+        else if (res_target.find(".html") != std::string::npos)
+            content_type = "text/html";
+        else
+            content_type = "application/octet-stream";
+    }
     else
         content_type = "text/html";
-    
-    
+
     std::string result;
     auto request = conn->request;
     if (request->getHttpRequestMethod() == "GET")
