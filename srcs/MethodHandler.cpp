@@ -23,7 +23,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	LOG_TRACE("Handle Request Started: ", "Let's see what happens...");
 	std::string targetRef;
 
-	if (requestLine.find("Target") != requestLine.end())
+	if (requestLine.contains("Target"))
 	{
 		targetRef = requestLine["Target"];
 		LOG_TRACE("Target found: ", targetRef);
@@ -83,7 +83,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	case GET:
 		return (callGetMethod(useAutoIndex, canonical));
 	case POST:
-		return (callPostMethod(canonical, server, requestLine, requestHeader, requestBody));
+		return (callPostMethod(canonical, requestHeader, requestBody));
 	case DELETE:
 	{
 		callDeleteMethod(canonical);
@@ -151,16 +151,16 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
 {
 	LOG_TRACE("Calling POST: ", path);
-	(void)server;
-	(void)requestLine; // TODO remove the parameters if unneeded
-	if (access(path.c_str(), W_OK) == -1)//TODO Is this necessary?
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannot POST file");
-	if (requestHeader.find("multipart/form") == requestHeader.end())
+	if (!path.has_extension() || path.extension() != "png" || path.extension() != "jpg" ||path.extension() != "jpeg" || path.extension() != "txt")
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Extension");
+	// if (access(path.c_str(), W_OK) == -1)//TODO Is this necessary?
+	// 	throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannot POST file");
+	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
-	if (requestBody.find("content-type") == requestBody.end())
+	if (!requestBody.contains("content-type"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content Type");
 	setContentLength(requestBody);
 	checkContentType(requestBody);
@@ -176,7 +176,9 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, t_server_confi
 std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody)
 {
 	std::filesystem::path result = path;
-	if (requestBody.find("filename") == requestBody.end())
+	if (result.string().back() != '/')
+		result.string().push_back('/');
+	if (!requestBody.contains("filename"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Filename not found");
 	result += createFileName(requestBody["filename"]);
 	return (result);
@@ -231,7 +233,7 @@ void MethodHandler::checkContentType(std::unordered_map<std::string, std::string
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Name Is Empty String");
 	if (requestBody.find("Content-Type") == requestBody.end())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, No Content Type");
-	if (requestBody["Content-Type"] != "image/png" || requestBody["Content-Type"].empty())
+	if (requestBody["Content-Type"] == "application/octet-stream" || requestBody["Content-Type"].empty())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, Wrong Content Type");
 }
 
@@ -245,13 +247,15 @@ void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination)
 {
 	LOG_TRACE("Checking if this is a directory: ", path);
-	if (std::filesystem::is_directory(path))
-	{
-		LOG_TRACE("This is a directory: ", path);
+	if (!std::filesystem::is_directory(path))
+		return (false);
 
-		if (locations.contains(rootDestination))
+	LOG_TRACE("This is a directory: ", path);
+	if (locations.contains(rootDestination))
+	{
+		std::filesystem::path tempDir(rootDestination);
+		if (locations.contains(path))
 		{
-			std::filesystem::path tempDir(rootDestination);
 			tempDir /= std::filesystem::path(locations[path].index);
 			LOG_TRACE("Attempting to add index.html: ", tempDir);
 			if (!std::filesystem::exists(tempDir))
@@ -263,11 +267,15 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 			LOG_TRACE("Auto Index set to: ", "OFF");
 			return (false);
 		}
-		if (path.string().back() != '/')
-			throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a forbidden directory");
+		else
+		{
+			LOG_TRACE("Auto Index set to: ", "ON");
+			return (true);
+		}
 	}
-	return (false);
+	if (path.string().back() != '/')
+		throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
+	throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a forbidden directory");
 }
 
 void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
@@ -277,22 +285,13 @@ void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Location does not exist");
 }
 
-std::string MethodHandler::trimPath(const std::string &path)
-{
-	std::string result = path;
-	const std::string extension = ".png";
-	if (result.size() >= extension.size() && result.compare(path.size() - extension.size(), extension.size(), extension) == 0)
-	{
-		result.erase(result.size() - extension.size());
-		LOG_TRACE("Trimmed filename: ", result);
-	}
-	return (result);
-}
-
 std::filesystem::path MethodHandler::createFileName(const std::string &path)
 {
 	LOG_TRACE("Creating the File name for: ", path);
-	std::string trimmedPath = trimPath(path);
+	std::filesystem::path temp(path);
+	if (temp.has_extension() && temp.extension() == "png")
+		temp.replace_extension("");
+	std::string trimmedPath = temp.string();
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 	time_t tt = std::chrono::system_clock::to_time_t(now);
 	tm local_tm = *localtime(&tt);
@@ -302,16 +301,6 @@ std::filesystem::path MethodHandler::createFileName(const std::string &path)
 	std::filesystem::path filename = "/index/user_content/" + trimmedPath + '_' + year + '_' + month + '_' + day + ".png";
 	checkIfLocExists(filename);
 	return (filename);
-}
-std::vector<std::filesystem::path> MethodHandler::splitPath(const std::filesystem::path &path)
-{
-	std::vector<std::filesystem::path> parts;
-	for (const auto &part : path)
-	{
-		if (part != "/" && part != "")
-			parts.push_back(part);
-	}
-	return (parts);
 }
 
 std::string MethodHandler::stripLocation(const std::string &rootDestination, const std::string &targetRef)
