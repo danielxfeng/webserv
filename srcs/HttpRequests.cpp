@@ -373,7 +373,7 @@ std::vector<std::string> HttpRequests::stov(std::string &string, char c)
 void HttpRequests::header_contenttype_validator()
 {
 	bool has_semicolon;
-	bool valid_types;
+	// bool valid_types;
 
 	if (requestLineMap["Method"] == "POST")
 	{
