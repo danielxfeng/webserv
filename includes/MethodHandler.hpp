@@ -38,7 +38,7 @@ private:
 	t_file requested_;
 
 	t_file callGetMethod(bool useAutoIndex, std::filesystem::path &path);
-	t_file callPostMethod(std::filesystem::path &path, t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
+	t_file callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
 	void callDeleteMethod(std::filesystem::path &path);
 	t_file callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper);
 
@@ -50,9 +50,7 @@ private:
 	bool checkIfSafe(const std::filesystem::path &root, const std::filesystem::path &path);
 
 	std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
-	std::vector<std::filesystem::path>	splitPath(const std::filesystem::path &path);
 	std::string	stripLocation(const std::string &server, const std::string &target);
-	std::string	trimPath(const std::string &path);
 	std::filesystem::path createFileName(const std::string &path);
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
 	std::filesystem::path createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody);

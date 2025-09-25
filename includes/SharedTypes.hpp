@@ -52,6 +52,13 @@ typedef struct s_file
     std::string dynamicPage;
 } t_file;
 
+typedef enum e_types
+{
+    TXT,
+    PNG,
+    JPG,
+}   t_types;
+
 /**
  * @brief Enumeration of buffer error codes.
  */
