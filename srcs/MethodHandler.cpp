@@ -83,7 +83,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	case GET:
 		return (callGetMethod(useAutoIndex, canonical));
 	case POST:
-		return (callPostMethod(canonical, requestHeader, requestBody));
+		return (callPostMethod(canonical, requestHeader, requestBody, rootDestination));
 	case DELETE:
 	{
 		callDeleteMethod(canonical);
@@ -151,9 +151,11 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, std::string &rootDestination)
 {
-	LOG_TRACE("Calling POST: ", path);
+	LOG_TRACE("Calling POST: ", path);	
+	if (checkFileCount(rootDestination) > 25)
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
 	if (!path.has_extension() || path.extension() != "png" || path.extension() != "jpg" ||path.extension() != "jpeg" || path.extension() != "txt")
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Extension");
 	// if (access(path.c_str(), W_OK) == -1)//TODO Is this necessary?
@@ -371,4 +373,15 @@ bool MethodHandler::checkIfSafe(const std::filesystem::path &root, const std::fi
 		LOG_TRACE("Forbidden Path: ", e.what());
 		return (false);
 	}
+}
+
+size_t MethodHandler::checkFileCount(std::string &rootDestination)
+{
+	size_t fileCount = 0;
+	for (const auto& entry : std::filesystem::directory_iterator(rootDestination))
+	{
+		if (std::filesystem::is_regular_file(entry.path()))
+			fileCount++;
+	}
+	return (fileCount);
 }
