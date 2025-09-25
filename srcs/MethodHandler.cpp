@@ -164,7 +164,8 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content Type");
 	setContentLength(requestBody);
 	checkContentType(requestBody);
-	std::filesystem::path filename = createPostFilename(path, requestBody);
+	std::string extension = path.extension().string();
+	std::filesystem::path filename = createRandomFilename(path, extension);
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	if (requested_.FD_handler_OUT.get()->get() == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout POST file");
@@ -173,15 +174,23 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 	return (std::move(requested_));
 }
 
-std::filesystem::path MethodHandler::createPostFilename(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestBody)
+std::filesystem::path MethodHandler::createRandomFilename(std::filesystem::path &path, std::string &extension)
 {
-	std::filesystem::path result = path;
-	if (result.string().back() != '/')
-		result.string().push_back('/');
-	if (!requestBody.contains("filename"))
-		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Filename not found");
-	result += createFileName(requestBody["filename"]);
-	return (result);
+	std::string result = path.string();
+	if (result.back() != '/')
+		result.push_back('/');
+	result += "upload_";
+	std::time_t now = std::time(nullptr);
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<> dis(10000,99999);
+	pid_t pid = getpid();
+	result += pid + '_' + dis(gen);
+	result += extension;
+	std::filesystem::path uploadCheck(result);
+	if (std::filesystem::exists(uploadCheck))
+		createRandomFilename(path, extension);
+	return (uploadCheck);
 }
 
 // Only throw if something is wrong, otherwise success is assumed
@@ -283,24 +292,6 @@ void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
 	LOG_TRACE("Checking if this location exists: ", path);
 	if (!std::filesystem::exists(path))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Location does not exist");
-}
-
-std::filesystem::path MethodHandler::createFileName(const std::string &path)
-{
-	LOG_TRACE("Creating the File name for: ", path);
-	std::filesystem::path temp(path);
-	if (temp.has_extension() && temp.extension() == "png")
-		temp.replace_extension("");
-	std::string trimmedPath = temp.string();
-	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-	time_t tt = std::chrono::system_clock::to_time_t(now);
-	tm local_tm = *localtime(&tt);
-	std::string year = std::to_string(local_tm.tm_year + 1900);
-	std::string month = std::to_string(local_tm.tm_mon + 1);
-	std::string day = std::to_string(local_tm.tm_mday);
-	std::filesystem::path filename = "/index/user_content/" + trimmedPath + '_' + year + '_' + month + '_' + day + ".png";
-	checkIfLocExists(filename);
-	return (filename);
 }
 
 std::string MethodHandler::stripLocation(const std::string &rootDestination, const std::string &targetRef)
