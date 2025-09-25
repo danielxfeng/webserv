@@ -392,18 +392,18 @@ void HttpRequests::header_contenttype_validator()
 			requestHeaderMap["content-type"] = type[0];
 			requestHeaderMap["boundary"] = type[1].substr(9);
 		}
-		valid_types = false;
-		if (!requestHeaderMap.contains("content-type") || requestHeaderMap["content-type"].empty())
-			throw WebServErr::BadRequestException("POST must have content-type value");
-		std::vector<std::string> validAccepts = {"image/png",
-												 "multipart/form-data"};
-		for (std::string im : validAccepts)
-		{
-			if (requestHeaderMap["content-type"] == im)
-				valid_types = true;
-		}
-		if (!valid_types)
-			throw WebServErr::BadRequestException("content-type is Not Acceptable or not suppoted value");
+		// valid_types = false;
+		// if (!requestHeaderMap.contains("content-type") || requestHeaderMap["content-type"].empty())
+		// 	throw WebServErr::BadRequestException("POST must have content-type value");
+		// std::vector<std::string> validAccepts = {"image/png",
+		// 										 "multipart/form-data"};
+		// for (std::string im : validAccepts)
+		// {
+		// 	if (requestHeaderMap["content-type"] == im)
+		// 		valid_types = true;
+		// }
+		// if (!valid_types)
+		// 	throw WebServErr::BadRequestException("content-type is Not Acceptable or not suppoted value");
 	}
 }
 
