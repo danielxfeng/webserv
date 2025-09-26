@@ -369,6 +369,10 @@ def run_all():
     test_default_html()
     test_get_txt()
     test_get_autoindex()
+    test_get_autoindex_no_slash()
+    test_get_autoindex_inherit()
+    test_get_extra_slash()
+    test_get_duplicate_slash()
     test_get_404()
     test_get_content_length_too_large()
     test_get_large_file()
@@ -388,7 +392,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_get_html()
+    test_get_duplicate_slash()
 
 
 if __name__=="__main__":
