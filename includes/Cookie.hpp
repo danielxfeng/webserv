@@ -12,12 +12,12 @@ class Cookie
 private:
     std::unordered_map<std::string, time_t> cookies_;
     bool isValidCookie(const std::string &cookie);
-    std::string &setCookie(std::string &cookie, time_t ts);
+    std::string setCookie(std::string &cookie, time_t ts);
 
 public:
     Cookie();
     Cookie(const Cookie &other) = delete;
     Cookie &operator=(const Cookie &other) = delete;
     ~Cookie();
-    std::string &set(HttpRequests &request);
+    std::string set(HttpRequests &request);
 };
