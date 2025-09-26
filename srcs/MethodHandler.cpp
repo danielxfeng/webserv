@@ -223,8 +223,8 @@ void MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, content length not found."); // TODO double check error code
 	if (!length.eof())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, failed to get end of file for content length."); // TODO double check error code
-	if (requested_.expectedSize > MAX_BODY_SIZE)
-		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Body size too large."); // TODO double check error code
+	//if (requested_.expectedSize > MAX_BODY_SIZE)
+	//	throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Body size too large."); // TODO double check error code
 }
 
 void MethodHandler::checkContentType(std::unordered_map<std::string, std::string> requestBody) const

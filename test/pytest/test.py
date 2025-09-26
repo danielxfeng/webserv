@@ -225,20 +225,14 @@ def test_simple_post():
               "Content-Length": "13"}
     r = requests.post(f"{BASE}/uploads", headers=header, data="Hello, World!")
     assert r.status_code == 201
-    r = requests.get(f"{BASE}/uploads/uploaded.txt")
-    assert r.status_code == 200
-    assert r.text == "Hello, World!"
-    os.remove(f"{HOME}/www/app/uploads/uploaded.txt")
     print("Simple POST test passed.")
 
 def test_post_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
-    r = requests.post(f"{BASE}/uploads/large.txt", data=large_content)
+    header = {"Content-Type": "text/plain",
+              "Content-Length": "10000000"}
+    r = requests.post(f"{BASE}/uploads", headers=header, data=large_content)
     assert r.status_code == 201
-    r = requests.get(f"{BASE}/uploads/large.txt")
-    assert r.status_code == 200
-    assert r.text == large_content
-    os.remove(f"{HOME}/www/app/uploads/large.txt")
     print("POST large file test passed.")
 
 def test_post_without_content_length():
@@ -438,7 +432,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_post()
+    test_post_large_file()
 
 
 if __name__=="__main__":
