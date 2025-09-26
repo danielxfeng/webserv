@@ -118,9 +118,7 @@ t_msg_from_serv Server::timeoutKiller()
             LOG_INFO("Connection timed out and closed: ", fd);
         }
         else
-        {
             ++it;
-        }
     }
 
     return msg;
@@ -185,18 +183,15 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 
         // After successful parsing, determine the method and content length
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
-        if (conn->request->getrequestLineMap().contains("Content-Length"))
-            conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestLineMap().at("Content-Length")));
+        if (conn->request->getrequestHeaderMap().contains("content-length"))
+            conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestHeaderMap().at("content-length")));
         else
         {
             // For GET/DELETE, no body is expected
             if (method == GET || method == DELETE)
                 conn->content_length = 0;
             else if ((method == POST || method == CGI) && conn->request->isChunked())
-            {
-                // Chunked transfer encoding, content length is not known in advance
-                conn->content_length = config_.max_request_size;
-            }
+                conn->content_length = config_.max_request_size; // Chunked transfer encoding, content length is not known in advance
             else
                 throw WebServErr::ShouldNotBeHereException("Content-Length not found for method requiring body");
         }
@@ -214,13 +209,9 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         conn->bytes_received -= conn->request->getupToBodyCounter(); // Adjust bytes_received after removing header
 
         for (const auto &pair : conn->request->getrequestHeaderMap())
-        {
             LOG_INFO("Header: ", pair.first + ": " + pair.second);
-        }
         for (const auto &pair : conn->request->getrequestLineMap())
-        {
             LOG_INFO("Request Line: ", pair.first + ": " + pair.second);
-        }
         LOG_INFO("Adjusted bytes received: ", conn->bytes_received);
         LOG_INFO("Buffer size after removing header: ", conn->read_buf->size());
 
@@ -545,9 +536,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 
     // Register the inner fd for writing response body if CGI method
     if (method == CGI)
-    {
         conn->inner_fd_out = conn->inner_fd_in;
-    }
     LOG_INFO(" REMOVE DEBUG MK TEST: ", conn->output_length, "\n", header);
     return defaultMsg();
 }
@@ -573,9 +562,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
     conn->last_heartbeat = time(NULL);
 
     if (conn->write_buf->isFull())
-    {
         return defaultMsg();
-    }
 
     ssize_t bytes_read = conn->write_buf->readFd(fd);
 
@@ -600,9 +587,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
     }
 
     if (bytes_read == BUFFER_FULL)
-    {
         return defaultMsg();
-    }
 
     if (conn->status == RES_HEADER_PROCESSING)
     {
@@ -652,9 +637,7 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 
     // Skip when buffer is empty
     if (conn->write_buf->isEmpty())
-    {
         return defaultMsg();
-    }
 
     // Write data to socket
     ssize_t bytes_written = conn->write_buf->writeSocket(fd);
@@ -755,10 +738,7 @@ t_msg_from_serv Server::terminatedHandler(int fd, t_conn *conn)
 t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
 {
     if (!conn_map_.contains(fd))
-    {
-        // LOG_WARN("Connection not found for fd: ", fd);
         return defaultMsg();
-    }
 
     t_conn *conn = conn_map_.at(fd);
     t_status status = conn->status;
@@ -810,9 +790,7 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         {
         case READ_EVENT:
             if (fd != conn->inner_fd_out)
-            {
                 return defaultMsg();
-            }
             return responseInHandler(fd, conn);
         case WRITE_EVENT:
             if (fd != conn->socket_fd)

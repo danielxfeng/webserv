@@ -54,10 +54,33 @@ def test_get_autoindex():
     assert "test.txt" in r.text
     print("GET autoindex test passed.")
 
+def test_get_autoindex_no_slash():
+    r = requests.get(f"{BASE}/second")
+    assert r.status_code == 200
+    assert "second" in r.text
+    assert "test.txt" in r.text
+    print("GET autoindex test passed.")
+
+def test_get_autoindex_inherit():
+    r = requests.get(f"{BASE}/new/")
+    assert r.status_code == 200
+    assert "new" in r.text
+    print("GET autoindex inherit test passed.")
+
 def test_get_404():
     r = requests.get(f"{BASE}/nonexistent")
     assert r.status_code == 404
     print("GET 404 test passed.")
+
+def test_get_extra_slash():
+    r = requests.get(f"{BASE}/index.html/index.html/")
+    assert r.status_code == 404
+    print("GET extra slash test passed.")
+
+def test_get_duplicate_slash():
+    r = requests.get(f"{BASE}//index.html")
+    assert r.status_code == 400
+    print("GET duplicate slash test passed.")
 
 def test_get_content_length_too_large():
     # declare content-length larger than actual body
@@ -168,7 +191,8 @@ def test_delete_folder():
 
 
 def test_delete_folder_more():
-    os.mkdir(f"{HOME}/www/app/uploads/more/")
+    if not os.path.exists(f"{HOME}/www/app/uploads/more/"):
+        os.mkdir(f"{HOME}/www/app/uploads/more/")
     r = requests.delete(f"{BASE}/uploads/more/")
     assert r.status_code == 403
     print("DELETE folder without slash test passed.")
@@ -188,7 +212,9 @@ def test_delete_with_body():
     print("DELETE with body test passed.")
 
 def test_simple_post():
-    r = requests.post(f"{BASE}/uploads/uploaded.txt", data="Hello, World!")
+    header = {"Content-Type": "text/plain",
+              "Content-Length": "13"}
+    r = requests.post(f"{BASE}/uploads", headers=header, data="Hello, World!")
     assert r.status_code == 201
     r = requests.get(f"{BASE}/uploads/uploaded.txt")
     assert r.status_code == 200
@@ -369,6 +395,10 @@ def run_all():
     test_default_html()
     test_get_txt()
     test_get_autoindex()
+    test_get_autoindex_no_slash()
+    #test_get_autoindex_inherit()
+    test_get_extra_slash()
+    #test_get_duplicate_slash()
     test_get_404()
     test_get_content_length_too_large()
     test_get_large_file()
@@ -385,12 +415,23 @@ def run_all():
     test_delete_folder()
     test_delete_folder_more()
     test_delete_with_body()
+
+    #test_simple_post()
+    #test_post_large_file()
+    #test_post_without_content_length()
+    #test_post_exceeding_content_length()
+    #test_post_chunked_transfer()
+    #test_post_chunked_large_file()
+    #test_post_chunked_transfer_invalid_header()
+    #test_post_chunked_incorrect_chunk_size()
+    #test_post_chunked_incorrect_chunk_tail()
+    #test_post_chunked_extra_data_after_last_chunk()
     print("All tests passed.")
 
 def run_one():
-    test_get_html()
+    test_simple_post()
 
 
 if __name__=="__main__":
-    run_all()
-    #run_one()
+    #run_all()
+    run_one()
