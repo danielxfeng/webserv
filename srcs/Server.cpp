@@ -777,7 +777,7 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         case WRITE_EVENT:
             if (fd != conn->inner_fd_in)
             {
-                LOG_WARN("Invalid fd for REQ_BODY_PROCESSING WRITE_EVENT for fd: ", fd);
+                //LOG_WARN("Invalid fd for REQ_BODY_PROCESSING WRITE_EVENT for fd: ", fd);
                 return defaultMsg();
             }
             return reqBodyProcessingOutHandler(fd, conn);

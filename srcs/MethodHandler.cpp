@@ -83,7 +83,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	case GET:
 		return (callGetMethod(useAutoIndex, canonical));
 	case POST:
-		return (callPostMethod(canonical, requestHeader, requestBody, rootDestination));
+		return (callPostMethod(canonical, requestHeader, requestBody, root));
 	case DELETE:
 	{
 		callDeleteMethod(canonical);
@@ -151,21 +151,18 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, std::string &rootDestination)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, const std::string &root)
 {
+	(void)requestBody;
 	LOG_TRACE("Calling POST: ", path);	
-	if (checkFileCount(rootDestination) > 25)
+	if (checkFileCount(root) > 25)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
-	if (!path.has_extension() || path.extension() != "png" || path.extension() != "jpg" ||path.extension() != "jpeg" || path.extension() != "txt")
-		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Extension");
-	// if (access(path.c_str(), W_OK) == -1)//TODO Is this necessary?
-	// 	throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Permission denied, cannot POST file");
 	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
-	if (!requestBody.contains("content-type"))
-		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content Type");
-	setContentLength(requestBody);
-	checkContentType(requestBody);
+	// if (!requestBody.contains("Content-Type"))
+	// 	throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content fType");
+	setContentLength(requestHeader);
+	//checkContentType(requestHeader);
 	std::string extension = path.extension().string();
 	std::filesystem::path filename = createRandomFilename(path, extension);
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
@@ -215,13 +212,12 @@ t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_
 	return (std::move(requested_));
 }
 
-void MethodHandler::setContentLength(std::unordered_map<std::string, std::string> requestBody)
+void MethodHandler::setContentLength(std::unordered_map<std::string, std::string> requestHeader)
 {
 	LOG_TRACE("Setting Content Length", "... let's see how big this sucker gets");
-	auto check = requestBody.find("content-length");
-	if (check == requestBody.end())
+	if (!requestHeader.contains("content-length"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Failed to get content length."); // TODO double check error code
-	std::stringstream length(check->second);
+	std::stringstream length(requestHeader["content-length"]);
 	length >> requested_.expectedSize;
 	if (length.fail())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, content length not found."); // TODO double check error code
@@ -375,13 +371,15 @@ bool MethodHandler::checkIfSafe(const std::filesystem::path &root, const std::fi
 	}
 }
 
-size_t MethodHandler::checkFileCount(std::string &rootDestination)
+size_t MethodHandler::checkFileCount(const std::string &root)
 {
 	size_t fileCount = 0;
-	for (const auto& entry : std::filesystem::directory_iterator(rootDestination))
+	LOG_TRACE("Directory File Count for: ", root);
+	for (const auto& entry : std::filesystem::directory_iterator(root))
 	{
 		if (std::filesystem::is_regular_file(entry.path()))
 			fileCount++;
 	}
+	LOG_TRACE("Directory File Count: ", fileCount);
 	return (fileCount);
 }
