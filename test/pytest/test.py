@@ -405,7 +405,7 @@ def run_all():
     test_get_txt()
     test_get_autoindex()
     test_get_autoindex_no_slash()
-    #test_get_autoindex_inherit()
+    test_get_autoindex_inherit()
     test_get_extra_slash()
     test_get_duplicate_slash()
     test_get_404()
@@ -438,9 +438,9 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_get_duplicate_slash()
+    test_get_autoindex_inherit()
 
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    run_all()
+    #run_one()
