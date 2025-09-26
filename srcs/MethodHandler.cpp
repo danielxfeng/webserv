@@ -159,12 +159,11 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
 	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
-	// if (!requestBody.contains("Content-Type"))
-	// 	throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, NO Content fType");
 	setContentLength(requestHeader);
 	//checkContentType(requestHeader);
 	std::string extension = path.extension().string();
 	std::filesystem::path filename = createRandomFilename(path, extension);
+	requested_.postFilename = filename.string();
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	if (requested_.FD_handler_OUT.get()->get() == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout POST file");
@@ -179,13 +178,13 @@ std::filesystem::path MethodHandler::createRandomFilename(std::filesystem::path 
 	if (result.back() != '/')
 		result.push_back('/');
 	result += "upload_";
-	std::time_t now = std::time(nullptr);
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> dis(10000,99999);
-	pid_t pid = getpid();
-	result += now + '_' + pid + '_' + dis(gen);
-	result += extension;
+	static const std::string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	static std::mt19937 rng{ static_cast<unsigned long>(std::chrono::high_resolution_clock::now().time_since_epoch().count()) };
+	std::uniform_int_distribution<size_t> dist(0, chars.size() - 1);
+
+	for (size_t i = 0; i < 12; i++)
+		result.push_back(chars[dist(rng)]);
+	result += '.' + extension;
 	std::filesystem::path uploadCheck(result);
 	if (std::filesystem::exists(uploadCheck))
 		createRandomFilename(path, extension);

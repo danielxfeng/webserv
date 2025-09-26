@@ -13,7 +13,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->bytes_received = 0;
     conn->output_length = max_request_size;
     conn->bytes_sent = 0;
-    conn->res = t_file{nullptr, nullptr, 0, 0, false, ""};
+    conn->res = t_file{nullptr, nullptr, 0, 0, false, "", ""};
     conn->read_buf = std::make_unique<Buffer>();
     conn->write_buf = std::make_unique<Buffer>();
     conn->request = std::make_shared<HttpRequests>();
