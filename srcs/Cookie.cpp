@@ -1,4 +1,4 @@
-# include "includes/Cookie.hpp"
+# include "../includes/Cookie.hpp"
 
 Cookie::Cookie() : cookies_() {}
 Cookie::~Cookie() {}
@@ -18,7 +18,7 @@ bool Cookie::isValidCookie(const std::string &cookie)
     return true;
 }
 
-std::string &Cookie::setCookie(std::string &cookie, time_t ts)
+std::string Cookie::setCookie(std::string &cookie, time_t ts)
 {
     if (ts == 0) {
         ts = time(nullptr);
@@ -28,7 +28,7 @@ std::string &Cookie::setCookie(std::string &cookie, time_t ts)
     return (cookie_str);
 }
 
-std::string &Cookie::set(HttpRequests &request)
+std::string Cookie::set(HttpRequests &request)
 {
     const auto headers = request.getrequestHeaderMap();
     const auto has_cookie = headers.contains("Cookie");
