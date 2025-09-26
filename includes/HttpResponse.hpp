@@ -19,7 +19,5 @@ public:
     ~HttpResponse() = default;
 
     std::string successResponse(t_conn *conn);
-    std::string badRequestResponse(t_conn *conn);
-    std::string notFoundResponse(t_conn *conn);
     std::string failedResponse(t_conn *conn, t_status_error_codes error_code, const std::string &error_message);
 };
