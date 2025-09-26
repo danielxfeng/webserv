@@ -300,11 +300,12 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
             return resheaderProcessingHandler(conn);
         case POST:
         {
+            LOG_INFO("FILE IN: ", conn->res.FD_handler_IN.get()->get(), " FILE OUT: ", conn->res.FD_handler_OUT.get()->get());
             inner_fd_map_.emplace(conn->res.FD_handler_OUT.get()->get(), conn->res.FD_handler_OUT);
-            conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
+            conn->inner_fd_in = conn->res.FD_handler_OUT.get()->get();
             conn->status = REQ_BODY_PROCESSING;
             LOG_INFO("Switching to processing state for fd: ", fd);
-            return defaultMsg();
+            return reqBodyProcessingInHandler(fd, conn, true);
         }
         case CGI:
         {
@@ -341,7 +342,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
  * On read error or unexpected EOF, sets error code 500 and
  *   transitions to resheaderProcessing.
  */
-t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
+t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn, bool is_initial)
 {
     if (fd != conn->socket_fd)
     {
@@ -349,32 +350,35 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn)
         return defaultMsg();
     }
 
-    // Update heartbeat
-    conn->last_heartbeat = time(NULL);
-
-    const ssize_t bytes_read = conn->read_buf->readFd(fd);
-
-    // Handle read errors and special conditions
-    if (bytes_read == RW_ERROR)
+    if (!is_initial)
     {
-        LOG_ERROR("Error reading from socket for fd: ", fd);
-        conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
-        return resheaderProcessingHandler(conn);
+        // Update heartbeat
+        conn->last_heartbeat = time(NULL);
+
+        const ssize_t bytes_read = conn->read_buf->readFd(fd);
+
+        // Handle read errors and special conditions
+        if (bytes_read == RW_ERROR)
+        {
+            LOG_ERROR("Error reading from socket for fd: ", fd);
+            conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
+            return resheaderProcessingHandler(conn);
+        }
+
+        // Buffer full, wait for the next read event
+        if (bytes_read == BUFFER_FULL)
+            return defaultMsg(); // Wait for the next read event.
+
+        // EOF reached, should not be here since header has not been parsed yet.
+        if (bytes_read == EOF_REACHED)
+        {
+            LOG_ERROR("EOF reached while reading from socket for fd: ", fd);
+            conn->error_code = ERR_400_BAD_REQUEST;
+            return resheaderProcessingHandler(conn);
+        }
+
+        conn->bytes_received += bytes_read;
     }
-
-    // Buffer full, wait for the next read event
-    if (bytes_read == BUFFER_FULL)
-        return defaultMsg(); // Wait for the next read event.
-
-    // EOF reached, should not be here since header has not been parsed yet.
-    if (bytes_read == EOF_REACHED)
-    {
-        LOG_ERROR("EOF reached while reading from socket for fd: ", fd);
-        conn->error_code = ERR_400_BAD_REQUEST;
-        return resheaderProcessingHandler(conn);
-    }
-
-    conn->bytes_received += bytes_read;
 
     if (!conn->is_cgi)
     {
@@ -777,7 +781,7 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         case WRITE_EVENT:
             if (fd != conn->inner_fd_in)
             {
-                //LOG_WARN("Invalid fd for REQ_BODY_PROCESSING WRITE_EVENT for fd: ", fd);
+                // LOG_WARN("Invalid fd for REQ_BODY_PROCESSING WRITE_EVENT for fd: ", fd);
                 return defaultMsg();
             }
             return reqBodyProcessingOutHandler(fd, conn);

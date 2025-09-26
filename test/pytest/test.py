@@ -438,9 +438,9 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_get_autoindex_inherit()
+    test_simple_post()
 
 
 if __name__=="__main__":
-    run_all()
-    #run_one()
+    #run_all()
+    run_one()
