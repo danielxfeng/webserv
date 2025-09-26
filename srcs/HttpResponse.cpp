@@ -52,7 +52,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
     {
         result.append("HTTP/1.1").append(" 201 Created\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
-        result.append("Content-Length: 0");
+        result.append("Content-Length: 0").append("\r\n\r\n");
     }
     else if (request->getHttpRequestMethod() == "DELETE")
     {
