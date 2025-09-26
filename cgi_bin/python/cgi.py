@@ -5,8 +5,8 @@ import sys
 A very simple Python CGI application that handles GET and POST requests.
 """
 
-BASE_DIR = os.path.expanduser("~/py_user_files")
-MAX_CONTENT_LENGTH = 100
+MAX_CONTENT_LENGTH = 1000 * 1024 * 1024
+
 
 class CGIError(Exception):
     error_map = {
@@ -79,10 +79,16 @@ class Response:
 class Header:
     def __init__(self):
         self.method = os.environ.get("REQUEST_METHOD", "")
-        try:
-            self.content_length = int(os.environ.get("CONTENT_LENGTH") or 0)
-        except ValueError:
-            raise CGIError(400, "Bad Request: Invalid Content Length")
+        self.chunked = os.environ.get("HTTP_TRANSFER_ENCODING", "") == "chunked"
+        if (self.method == "GET" or self.method == "DELETE"):
+            self.content_length = 0
+        elif (self.chunked):
+            self.content_length = MAX_CONTENT_LENGTH + 1
+        else:
+            try:
+                self.content_length = int(os.environ.get("CONTENT_LENGTH") or 0)
+            except ValueError:
+                raise CGIError(400, "Bad Request: Invalid Content Length")
         self.content_type = os.environ.get("CONTENT_TYPE", "")
         self.path_info = os.environ.get("PATH_INFO", "")
 
@@ -105,11 +111,22 @@ class Request:
 
     def _get_body(self):
         if self.headers.method == "POST" and self.headers.content_length > 0:
+            received = 0
+            last_chunk = b""
             try:
-                raw = sys.stdin.buffer.read(self.headers.content_length)
-                if raw is None or len(raw) != self.headers.content_length:
+                while received < self.headers.content_length:
+                    chunk = sys.stdin.buffer.read(
+                        min(4096, self.headers.content_length - received)
+                    )
+                    if not chunk:
+                        break
+                    last_chunk = chunk  # overwrite → keep only tail
+                    received += len(chunk)
+
+                if not self.chunked and received != self.headers.content_length:
                     raise CGIError(400, "Bad Request: Incomplete request body")
-                return raw.decode("utf-8")
+
+                return last_chunk.decode("utf-8", errors="replace") # keep only tail for disk space efficiency
             except Exception as e:
                 raise CGIError(400, f"Bad Request: {str(e)}")
         return ""
@@ -143,6 +160,7 @@ class Request:
             if not value.isprintable():
                 raise CGIError(400, "Bad Request: Value must be printable")
 
+            value += "\n This is a sample cgi application, so the data is chunked."
             self.storage.set_value(key, value)
             return Response(f"Stored value for '{key}': {value}", status=201)
 
