@@ -132,9 +132,22 @@ std::string HttpRequests::httpTargetDecoder(std::string &target)
 	return (result);
 }
 
+
+bool check_dupl_backslash(std::string &target){
+	std::cout<<"DEBUG: TARGET IS"<<target<<std::endl;
+	for(size_t i = 0; i < target.size(); i++ ){
+		if(target[i] =='/' && target[i+1] == '/')
+			return (false); 
+	}
+	return (true);
+}
+
 void HttpRequests::validateTarget()
 {
 	bool encoded = false;
+	std::cout<<"DEBUG MOHAMMAD"<<requestLineMap["Target"]<<std::endl;
+	if (!check_dupl_backslash(requestLineMap["Target"]))
+			throw WebServErr::BadRequestException("target has duplicated slash");
 	if (requestLineMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
@@ -160,6 +173,7 @@ void HttpRequests::validateTarget()
 					throw WebServErr::BadRequestException("target cannot has invalid characters");
 			}
 		}
+		
 	}
 }
 
