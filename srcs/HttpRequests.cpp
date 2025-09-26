@@ -629,11 +629,11 @@ void HttpRequests::httpParser(const std::string_view &request)
 	validateRequestLine();
 	extractRequestHeader(i, requestLength, request);
 	validateRequestHeader();
-	if (requestLineMap["Method"] == "POST")
-	{
-		extractRequestBody(i, requestLength, request);
-		validateRequestBody();
-	}
+	// if (requestLineMap["Method"] == "POST")
+	// {
+	// 	extractRequestBody(i, requestLength, request);
+	// 	validateRequestBody();
+	// }
 
 	// for (const auto &pair : requestLineMap)
 	// 	std::cout << pair.first << ": " << pair.second << std::endl;
