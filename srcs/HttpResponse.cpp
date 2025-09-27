@@ -52,6 +52,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
     {
         result.append("HTTP/1.1").append(" 201 Created\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
+        result.append("Content-Length: 0").append("\r\n\r\n");
     }
     else if (request->getHttpRequestMethod() == "DELETE")
     {
@@ -69,44 +70,6 @@ std::string HttpResponse::successResponse(t_conn *conn)
         result.append(deleteSuccess);
     }
     std::cout << result << std::endl;
-    return (result);
-}
-
-std::string HttpResponse::notFoundResponse(t_conn *conn)
-{
-    std::string result;
-    auto request = conn->request;
-    std::string notFound = "<!DOCTYPE html>"
-                           "<html>"
-                           "<head><title>404 Not Found</title></head>"
-                           "<body>"
-                           "<h1>404 Not Found</h1>"
-                           "<p>The requested resource was not found on this server.</p>"
-                           "</body>"
-                           "</html>";
-    result.append("HTTP/1.1").append(" ").append("404 Not Found").append("\r\n");
-    result.append("Content-Type: text/html\r\n");
-    result.append("Content-Length: ").append(std::to_string(notFound.size())).append("\r\n\r\n");
-    result.append(notFound);
-    return (result);
-}
-
-std::string HttpResponse::badRequestResponse(t_conn *conn)
-{
-    std::string result;
-    auto request = conn->request;
-    std::string notFound = "<!DOCTYPE html>"
-                           "<html>"
-                           "<head><title>400 Bad Request</title></head>"
-                           "<body>"
-                           "<h1>400 Bad Request</h1>"
-                           "<p>The requested has problems.</p>"
-                           "</body>"
-                           "</html>";
-    result.append("HTTP/1.1").append(" ").append("400 Bad Request").append("\r\n");
-    result.append("Content-Type: text/html\r\n");
-    result.append("Content-Length: ").append(std::to_string(notFound.size())).append("\r\n\r\n");
-    result.append(notFound);
     return (result);
 }
 
@@ -129,6 +92,9 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
     {
     case ERR_301_REDIRECT:
         status = "301 Moved Permanently";
+        break;
+    case ERR_400_BAD_REQUEST:
+        status = "400 Bad Request";
         break;
     case ERR_401_UNAUTHORIZED:
         status = "401 Unauthorized";

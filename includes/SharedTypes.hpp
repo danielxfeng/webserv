@@ -50,6 +50,7 @@ typedef struct s_file
     size_t fileSize;
     bool isDynamic;
     std::string dynamicPage;
+    std::string postFilename;
 } t_file;
 
 /**

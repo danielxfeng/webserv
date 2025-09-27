@@ -58,7 +58,7 @@ private:
     /**
      * @brief Handler for processing request body.
      */
-    t_msg_from_serv reqBodyProcessingInHandler(int fd, t_conn *conn);
+    t_msg_from_serv reqBodyProcessingInHandler(int fd, t_conn *conn, bool is_initial = false);
 
     /**
      * @brief Handler for processing request body (for CGI).
