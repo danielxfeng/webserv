@@ -132,4 +132,20 @@ public:
         ~CGIException() override = default;
         const char *what() const noexcept override;
     };
+    
+    class ErrorResponseException : public std::exception
+    {
+    private:
+        std::string what_;
+
+    public:
+        ErrorResponseException() = delete;
+        explicit ErrorResponseException(const std::string &what_arg);
+        ErrorResponseException(const ErrorResponseException &other) = default;
+        ErrorResponseException &operator=(const ErrorResponseException &o) = delete;
+        ~ErrorResponseException() override = default;
+
+        const char *what() const noexcept override;
+    };
+
 };

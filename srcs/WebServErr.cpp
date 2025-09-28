@@ -70,3 +70,11 @@ const char *WebServErr::CGIException::what() const noexcept
 {
 	return what_.c_str();
 }
+
+WebServErr::ErrorResponseException::ErrorResponseException(const std::string &what_arg)
+	: what_(myFormat("Error Response Failed:", what_arg)) {}
+
+const char *WebServErr::ErrorResponseException::what() const noexcept
+{
+	return what_.c_str();
+}
