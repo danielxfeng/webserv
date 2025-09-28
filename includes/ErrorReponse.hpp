@@ -14,8 +14,6 @@ class ErrorResponse
 private: 
     t_file  response_;
 
-    std::string errorCodeToString(t_status_error_codes &code);
-    std::filesystem::path getFilename(std::string &root, std::string &codeStr);
 public:
     ErrorResponse() = delete;
     ErrorResponse(EpollHelper &epoll_helper);
@@ -23,5 +21,5 @@ public:
     ErrorResponse &operator= (const ErrorResponse &copy) = delete;
     ~ErrorResponse();
 
-    t_file  getErrorPage(std::unordered_map<std::string, t_location_config> &locations, t_status_error_codes &code);
+    t_file  getErrorPage(std::unordered_map<t_status_error_codes, std::string> &errPages, t_status_error_codes &code);
 };
