@@ -41,7 +41,7 @@ class MethodHandler
 private:
 	t_file requested_;
 
-	t_file callGetMethod(bool useAutoIndex, std::filesystem::path &path);
+	t_file callGetMethod(bool useAutoIndex, std::filesystem::path &path, std::string &targetRef);
 	t_file callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string &targetRef, const std::string &root);
 	void callDeleteMethod(std::filesystem::path &path);
 	t_file callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper);
@@ -58,7 +58,7 @@ private:
 	std::string	stripLocation(const std::string &server, const std::string &target);
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
 	std::filesystem::path createRandomFilename(std::filesystem::path &path, std::string &extension);
-	std::string generateDynamicPage(std::filesystem::path &path);
+	std::string generateDynamicPage(std::filesystem::path &path, std::string &targetRef);
 	bool	canAccess(std::filesystem::path &path, t_access access_type);
 
 public:

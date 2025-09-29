@@ -81,7 +81,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	switch (realMethod)
 	{
 	case GET:
-		return (callGetMethod(useAutoIndex, canonical));
+		return (callGetMethod(useAutoIndex, canonical, targetRef));
 	case POST:
 		return (callPostMethod(canonical, requestHeader, targetRef, root));
 	case DELETE:
@@ -124,7 +124,7 @@ std::string MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 	return (bestMatch);
 }
 
-t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path)
+t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path, std::string &targetRef)
 {
 	LOG_TRACE("Calling GET: ", path);
 	if (useAutoIndex)
@@ -132,7 +132,7 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 		LOG_TRACE("Directory is: ", "auto-index");
 		try
 		{
-			requested_.dynamicPage = generateDynamicPage(path);
+			requested_.dynamicPage = generateDynamicPage(path, targetRef);
 			requested_.isDynamic = true;
 			requested_.fileSize = requested_.dynamicPage.size();
 			LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
@@ -337,15 +337,15 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &root, con
 	return (canonical);
 }
 
-std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
+std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, std::string &targetRef)
 {
 	std::string base = path.string();
 	if (base.empty() || base[0] != '/')
 		base = '/' + base;
 	std::filesystem::path fullPath(base);
 	LOG_TRACE("Dynamically generating page for: ", fullPath);
-	std::string page = "<!DOCTYPE html>\n<html>\n<head><title>Directory Structure of " + path.string() + "</title></head>\n";
-	page += "<body>\n<h1>" + path.string() + "</h1>\n<ul>\n";
+	std::string page = "<!DOCTYPE html>\n<html>\n<head><title>Directory Structure of " + targetRef + "</title></head>\n";
+	page += "<body>\n<h1>" + targetRef + "</h1>\n<ul>\n";
 
 	for (const auto &entry : std::filesystem::directory_iterator(fullPath))
 	{
