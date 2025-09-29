@@ -41,17 +41,12 @@ std::string HttpResponse::successResponse(t_conn *conn)
         result.append("Content-Length: ").append(std::to_string(conn->res.fileSize)).append("\r\n\r\n");
         if (conn->res.isDynamic)
             result.append(conn->res.dynamicPage);
-        // else
-        // {
-        //     char buffer[conn->res.fileSize];
-        //     if(read(conn->res.FD_handler_OUT->get(), buffer, conn->res.fileSize))
-        //         result.append(buffer);
-        // }
     }
     else if (request->getHttpRequestMethod() == "POST")
     {
         result.append("HTTP/1.1").append(" 201 Created\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
+        result.append("Location: ").append(conn->res.postFilename).append("\r\n");
         result.append("Content-Length: 0").append("\r\n\r\n");
     }
     else if (request->getHttpRequestMethod() == "DELETE")
@@ -72,15 +67,6 @@ std::string HttpResponse::successResponse(t_conn *conn)
     std::cout << result << std::endl;
     return (result);
 }
-
-/*
-ERR_301,
-    ERR_401,
-    ERR_403,
-    ERR_404,
-    ERR_409,
-    ERR_500
-    */
 
 std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes error_code, const std::string &error_message)
 {

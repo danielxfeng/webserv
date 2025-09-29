@@ -16,7 +16,8 @@
         "is_cgi": false,
         "locations": {
           "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app", "index": "index.html" },
-          "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/static" }
+          "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/static"},
+          "/uploads": { "methods": ["GET","POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app/uploads"}
         }
       },
       {
