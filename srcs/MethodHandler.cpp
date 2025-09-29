@@ -83,7 +83,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	case GET:
 		return (callGetMethod(useAutoIndex, canonical));
 	case POST:
-		return (callPostMethod(canonical, requestHeader, requestBody, root));
+		return (callPostMethod(canonical, requestHeader, targetRef, root));
 	case DELETE:
 	{
 		callDeleteMethod(canonical);
@@ -151,16 +151,13 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, const std::string &root)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string & targetRef, const std::string &root)
 {
-	(void)requestBody;
 	LOG_TRACE("Calling POST: ", path);
 	if (checkFileCount(root) > 25)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
 	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
-	setContentLength(requestHeader);
-	// checkContentType(requestHeader);
 	std::string extension;
 	std::string fileType = requestHeader["content-type"];
 	if (fileType == "image/png")
@@ -172,7 +169,9 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 	else
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Type");
 	std::filesystem::path filename = createRandomFilename(path, extension);
-	requested_.postFilename = filename.string();
+	std::string result = targetRef + filename.filename().string();
+	LOG_DEBUG("postFilename: ", result);
+	requested_.postFilename = result;
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	if (requested_.FD_handler_OUT.get()->get() == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout POST file");
