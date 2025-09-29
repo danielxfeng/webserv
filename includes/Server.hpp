@@ -28,7 +28,7 @@ class Server
 {
 private:
     EpollHelper &epoll_;                                            // Reference to the epoll helper
-    const t_server_config &config_;                                 // Server configuration
+    std::vector<t_server_config> configs_;                          // List of server configurations
     std::list<t_conn> conns_;                                       // List of active connections
     std::vector<std::string> cookies_;                              // List of cookies for session management
     std::unordered_map<int, t_conn *> conn_map_;                    // Map of fds(in epoll) to connections
