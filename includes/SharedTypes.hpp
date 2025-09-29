@@ -126,6 +126,7 @@ typedef struct s_conn
     std::unique_ptr<Buffer> write_buf;      // Buffer for writing data
     std::shared_ptr<HttpRequests> request;  // Parsed HTTP request
     std::shared_ptr<HttpResponse> response; // HTTP response generator
+    std::string error_message;              // Error  message
 } t_conn;
 
 /**

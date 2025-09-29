@@ -100,11 +100,30 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
     default:
         status = "500 Internal Server Error";
     }
+
+
+    if (error_code == ERR_301_REDIRECT)
+    {
+        std::string redirected = error_message;
+
+        result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
+        result.append("Location: ").append(redirected.erase(0,12)).append("\r\n");
+        return(result);
+    }
+
     std::string htmlPage;
+
+    
     htmlPage.append("<!DOCTYPE html>"
                     "<html>"
                     "<head><title>");
-    htmlPage.append(status).append("</title></head><body><h1>").append(status).append("</h1><p>").append(error_message).append("</p></body></html>");
+    htmlPage.append(status).append("</title></head><body><h1>");
+
+
+
+    htmlPage.append(status).append("</h1><p>").append(error_message);
+    htmlPage.append("</p></body></html>");
+
 
     result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
     result.append("Content-Type: text/html\r\n");

@@ -325,6 +325,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     {
         LOG_ERROR("Method exception occurred: ", e.code(), e.what());
         conn->error_code = e.code();
+        conn->error_message = e.what();
         return resheaderProcessingHandler(conn);
     }
 }
@@ -501,7 +502,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     conn->status = RES_HEADER_PROCESSING;
     const std::string header = (conn->error_code == ERR_NO_ERROR)
                                    ? conn->response->successResponse(conn)
-                                   : conn->response->failedResponse(conn, conn->error_code, "Error");
+                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message);
 
     LOG_INFO("Response header prepared for fd: ", conn->socket_fd, "\n", header);
 
