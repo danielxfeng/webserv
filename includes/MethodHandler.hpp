@@ -49,7 +49,7 @@ private:
 	void setContentLength(std::unordered_map<std::string, std::string> requestHeader);
 	void checkContentType(std::unordered_map<std::string, std::string> requestBody) const;
 	void checkIfRegFile(const std::filesystem::path &path);
-	bool checkIfDirectory( std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination);
+	bool checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination, const std::filesystem::path &realPath);
 	void checkIfLocExists(const std::filesystem::path &path);
 	bool checkIfSafe(const std::filesystem::path &root, const std::filesystem::path &path);
 	size_t	checkFileCount(const std::string &root);
@@ -60,7 +60,7 @@ private:
 	std::filesystem::path createRandomFilename(std::filesystem::path &path, std::string &extension);
 	std::string generateDynamicPage(std::filesystem::path &path);
 	bool	canAccess(std::filesystem::path &path, t_access access_type);
-	
+
 public:
 	MethodHandler() = delete;
 	MethodHandler(EpollHelper &epoll_helper);
