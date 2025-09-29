@@ -74,7 +74,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Path goes beyond root");
 
 	// Check if Directory
-	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination, realPath);
+	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination, targetRef);
 	if (!useAutoIndex)
 		checkIfRegFile(canonical);
 
@@ -258,15 +258,15 @@ void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
-bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination, const std::filesystem::path &realPath)
+bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination, const std::string &targetRef)
 {
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (!std::filesystem::is_directory(path))
 		return (false);
-	LOG_DEBUG("realPath: ", realPath);
+	LOG_DEBUG("realPath: ", targetRef);
 	LOG_DEBUG("Canonical: ", path);
-	if (!realPath.empty() && realPath.string().back() != '/' && realPath.string().back() != std::filesystem::path::preferred_separator)
-		throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
+	if (!targetRef.empty() && targetRef.back() != '/' && targetRef.back() != std::filesystem::path::preferred_separator)
+		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/');
 	LOG_TRACE("This is a directory: ", path);
 	if (locations.contains(rootDestination))
 	{
