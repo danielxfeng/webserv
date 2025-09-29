@@ -208,7 +208,10 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
             if (conn->config_idx == -1)
                 conn->config_idx = 0;
         }
-        // After successful parsing, determine the method and content length
+        conn->content_length = configs_[conn->config_idx].max_request_size;
+        conn->output_length = configs_[conn->config_idx].max_request_size;
+        // TODO: add err page.
+        //  After successful parsing, determine the method and content length
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
             conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestHeaderMap().at("content-length")));
