@@ -344,6 +344,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
  */
 t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn, bool is_initial)
 {
+    LOG_INFO("content-length", conn->content_length);
     if (fd != conn->socket_fd)
     {
         LOG_WARN("Socket fd mismatch for fd: ", fd);
@@ -393,8 +394,17 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn, bool is
         conn->bytes_sent += written_bytes;
     }
 
-    const bool is_content_length_reached = conn->bytes_received == conn->content_length;
     const bool is_chunked_eof_reached = conn->request->isChunked() && conn->read_buf->isEOF();
+
+    if (is_chunked_eof_reached)
+    {
+        LOG_INFO("Chunked request body fully received for fd: ", fd, ", content-length: ", conn->read_buf->size());
+        conn->content_length = conn->read_buf->size();
+        if (conn->is_cgi)
+            return defaultMsg(); // Wait for the main loop to notify when inner fd is ready.
+    }
+
+    const bool is_content_length_reached = conn->bytes_received == conn->content_length || is_chunked_eof_reached;
 
     if (is_content_length_reached)
     {
@@ -406,16 +416,10 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn, bool is
         return resheaderProcessingHandler(conn);
     }
 
-    if (is_chunked_eof_reached)
-    {
-        LOG_INFO("Chunked request body fully received for fd: ", fd);
-        conn->content_length = conn->read_buf->size();
-        return defaultMsg(); // Wait for the main loop to notify when inner fd is ready.
-    }
-
     const bool is_content_length_exceeded = conn->bytes_received > conn->content_length;
     if (is_content_length_exceeded || conn->read_buf->isEOF())
     {
+        LOG_ERROR("dbg", is_chunked_eof_reached, conn->bytes_received,",", conn->content_length);
         LOG_ERROR("Request size exceeded or EOF reached but content length not reached for fd: ", fd);
         // TODO: delete the created file.
         conn->error_code = ERR_400_BAD_REQUEST;
