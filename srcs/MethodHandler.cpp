@@ -266,7 +266,7 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 	LOG_DEBUG("realPath: ", targetRef);
 	LOG_DEBUG("Canonical: ", path);
 	if (!targetRef.empty() && targetRef.back() != '/' && targetRef.back() != std::filesystem::path::preferred_separator)
-		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/');
+		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/'); //TODO @Mohammad use this string to create a url that is included in the response
 	LOG_TRACE("This is a directory: ", path);
 	if (locations.contains(rootDestination))
 	{
