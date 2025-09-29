@@ -436,5 +436,5 @@ def run_one():
 
 
 if __name__=="__main__":
-    run_all()
-    #run_one()
+    #run_all()
+    run_one()
