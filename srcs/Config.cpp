@@ -26,7 +26,8 @@ void Config::fromJson(const std::string &json_string)
     {
         const JsonObject server_obj = TinyJson::as<JsonObject>(*server_value_ptr);
         t_server_config server_config;
-        server_config.server_name = TinyJson::as<std::string>(*server_obj.at("server_name"));
+        if (server_obj.contains("server_name"))
+            server_config.server_name = TinyJson::as<std::string>(*server_obj.at("server_name"));
         server_config.port = TinyJson::as<unsigned int>(*server_obj.at("port"));
 
         const unsigned int max_request_timeout = server_obj.contains("max_request_timeout") ? TinyJson::as<unsigned int>(*server_obj.at("max_request_timeout")) : global_config_.global_request_timeout;
