@@ -92,12 +92,20 @@ WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
 
+    std::unordered_map<size_t, std::vector<t_server_config>> ports_map;
+
     // Create server instances based on the configuration.
-    for (const auto &server_conf : config_.servers)
+    for (auto it = config_.servers.begin(); it != config_.servers.end(); ++it)
     {
-        servers_.push_back(Server(epoll_, server_conf.second));
-        LOG_INFO("Created server instance for:", server_conf.first);
+        auto port = it->second.port;
+        if (ports_map.contains(port))
+            ports_map.at(port).push_back(it->second);
+        else
+            ports_map.emplace(port, std::vector<t_server_config>{it->second});
     }
+
+    for (auto &kv : ports_map)
+        servers_.push_back(Server(epoll_, kv.second));
 }
 
 void WebServ::eventLoop()
@@ -107,7 +115,7 @@ void WebServ::eventLoop()
     LOG_INFO("Server started.", "");
     for (auto it = servers_.begin(); it != servers_.end(); ++it)
     {
-        RaiiFd serverFd = RaiiFd(epoll_, listenToPort(it->getConfig().port));
+        RaiiFd serverFd = RaiiFd(epoll_, listenToPort(it->getConfig(0).port)); // every config in one server should has same port
         LOG_INFO("Server listening to port:", serverFd);
         serverFd.addToEpoll();
         fds_.push_back(std::make_shared<RaiiFd>(std::move(serverFd)));
@@ -149,7 +157,7 @@ void WebServ::eventLoop()
                 const auto connServer = conn_map_.find(events[i].data.fd);
                 if (connServer == conn_map_.end())
                 {
-                    LOG_ERROR("Connection not found", " does not exist");//TODO Double check Daniel
+                    LOG_ERROR("Connection not found", " does not exist"); // TODO Double check Daniel
                     continue;
                 }
 

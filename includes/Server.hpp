@@ -14,6 +14,7 @@
 #include "RaiiFd.hpp"
 #include "LogSys.hpp"
 #include "WebServErr.hpp"
+#include "utils.hpp"
 
 class Config;
 
@@ -92,16 +93,21 @@ private:
 
 public:
     Server() = delete;
-    Server(EpollHelper &epoll, const t_server_config &config);
+    Server(EpollHelper &epoll, const std::vector<t_server_config> &configs);
     Server(const Server &) = default;
     Server(Server &&) = default;
     Server &operator=(const Server &) = delete;
     ~Server() = default;
 
     /**
-     * @brief Returns the server configuration.
+     * @brief Returns the server configurations.
      */
-    const t_server_config &getConfig() const;
+    const std::vector<t_server_config> &getConfigs() const;
+
+    /**
+     * @brief Returns the server configuration at the given index.
+     */
+    const t_server_config &getConfig(size_t idx) const;
 
     /**
      * @brief Checks for timed-out connections and closes them.

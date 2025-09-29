@@ -112,6 +112,7 @@ typedef struct s_conn
     int socket_fd;                          // Client socket file descriptor
     int inner_fd_in;                        // Internal file descriptor for reading request body
     int inner_fd_out;                       // Internal file descriptor for writing response body
+    int config_idx;                         // Index of the server configuration used
     bool is_cgi;                            // Is this connection handling a CGI request?
     t_status status;                        // Current status of the connection
     t_status_error_codes error_code;        // Error code if any error occurs
