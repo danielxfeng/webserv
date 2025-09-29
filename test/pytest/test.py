@@ -419,8 +419,8 @@ def run_all():
     test_delete_folder_more()
     test_delete_with_body()
 
-    #test_simple_post()
-    #test_post_large_file()
+    test_simple_post()
+    test_post_large_file()
     #test_post_without_content_length()
     #test_post_exceeding_content_length()
     #test_post_chunked_transfer()
@@ -436,5 +436,5 @@ def run_one():
 
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    run_all()
+    #run_one()
