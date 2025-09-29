@@ -169,7 +169,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 	else
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Type");
 	std::filesystem::path filename = createRandomFilename(path, extension);
-	std::string result = targetRef + filename.filename().string();
+	std::string result = targetRef + '/' + filename.filename().string();
 	LOG_DEBUG("postFilename: ", result);
 	requested_.postFilename = result;
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
