@@ -435,7 +435,7 @@ void HttpRequests::header_transfer_encoding_validator()
 	{
 		if (requestHeaderMap.contains("content-length") && requestHeaderMap.contains("transfer-encoding"))
 		{
-			throw WebServErr::BadRequestException("content-type & transfer-encoding in the same request.");
+			throw WebServErr::BadRequestException("content-length & transfer-encoding in the same request.");
 		}
 		else if (requestHeaderMap.contains("transfer-encoding"))
 		{
