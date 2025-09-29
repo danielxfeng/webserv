@@ -44,7 +44,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
     }
     else if (request->getHttpRequestMethod() == "POST")
     {
-        result.append("HTTP/1.1").append(" 204 No Content\r\n");
+        result.append("HTTP/1.1").append(" 201 Created\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
         result.append("Location: ").append(conn->res.postFilename).append("\r\n");
         result.append("Content-Length: 0").append("\r\n\r\n");
