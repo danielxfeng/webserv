@@ -154,14 +154,23 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, const std::string &root)
 {
 	(void)requestBody;
-	LOG_TRACE("Calling POST: ", path);	
+	LOG_TRACE("Calling POST: ", path);
 	if (checkFileCount(root) > 25)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
 	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
 	setContentLength(requestHeader);
-	//checkContentType(requestHeader);
-	std::string extension = path.extension().string();
+	// checkContentType(requestHeader);
+	std::string extension;
+	std::string fileType = requestHeader["content-type"];
+	if (fileType == "image/png")
+		extension = ".png";
+	else if (fileType == "image/jpeg" || fileType == "image/jpg")
+		extension = ".jpg";
+	else if (fileType == "text/plain")
+		extension = ".txt";
+	else
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Type");
 	std::filesystem::path filename = createRandomFilename(path, extension);
 	requested_.postFilename = filename.string();
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
@@ -179,12 +188,12 @@ std::filesystem::path MethodHandler::createRandomFilename(std::filesystem::path 
 		result.push_back('/');
 	result += "upload_";
 	static const std::string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	static std::mt19937 rng{ static_cast<unsigned long>(std::chrono::high_resolution_clock::now().time_since_epoch().count()) };
+	static std::mt19937 rng{static_cast<unsigned long>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
 	std::uniform_int_distribution<size_t> dist(0, chars.size() - 1);
 
 	for (size_t i = 0; i < 12; i++)
 		result.push_back(chars[dist(rng)]);
-	result += '.' + extension;
+	result += extension;
 	std::filesystem::path uploadCheck(result);
 	if (std::filesystem::exists(uploadCheck))
 		createRandomFilename(path, extension);
@@ -222,8 +231,8 @@ void MethodHandler::setContentLength(std::unordered_map<std::string, std::string
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, content length not found."); // TODO double check error code
 	if (!length.eof())
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, failed to get end of file for content length."); // TODO double check error code
-	//if (requested_.expectedSize > MAX_BODY_SIZE)
-	//	throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Body size too large."); // TODO double check error code
+																															  // if (requested_.expectedSize > MAX_BODY_SIZE)
+																															  //	throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Body size too large."); // TODO double check error code
 }
 
 void MethodHandler::checkContentType(std::unordered_map<std::string, std::string> requestBody) const
@@ -374,7 +383,7 @@ size_t MethodHandler::checkFileCount(const std::string &root)
 {
 	size_t fileCount = 0;
 	LOG_TRACE("Directory File Count for: ", root);
-	for (const auto& entry : std::filesystem::directory_iterator(root))
+	for (const auto &entry : std::filesystem::directory_iterator(root))
 	{
 		if (std::filesystem::is_regular_file(entry.path()))
 			fileCount++;
