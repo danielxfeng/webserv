@@ -158,6 +158,7 @@ typedef struct s_server_config
     bool is_cgi;                                                  // Is this an CGI server?
     std::unordered_map<std::string, t_location_config> locations; // Locations : methods
     std::unordered_map<std::string, std::string> cgi_paths;       // CGI paths for different extensions
+    std::unordered_map<t_status_error_codes, std::string> errPages; //Error Page paths
 } t_server_config;
 
 /**
