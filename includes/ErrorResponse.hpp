@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <filesystem>
 #include <fcntl.h>
+#include <unistd.h>
 
 class ErrorResponse
 {
