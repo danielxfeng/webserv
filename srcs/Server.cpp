@@ -540,7 +540,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         try
         {
             t_file err_page = ErrorResponse(epoll_).getErrorPage(configs_[conn->config_idx].err_pages, conn->error_code);
-            inner_fd_map_.emplace(err_page.FD_handler_OUT.get()->get(), conn->res.FD_handler_OUT);
+            inner_fd_map_.emplace(err_page.FD_handler_OUT.get()->get(), err_page.FD_handler_OUT);
             conn->inner_fd_out = err_page.FD_handler_OUT.get()->get();
             size_error_page += err_page.expectedSize;
         }
@@ -662,7 +662,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
 
 /**
  * @details
- * Reads required data from file server for GET.
+ * Reads required data from file server for GET / Static error page.
  * Sends data from the write buffer to the client socket.
  * If the entire response has been sent, transitions to the done state.
  * If buffer is empty, waits for the next write event.
