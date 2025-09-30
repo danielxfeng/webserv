@@ -88,10 +88,7 @@ void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::file
 t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, t_server_config &server)
 {
 	setENVP(requestLine, requestHeader, requestBody);
-	const std::filesystem::path script;
-	if (server.cgi_paths.find(/*TODO extension name */) == server.cgi_paths.end())	
-		throw WebServErr::CGIException("CGI extension does not exist");
-	script = std::filesystem::path(server.cgi_paths.find(/*TODO extension name*/)->second);
+	const std::filesystem::path script = getTargetCGI(path, server);
 	if (std::filesystem::is_directory(script))
 		throw WebServErr::CGIException("CGI script is a directory");
 	if (std::filesystem::is_symlink(script))
@@ -114,4 +111,19 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 	close(inPipe[READ]);
 	close(outPipe[WRITE]);
 	return (result);
+}
+
+std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server)
+{
+	std::string targetCGI;
+	if (path.string().find("/cgi/python"))
+		targetCGI = "python";
+	else if (path.string().find("/cgi/go"))
+		targetCGI = "go";
+	else
+		throw WebServErr::CGIException("CGI extension not supported");
+	if (server.cgi_paths.find(targetCGI) == server.cgi_paths.end())	
+		throw WebServErr::CGIException("CGI extension does not exist");
+	std::filesystem::path script(server.cgi_paths.find(targetCGI)->second);
+	return (script);
 }
