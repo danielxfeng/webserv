@@ -158,8 +158,6 @@ typedef struct s_server_config
     unsigned int max_heartbeat_timeout;                              // Maximum heartbeat timeout in milliseconds
     unsigned int max_request_size;                                   // Maximum size of a request in bytes
     unsigned int max_headers_size;                                   // Maximum size of headers in bytes
-    bool is_redirect;                                                // Is this a redirect server?
-    std::string redirect_path;                                       // Redirect path if is_redirect is true
     bool is_cgi;                                                     // Is this an CGI server?
     std::unordered_map<std::string, t_location_config> locations;    // Locations : methods
     std::unordered_map<std::string, std::string> cgi_paths;          // CGI paths for different extensions
