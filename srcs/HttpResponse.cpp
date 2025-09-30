@@ -68,7 +68,7 @@ std::string HttpResponse::successResponse(t_conn *conn)
     return (result);
 }
 
-std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes error_code, const std::string &error_message)
+std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes error_code, const std::string &error_message, size_t errPageSize)
 {
     std::string result;
     std::string status;
@@ -101,34 +101,37 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
         status = "500 Internal Server Error";
     }
 
-
     if (error_code == ERR_301_REDIRECT)
     {
         std::string redirected = error_message;
 
         result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
-        result.append("Location: ").append(redirected.erase(0,12)).append("\r\n");
-        return(result);
+        result.append("Location: ").append(redirected.erase(0, 12)).append("\r\n");
+        return (result);
     }
 
-    std::string htmlPage;
+    if (errPageSize == 0)
+    {
 
-    
-    htmlPage.append("<!DOCTYPE html>"
-                    "<html>"
-                    "<head><title>");
-    htmlPage.append(status).append("</title></head><body><h1>");
+        std::string htmlPage;
+        htmlPage.append("<!DOCTYPE html>"
+                        "<html>"
+                        "<head><title>");
+        htmlPage.append(status).append("</title></head><body><h1>");
 
+        htmlPage.append(status).append("</h1><p>").append(error_message);
+        htmlPage.append("</p></body></html>");
 
-
-    htmlPage.append(status).append("</h1><p>").append(error_message);
-    htmlPage.append("</p></body></html>");
-
-
-    result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
-    result.append("Content-Type: text/html\r\n");
-    result.append("Content-Length: ").append(std::to_string(htmlPage.size())).append("\r\n\r\n");
-    result.append(htmlPage);
-
+        result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
+        result.append("Content-Type: text/html\r\n");
+        result.append("Content-Length: ").append(std::to_string(htmlPage.size())).append("\r\n\r\n");
+        result.append(htmlPage);
+    }
+    else
+    {
+        result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
+        result.append("Content-Type: text/html\r\n");
+        result.append("Content-Length: ").append(std::to_string(errPageSize)).append("\r\n\r\n");
+    }
     return (result);
 }
