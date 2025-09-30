@@ -74,6 +74,7 @@ typedef enum e_method
     POST,
     DELETE,
     CGI,
+    REDIRECT,
     UNKNOWN,
 } t_method;
 
