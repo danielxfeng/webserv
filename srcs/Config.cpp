@@ -6,6 +6,27 @@ const std::string randomServerName()
     return "server_" + std::to_string(counter++);
 }
 
+t_status_error_codes stringToErrCode(std::string str)
+{
+    if (str == "301")
+        return ERR_301_REDIRECT;
+    if (str == "400")
+        return ERR_400_BAD_REQUEST;
+    if (str == "401")
+        return ERR_401_UNAUTHORIZED;
+    if (str == "403")
+        return ERR_403_FORBIDDEN;
+    if (str == "404")
+        return ERR_404_NOT_FOUND;
+    if (str == "405")
+        return ERR_405_METHOD_NOT_ALLOWED;
+    if (str == "409")
+        return ERR_409_CONFLICT;
+    if (str == "500")
+        return ERR_500_INTERNAL_SERVER_ERROR;
+    throw std::invalid_argument("invalid error code");
+}
+
 const t_global_config &Config::getGlobalConfig() const
 {
     return global_config_;
@@ -87,6 +108,15 @@ void Config::fromJson(const std::string &json_string)
                     }
                     server_config.locations[location_path] = location_config;
                 }
+            }
+        }
+
+        if (server_obj.contains("err_pages"))
+        {
+            const auto err_pages = TinyJson::as<JsonObject>(*server_obj.at("err_pages"));
+            for (const auto& [key, val] : err_pages) {
+                server_config.err_pages[stringToErrCode(TinyJson::as<std::string>(key))] =
+                    TinyJson::as<std::string>(*val);
             }
         }
 

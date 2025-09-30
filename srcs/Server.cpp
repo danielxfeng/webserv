@@ -532,9 +532,27 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 {
     LOG_TRACE("Response Header Processing: ", "Starting...");
     conn->status = RES_HEADER_PROCESSING;
+
+    size_t size_error_page = 0;
+
+    if (conn->error_code != ERR_NO_ERROR && conn->error_code != ERR_301_REDIRECT)
+    {
+        try
+        {
+            t_file err_page = ErrorResponse(epoll_).getErrorPage(configs_[conn->config_idx].err_pages, conn->error_code);
+            inner_fd_map_.emplace(err_page.FD_handler_OUT.get()->get(), conn->res.FD_handler_OUT);
+            conn->inner_fd_out = err_page.FD_handler_OUT.get()->get();
+            size_error_page += err_page.expectedSize;
+        }
+        catch (const WebServErr::ErrorResponseException &)
+        {}
+    }
+
     const std::string header = (conn->error_code == ERR_NO_ERROR)
                                    ? conn->response->successResponse(conn)
-                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message);
+                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, size_error_page);
+
+    
 
     LOG_INFO("Response header prepared for fd: ", conn->socket_fd, "\n", header);
 
@@ -549,7 +567,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     if (conn->error_code != ERR_NO_ERROR)
     {
         LOG_ERROR("Error occurred, preparing error response: ", conn->error_code);
-        conn->output_length = header.size();
+        conn->output_length = header.size() + size_error_page;
         return defaultMsg();
     }
     t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));

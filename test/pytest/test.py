@@ -451,8 +451,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_get_html()
-
+    test_get_404()
 
 if __name__=="__main__":
     run_all()

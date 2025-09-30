@@ -15,6 +15,7 @@
 #include "LogSys.hpp"
 #include "WebServErr.hpp"
 #include "utils.hpp"
+#include "ErrorResponse.hpp"
 
 class Config;
 
