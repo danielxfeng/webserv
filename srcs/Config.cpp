@@ -97,6 +97,9 @@ void Config::fromJson(const std::string &json_string)
                         throw std::invalid_argument("invalid method in locations: " + location_path);
                     location_config.methods.push_back(method);
                 }
+                if (std::find(location_config.methods.begin(), location_config.methods.end(), REDIRECT) != location_config.methods.end()
+                    && location_config.methods.size() > 1)
+                    throw std::invalid_argument("invalid method combination in location: " + location_path);
                 server_config.locations[location_path] = location_config;
             }
         }
