@@ -5,6 +5,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->socket_fd = socket_fd;
     conn->inner_fd_in = -1;
     conn->inner_fd_out = -1;
+    conn->config_idx = -1;
     conn->is_cgi = false;
     conn->status = REQ_HEADER_PARSING;
     conn->start_timestamp = time(NULL);
@@ -36,13 +37,20 @@ t_msg_from_serv defaultMsg()
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
 }
 
-Server::Server(EpollHelper &epoll, const t_server_config &config) : epoll_(epoll), config_(config), conns_(), cookies_(), conn_map_(), inner_fd_map_() {}
+Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), conns_(), cookies_(), conn_map_(), inner_fd_map_() {}
 
-const t_server_config &Server::getConfig() const { return config_; }
+const std::vector<t_server_config> &Server::getConfigs() const { return configs_; }
+
+const t_server_config &Server::getConfig(size_t idx) const
+{
+    if (idx >= configs_.size())
+        throw std::out_of_range("Config index out of range");
+    return configs_.at(idx);
+}
 
 void Server::addConn(int fd)
 {
-    t_conn conn = make_conn(fd, config_.max_request_size);
+    t_conn conn = make_conn(fd, MAX_REQUEST_SIZE); // here we use the global limit, since we don't know the config yet
 
     conns_.push_back(std::move(conn));
     conn_map_.emplace(fd, &conns_.back());
@@ -103,8 +111,9 @@ t_msg_from_serv Server::timeoutKiller()
 
     for (auto it = conns_.begin(); it != conns_.end();)
     {
-        if (difftime(now, it->last_heartbeat) > config_.max_heartbeat_timeout ||
-            difftime(now, it->start_timestamp) > config_.max_request_timeout)
+        size_t max_heartbeat_timeout = it->config_idx != -1 ? configs_[it->config_idx].max_heartbeat_timeout : GLOBAL_HEARTBEAT_TIMEOUT;
+        size_t max_request_timeout = it->config_idx != -1 ? configs_[it->config_idx].max_request_timeout : GLOBAL_REQUEST_TIMEOUT;
+        if (difftime(now, it->last_heartbeat) > max_heartbeat_timeout || difftime(now, it->start_timestamp) > max_request_timeout)
         {
             int fd = it->socket_fd;
             t_msg_from_serv temp = closeConn(&*it);
@@ -181,7 +190,29 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         std::string_view buf = conn->read_buf->peek();
         conn->request->httpParser(buf);
 
-        // After successful parsing, determine the method and content length
+        if (conn->config_idx == -1)
+        {
+            if (conn->request->getrequestHeaderMap().contains("servername"))
+            {
+                std::string host = conn->request->getrequestHeaderMap().at("servername");
+                for (size_t i = 0; i < configs_.size(); ++i)
+                {
+                    if (configs_[i].server_name == toLower(host))
+                    {
+                        conn->config_idx = i;
+                        break;
+                    }
+                }
+            }
+
+            if (conn->config_idx == -1)
+                conn->config_idx = 0;
+        }
+        LOG_INFO("select config_idx", configs_[conn->config_idx].server_name);
+        conn->content_length = configs_[conn->config_idx].max_request_size;
+        conn->output_length = configs_[conn->config_idx].max_request_size;
+        // TODO: add err page.
+        //  After successful parsing, determine the method and content length
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
             conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestHeaderMap().at("content-length")));
@@ -191,7 +222,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
             if (method == GET || method == DELETE)
                 conn->content_length = 0;
             else if ((method == POST || method == CGI) && conn->request->isChunked())
-                conn->content_length = config_.max_request_size; // Chunked transfer encoding, content length is not known in advance
+                conn->content_length = configs_[conn->config_idx].max_request_size; // Chunked transfer encoding, content length is not known in advance
             else
                 throw WebServErr::ShouldNotBeHereException("Content-Length not found for method requiring body");
         }
@@ -227,7 +258,8 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         }
 
         // Check if max header size is exceeded
-        const bool is_max_length_reached = (conn->bytes_received >= config_.max_headers_size);
+        const size_t max_header_size = conn->config_idx == -1 ? MAX_HEADERS_SIZE : configs_[conn->config_idx].max_headers_size;
+        const bool is_max_length_reached = (conn->bytes_received >= max_header_size);
         if (is_max_length_reached)
         {
             LOG_ERROR("Header size exceeded for fd: ", fd);
@@ -281,7 +313,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     try
     {
         LOG_INFO("Processing request header for fd: ", fd);
-        conn->res = MethodHandler(epoll_).handleRequest(config_, conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap(), epoll_);
+        conn->res = MethodHandler(epoll_).handleRequest(configs_[conn->config_idx], conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap(), epoll_);
         LOG_INFO("Resource prepared for fd: ", fd, " file size: ", conn->res.fileSize, " isDynamic: ", conn->res.isDynamic);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         conn->is_cgi = (method == CGI);
@@ -533,7 +565,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         break;
     case CGI:
         conn->status = RES_HEADER_PROCESSING;
-        conn->output_length = config_.max_request_size; // Unknown length, send until EOF
+        conn->output_length = configs_[conn->config_idx].max_request_size; // Unknown length, send until EOF
         break;
     default:
         throw WebServErr::ShouldNotBeHereException("Unhandled method in response header processing");
@@ -712,7 +744,7 @@ t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
 
     // Reset the connection for next request if keep-alive
     t_msg_from_serv msg = resetConnMap(conn);
-    resetConn(conn, conn->socket_fd, config_.max_request_size);
+    resetConn(conn, conn->socket_fd, configs_[conn->config_idx].max_request_size);
     LOG_INFO("Keep-alive: ready for next request on fd: ", fd);
     return msg;
 }

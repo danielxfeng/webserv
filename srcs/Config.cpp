@@ -1,5 +1,11 @@
 #include "../includes/Config.hpp"
 
+const std::string randomServerName()
+{
+    static int counter = 1; // Static counter to ensure unique names
+    return "server_" + std::to_string(counter++);
+}
+
 const t_global_config &Config::getGlobalConfig() const
 {
     return global_config_;
@@ -26,7 +32,7 @@ void Config::fromJson(const std::string &json_string)
     {
         const JsonObject server_obj = TinyJson::as<JsonObject>(*server_value_ptr);
         t_server_config server_config;
-        server_config.server_name = TinyJson::as<std::string>(*server_obj.at("server_name"));
+        server_config.server_name = server_obj.contains("server_name") ? toLower(TinyJson::as<std::string>(*server_obj.at("server_name"))) : randomServerName();
         server_config.port = TinyJson::as<unsigned int>(*server_obj.at("port"));
 
         const unsigned int max_request_timeout = server_obj.contains("max_request_timeout") ? TinyJson::as<unsigned int>(*server_obj.at("max_request_timeout")) : global_config_.global_request_timeout;
@@ -41,42 +47,50 @@ void Config::fromJson(const std::string &json_string)
         const unsigned int max_headers_size = server_obj.contains("max_headers_size") ? TinyJson::as<unsigned int>(*server_obj.at("max_headers_size")) : global_config_.max_headers_size;
         server_config.max_headers_size = std::min(max_headers_size, global_config_.max_headers_size);
 
-        server_config.is_cgi = server_obj.contains("is_cgi") ? TinyJson::as<bool>(*server_obj.at("is_cgi")) : false;
-
-        if (server_config.is_cgi)
+        server_config.is_redirect = server_obj.contains("is_redirect") ? TinyJson::as<bool>(*server_obj.at("is_redirect")) : false;
+        if (server_config.is_redirect)
         {
-            JsonObject cgi_obj = TinyJson::as<JsonObject>(*server_obj.at("cgi_config"));
-            for (const auto &cgi_pair : cgi_obj)
-            {
-                server_config.cgi_paths[cgi_pair.first] = TinyJson::as<std::string>(*cgi_pair.second);
-            }
+            if (!server_obj.contains("redirect_path"))
+                throw std::invalid_argument("redirect_path is required for redirect server: " + server_config.server_name);
+            server_config.redirect_path = TinyJson::as<std::string>(*server_obj.at("redirect_path"));
         }
         else
         {
-            JsonObject locations_obj = TinyJson::as<JsonObject>(*server_obj.at("locations"));
-            for (const auto &location_pair : locations_obj)
-            {
-                const std::string location_path = location_pair.first;
-                const JsonObject location_obj = TinyJson::as<JsonObject>(*location_pair.second);
-                t_location_config location_config;
-                location_config.root = TinyJson::as<std::string>(*location_obj.at("root"));
-                location_config.index = location_obj.contains("index") ? TinyJson::as<std::string>(*location_obj.at("index")) : "";
+            server_config.is_cgi = server_obj.contains("is_cgi") ? TinyJson::as<bool>(*server_obj.at("is_cgi")) : false;
 
-                JsonArray methods_array = TinyJson::as<JsonArray>(*location_obj.at("methods"));
-                for (const auto &method_value_ptr : methods_array)
+            if (server_config.is_cgi)
+            {
+                JsonObject cgi_obj = TinyJson::as<JsonObject>(*server_obj.at("cgi_config"));
+                for (const auto &cgi_pair : cgi_obj)
                 {
-                    t_method method = convertMethod(TinyJson::as<std::string>(*method_value_ptr));
-                    if (method == CGI || method == UNKNOWN)
-                        throw std::invalid_argument("invalid method in locations: " + location_path);
-                    location_config.methods.push_back(method);
+                    server_config.cgi_paths[cgi_pair.first] = TinyJson::as<std::string>(*cgi_pair.second);
                 }
-                server_config.locations[location_path] = location_config;
+            }
+            else
+            {
+                JsonObject locations_obj = TinyJson::as<JsonObject>(*server_obj.at("locations"));
+                for (const auto &location_pair : locations_obj)
+                {
+                    const std::string location_path = location_pair.first;
+                    const JsonObject location_obj = TinyJson::as<JsonObject>(*location_pair.second);
+                    t_location_config location_config;
+                    location_config.root = TinyJson::as<std::string>(*location_obj.at("root"));
+                    location_config.index = location_obj.contains("index") ? TinyJson::as<std::string>(*location_obj.at("index")) : "";
+
+                    JsonArray methods_array = TinyJson::as<JsonArray>(*location_obj.at("methods"));
+                    for (const auto &method_value_ptr : methods_array)
+                    {
+                        t_method method = convertMethod(TinyJson::as<std::string>(*method_value_ptr));
+                        if (method == CGI || method == UNKNOWN)
+                            throw std::invalid_argument("invalid method in locations: " + location_path);
+                        location_config.methods.push_back(method);
+                    }
+                    server_config.locations[location_path] = location_config;
+                }
             }
         }
-        if (global_config_.servers.contains(server_config.server_name))
-            throw std::invalid_argument("Duplicate server name: " + server_config.server_name);
 
-        global_config_.servers[server_config.server_name] = server_config;
+        global_config_.servers.push_back(server_config);
     }
 }
 

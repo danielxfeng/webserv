@@ -112,6 +112,7 @@ typedef struct s_conn
     int socket_fd;                          // Client socket file descriptor
     int inner_fd_in;                        // Internal file descriptor for reading request body
     int inner_fd_out;                       // Internal file descriptor for writing response body
+    int config_idx;                         // Index of the server configuration used
     bool is_cgi;                            // Is this connection handling a CGI request?
     t_status status;                        // Current status of the connection
     t_status_error_codes error_code;        // Error code if any error occurs
@@ -150,16 +151,18 @@ typedef struct s_location_config
  */
 typedef struct s_server_config
 {
-    std::string server_name;                                      // Name of the server
-    unsigned int port;                                            // Port number for the server
-    unsigned int max_request_timeout;                             // Maximum request timeout in milliseconds
-    unsigned int max_heartbeat_timeout;                           // Maximum heartbeat timeout in milliseconds
-    unsigned int max_request_size;                                // Maximum size of a request in bytes
-    unsigned int max_headers_size;                                // Maximum size of headers in bytes
-    bool is_cgi;                                                  // Is this an CGI server?
-    std::unordered_map<std::string, t_location_config> locations; // Locations : methods
-    std::unordered_map<std::string, std::string> cgi_paths;       // CGI paths for different extensions
-    std::unordered_map<t_status_error_codes, std::string> errPages; //Error Page paths
+    std::string server_name;                                        // Name of the server
+    unsigned int port;                                              // Port number for the server
+    unsigned int max_request_timeout;                               // Maximum request timeout in milliseconds
+    unsigned int max_heartbeat_timeout;                             // Maximum heartbeat timeout in milliseconds
+    unsigned int max_request_size;                                  // Maximum size of a request in bytes
+    unsigned int max_headers_size;                                  // Maximum size of headers in bytes
+    bool is_redirect;                                               // Is this a redirect server?
+    std::string redirect_path;                                      // Redirect path if is_redirect is true
+    bool is_cgi;                                                    // Is this an CGI server?
+    std::unordered_map<std::string, t_location_config> locations;   // Locations : methods
+    std::unordered_map<std::string, std::string> cgi_paths;         // CGI paths for different extensions
+    std::unordered_map<t_status_error_codes, std::string> errPages; // Error Page paths
 } t_server_config;
 
 /**
@@ -173,7 +176,7 @@ typedef struct s_global_config
     unsigned int max_heartbeat_timeout;                       // Global heartbeat timeout in milliseconds
     unsigned int max_request_size;                            // Maximum size of a request in bytes
     unsigned int max_headers_size;                            // Maximum size of headers in bytes
-    std::unordered_map<std::string, t_server_config> servers; // Server names and their corresponding configurations
+    std::vector<t_server_config> servers;                     // Server names and their corresponding configurations
 } t_global_config;
 
 t_method convertMethod(const std::string &method_str);

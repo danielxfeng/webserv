@@ -8,6 +8,7 @@
 #include "SharedTypes.hpp"
 #include "TinyJson.hpp"
 #include "TinyJsonSerializable.hpp"
+#include "utils.hpp"
 
 class Server;
 
