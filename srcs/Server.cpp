@@ -37,7 +37,11 @@ t_msg_from_serv defaultMsg()
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
 }
 
-Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), conns_(), cookies_(), conn_map_(), inner_fd_map_() {}
+Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), cookies_(), conns_(), conn_map_(), inner_fd_map_() 
+{
+    for (size_t i = 0; i < configs_.size(); ++i)
+        cookies_.emplace_back();
+}
 
 const std::vector<t_server_config> &Server::getConfigs() const { return configs_; }
 
@@ -549,8 +553,8 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     }
 
     const std::string header = (conn->error_code == ERR_NO_ERROR)
-                                   ? conn->response->successResponse(conn)
-                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, size_error_page);
+                                   ? conn->response->successResponse(conn, cookies_[conn->config_idx])
+                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, , cookies_[conn->config_idx], size_error_page);
 
     
 

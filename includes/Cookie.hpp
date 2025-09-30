@@ -11,7 +11,7 @@ class Cookie
 {
 private:
     std::unordered_map<std::string, time_t> cookies_;
-    bool isValidCookie(const std::string &cookie);
+    bool checkValidAndExtendCookie(const std::string &cookie);
     std::string setCookie(std::string &cookie, time_t ts);
 
 public:
