@@ -83,10 +83,12 @@ void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::file
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Failed to execute CGI");
 }
 
-t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, t_server_config &server)
 {
 	setENVP(requestLine, requestHeader, requestBody);
-	const std::filesystem::path script = "/cgi_bin/python/cgi.py";
+	const std::filesystem::path script;
+	if (server.cgi_paths.find(/*TODO extension name */) == server.cgi_paths.end())	
+		throw WebServErr::CGIException("CGI extension does not exist");
 	if (!std::filesystem::exists(script))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
 	if (std::filesystem::is_directory(script))

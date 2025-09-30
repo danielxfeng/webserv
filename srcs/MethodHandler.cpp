@@ -91,7 +91,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		return (requested_);
 	}
 	case CGI:
-		return (callCGIMethod(canonical, requestLine, requestHeader, requestBody, epoll_helper));
+		return (callCGIMethod(canonical, requestLine, requestHeader, requestBody, epoll_helper, server));
 	default:
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 	}
@@ -209,11 +209,11 @@ void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }
 
-t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
+t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper, t_server_config &server)
 {
 	LOG_TRACE("Calling CGI: ", path);
 	CGIHandler cgi(epoll_helper);
-	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody);
+	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody, server);
 	return (std::move(requested_));
 }
 
