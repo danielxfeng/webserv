@@ -20,6 +20,7 @@
 
 void handleSignal(int sig);
 extern volatile std::sig_atomic_t stopFlag;
+const size_t MAX_CONN = 250;
 
 class WebServ
 {
