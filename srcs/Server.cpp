@@ -197,7 +197,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
                 std::string host = conn->request->getrequestHeaderMap().at("servername");
                 for (size_t i = 0; i < configs_.size(); ++i)
                 {
-                    if (toLower(configs_[i].server_name) == host)
+                    if (configs_[i].server_name == toLower(host))
                     {
                         conn->config_idx = i;
                         break;
@@ -208,6 +208,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
             if (conn->config_idx == -1)
                 conn->config_idx = 0;
         }
+        LOG_INFO("select config_idx", configs_[conn->config_idx].server_name);
         conn->content_length = configs_[conn->config_idx].max_request_size;
         conn->output_length = configs_[conn->config_idx].max_request_size;
         // TODO: add err page.

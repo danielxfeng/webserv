@@ -97,11 +97,11 @@ WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
     // Create server instances based on the configuration.
     for (auto it = config_.servers.begin(); it != config_.servers.end(); ++it)
     {
-        auto port = it->second.port;
+        auto port = it->port;
         if (ports_map.contains(port))
-            ports_map.at(port).push_back(it->second);
+            ports_map.at(port).push_back(*it);
         else
-            ports_map.emplace(port, std::vector<t_server_config>{it->second});
+            ports_map.emplace(port, std::vector<t_server_config>{*it});
     }
 
     for (auto &kv : ports_map)

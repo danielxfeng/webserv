@@ -175,6 +175,14 @@ def test_get_not_allowed_method():
     assert r.status_code == 405
     print("GET not allowed method test passed.")
 
+def test_get_diff_host_same_port():
+    r = requests.get("http://127.0.0.1:8081/", headers={"Host": "same_port.com"})
+    assert r.status_code == 200
+    with open(f"{HOME}/www/app2/index.html", "r") as f:
+        expected_content = f.read()
+    assert expected_content in r.text
+    print("Different Host same port test passed.")
+
 def test_delete_not_allowed_method():
     r = requests.delete(f"{BASE}/second/pic.png")
     assert r.status_code == 405
@@ -223,16 +231,26 @@ def test_delete_with_body():
 def test_simple_post():
     header = {"Content-Type": "text/plain",
               "Content-Length": "13"}
-    r = requests.post(f"{BASE}/uploads", headers=header, data="Hello, World!")
+    r = requests.post(f"{BASE}/uploads2", headers=header, data="Hello, World!")
     assert r.status_code == 201
+
+    assert 'Location' in r.headers
+    r = requests.get(f"{BASE}{r.headers['Location']}")
+    assert r.status_code == 200
+    assert r.text == "Hello, World!"
     print("Simple POST test passed.")
 
 def test_post_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
     header = {"Content-Type": "text/plain",
               "Content-Length": "10000000"}
-    r = requests.post(f"{BASE}/uploads", headers=header, data=large_content)
+    r = requests.post(f"{BASE}/uploads2", headers=header, data=large_content)
     assert r.status_code == 201
+
+    assert 'Location' in r.headers
+    r = requests.get(f"{BASE}{r.headers['Location']}")
+    assert r.status_code == 200
+    assert r.text == large_content
     print("POST large file test passed.")
 
 def test_post_without_content_length():
@@ -411,6 +429,7 @@ def run_all():
     test_get_no_http_version()
     test_get_incorrect_protocol()
     test_get_not_allowed_method()
+    test_get_diff_host_same_port()
 
     test_delete_not_allowed_method()
     test_delete_ok()
@@ -421,8 +440,8 @@ def run_all():
 
     test_simple_post()
     test_post_large_file()
-    #test_post_without_content_length()
-    #test_post_exceeding_content_length()
+    test_post_without_content_length()
+    test_post_exceeding_content_length()
     #test_post_chunked_transfer()
     #test_post_chunked_large_file()
     #test_post_chunked_transfer_invalid_header()
@@ -432,9 +451,9 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_post_large_file()
+    test_get_html()
 
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    run_all()
+    #run_one()

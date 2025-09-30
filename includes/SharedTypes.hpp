@@ -175,7 +175,7 @@ typedef struct s_global_config
     unsigned int max_heartbeat_timeout;                       // Global heartbeat timeout in milliseconds
     unsigned int max_request_size;                            // Maximum size of a request in bytes
     unsigned int max_headers_size;                            // Maximum size of headers in bytes
-    std::unordered_map<std::string, t_server_config> servers; // Server names and their corresponding configurations
+    std::vector<t_server_config> servers;                     // Server names and their corresponding configurations
 } t_global_config;
 
 t_method convertMethod(const std::string &method_str);

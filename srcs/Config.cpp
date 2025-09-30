@@ -90,10 +90,7 @@ void Config::fromJson(const std::string &json_string)
             }
         }
 
-        if (global_config_.servers.contains(server_config.server_name))
-            throw std::invalid_argument("Duplicate server name: " + server_config.server_name);
-
-        global_config_.servers[server_config.server_name] = server_config;
+        global_config_.servers.push_back(server_config);
     }
 }
 
