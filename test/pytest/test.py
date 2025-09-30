@@ -454,5 +454,5 @@ def run_one():
     test_get_404()
 
 if __name__=="__main__":
-    run_all()
-    #run_one()
+    #run_all()
+    run_one()
