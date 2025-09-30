@@ -74,14 +74,14 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Path goes beyond root");
 
 	// Check if Directory
-	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination);
+	bool useAutoIndex = checkIfDirectory(server.locations, canonical, rootDestination, targetRef);
 	if (!useAutoIndex)
 		checkIfRegFile(canonical);
 
 	switch (realMethod)
 	{
 	case GET:
-		return (callGetMethod(useAutoIndex, canonical));
+		return (callGetMethod(useAutoIndex, canonical, targetRef));
 	case POST:
 		return (callPostMethod(canonical, requestHeader, targetRef, root));
 	case DELETE:
@@ -124,7 +124,7 @@ std::string MethodHandler::matchLocation(std::unordered_map<std::string, t_locat
 	return (bestMatch);
 }
 
-t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path)
+t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path, std::string &targetRef)
 {
 	LOG_TRACE("Calling GET: ", path);
 	if (useAutoIndex)
@@ -132,7 +132,7 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 		LOG_TRACE("Directory is: ", "auto-index");
 		try
 		{
-			requested_.dynamicPage = generateDynamicPage(path);
+			requested_.dynamicPage = generateDynamicPage(path, targetRef);
 			requested_.isDynamic = true;
 			requested_.fileSize = requested_.dynamicPage.size();
 			LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
@@ -258,12 +258,15 @@ void MethodHandler::checkIfRegFile(const std::filesystem::path &path)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File is not a regular file");
 }
 
-bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination)
+bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_config> &locations, std::filesystem::path &path, const std::string &rootDestination, const std::string &targetRef)
 {
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (!std::filesystem::is_directory(path))
 		return (false);
-
+	LOG_DEBUG("realPath: ", targetRef);
+	LOG_DEBUG("Canonical: ", path);
+	if (!targetRef.empty() && targetRef.back() != '/' && targetRef.back() != std::filesystem::path::preferred_separator)
+		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/'); //TODO @Mohammad use this string to create a url that is included in the response
 	LOG_TRACE("This is a directory: ", path);
 	if (locations.contains(rootDestination))
 	{
@@ -287,8 +290,6 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 			return (true);
 		}
 	}
-	if (path.string().back() != '/')
-		throw WebServErr::MethodException(ERR_301_REDIRECT, "Location Moved");
 	throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a forbidden directory");
 }
 
@@ -336,23 +337,21 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &root, con
 	return (canonical);
 }
 
-std::string MethodHandler::generateDynamicPage(std::filesystem::path &path)
+std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, std::string &targetRef)
 {
 	std::string base = path.string();
 	if (base.empty() || base[0] != '/')
 		base = '/' + base;
 	std::filesystem::path fullPath(base);
 	LOG_TRACE("Dynamically generating page for: ", fullPath);
-	std::string page = "<!DOCTYPE html>\n<html>\n<head><title>Directory Structure of " + path.string() + "</title></head>\n";
-	page += "<body>\n<h1>" + path.string() + "</h1>\n<ul>\n";
+	std::string page = "<!DOCTYPE html>\n<html>\n<head><title>Directory Structure of " + targetRef + "</title></head>\n";
+	page += "<body>\n<h1>" + targetRef + "</h1>\n<ul>\n";
 
 	for (const auto &entry : std::filesystem::directory_iterator(fullPath))
 	{
 		std::string name = entry.path().filename().string();
 		if (std::filesystem::is_directory(name))
-			name += '/';
-		if (!path.empty() && path.string().back() != '/')
-			name += '/';
+			name += '/';	
 		std::string link = "<a href=\"" + name + "\">" + name + "</a>";
 		page.append("<li>" + link + "</li>");
 	}
