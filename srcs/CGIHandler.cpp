@@ -85,12 +85,13 @@ void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::file
 		throw WebServErr::CGIException("Failed to execute CGI");
 }
 
-t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, t_server_config &server)
 {
 	setENVP(requestLine, requestHeader, requestBody);
-	const std::filesystem::path script = "/cgi_bin/python/cgi.py";
-	if (!std::filesystem::exists(script))
-		throw WebServErr::CGIException("CGI script does not exist.");
+	const std::filesystem::path script;
+	if (server.cgi_paths.find(/*TODO extension name */) == server.cgi_paths.end())	
+		throw WebServErr::CGIException("CGI extension does not exist");
+	script = std::filesystem::path(server.cgi_paths.find(/*TODO extension name*/)->second);
 	if (std::filesystem::is_directory(script))
 		throw WebServErr::CGIException("CGI script is a directory");
 	if (std::filesystem::is_symlink(script))
