@@ -351,9 +351,7 @@ std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, std:
 	{
 		std::string name = entry.path().filename().string();
 		if (std::filesystem::is_directory(name))
-			name += '/';
-		if (!path.empty() && path.string().back() != '/')
-			name += '/';
+			name += '/';	
 		std::string link = "<a href=\"" + name + "\">" + name + "</a>";
 		page.append("<li>" + link + "</li>");
 	}
