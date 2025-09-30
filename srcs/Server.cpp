@@ -749,7 +749,7 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
 {
     conn->status = DONE;
-    const bool keep_alive = !conn->request->getrequestHeaderMap().contains("Connection") || conn->request->getrequestHeaderMap().at("Connection") != "close";
+    const bool keep_alive = !conn->request->getrequestHeaderMap().contains("connection") || conn->request->getrequestHeaderMap().at("connection") != "close";
     LOG_INFO("Request fully processed for fd: ", fd, " keep-alive: ", keep_alive);
 
     // Terminate the connection if error occurred or not keep-alive
