@@ -184,17 +184,14 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 std::filesystem::path MethodHandler::createRandomFilename(std::filesystem::path &path, std::string &extension)
 {
 	std::string result = path.string();
-	if (result.back() != '/')
-		result.push_back('/');
-	result += "upload_";
 	static const std::string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 	static std::mt19937 rng{static_cast<unsigned long>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
 	std::uniform_int_distribution<size_t> dist(0, chars.size() - 1);
-
+	std::string code = "upload_";
 	for (size_t i = 0; i < 12; i++)
-		result.push_back(chars[dist(rng)]);
+		code.push_back(chars[dist(rng)]);
 	result += extension;
-	std::filesystem::path uploadCheck(result);
+	std::filesystem::path uploadCheck = std::filesystem::path(result) / std::filesystem::path(code);
 	if (std::filesystem::exists(uploadCheck))
 		createRandomFilename(path, extension);
 	return (uploadCheck);
