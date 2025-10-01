@@ -45,7 +45,6 @@ private:
 	t_file callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string &targetRef, const std::string &root);
 	void callDeleteMethod(std::filesystem::path &path);
 	t_file callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper);
-	t_file callRedirectMethod(std::filesystem::path &path, t_server_config server, const std::string &root);
 
 	void setContentLength(std::unordered_map<std::string, std::string> requestHeader);
 	void checkContentType(std::unordered_map<std::string, std::string> requestBody) const;
