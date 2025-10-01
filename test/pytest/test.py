@@ -479,5 +479,5 @@ def run_one():
     test_get_redirect()
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    test_get_html()
+    #run_one()
