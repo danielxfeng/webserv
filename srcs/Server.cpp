@@ -262,6 +262,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         if (conn->read_buf->isEOF()) // EOF reached but header not complete
         {
             LOG_ERROR("Invalid request header for fd: ", fd, e.what());
+            conn->config_idx = 0;
             conn->error_code = ERR_400_BAD_REQUEST;
             return resheaderProcessingHandler(conn);
         }
@@ -272,6 +273,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         if (is_max_length_reached)
         {
             LOG_ERROR("Header size exceeded for fd: ", fd);
+            conn->config_idx = 0;
             conn->error_code = ERR_400_BAD_REQUEST;
             return resheaderProcessingHandler(conn);
         }
@@ -281,12 +283,14 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
     catch (const WebServErr::BadRequestException &e)
     {
         LOG_ERROR("Bad request for fd: ", fd, e.what());
+        conn->config_idx = 0;
         conn->error_code = ERR_400_BAD_REQUEST;
         return resheaderProcessingHandler(conn);
     }
     catch (const std::exception &e)
     {
         LOG_ERROR("Exception during header parsing for fd: ", fd, e.what());
+        conn->config_idx = 0;
         conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
         return resheaderProcessingHandler(conn);
     }
@@ -365,6 +369,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     catch (const WebServErr::MethodException &e)
     {
         LOG_ERROR("Method exception occurred: ", e.code(), e.what());
+        conn->config_idx = 0;
         conn->error_code = e.code();
         conn->error_message = e.what();
         return resheaderProcessingHandler(conn);
@@ -548,7 +553,6 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     {
         try
         {
-            LOG_INFO("err_pages", configs_[conn->config_idx].err_pages[ERR_404_NOT_FOUND]);
             t_file err_page = ErrorResponse(epoll_).getErrorPage(configs_[conn->config_idx].err_pages, conn->error_code);
             inner_fd_map_.emplace(err_page.FD_handler_OUT.get()->get(), err_page.FD_handler_OUT);
             conn->inner_fd_out = err_page.FD_handler_OUT.get()->get();
@@ -774,8 +778,10 @@ t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
 
     // Reset the connection for next request if keep-alive
     t_msg_from_serv msg = resetConnMap(conn);
+    size_t config_idx = conn->config_idx;
     resetConn(conn, conn->socket_fd, configs_[conn->config_idx].max_request_size);
-    LOG_INFO("Keep-alive: ready for next request on fd: ", fd);
+    conn->config_idx = config_idx;
+    LOG_INFO("Keep-alive: ready for next request on fd: ", fd, "config_idx", config_idx);
     return msg;
 }
 

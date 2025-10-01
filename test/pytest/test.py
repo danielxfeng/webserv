@@ -148,7 +148,7 @@ def test_get_no_method():
     )
     resp = send_raw(req)
     assert resp, "server sent no response (it may have kept the connection open)"
-    assert b"Error" in resp, "unexpected server reaction"
+    assert b"400" in resp, "unexpected server reaction"
     print("GET no method test passed.")
 
 def test_get_no_http_version():
@@ -235,11 +235,11 @@ def test_delete_with_body():
 def test_simple_post():
     header = {"Content-Type": "text/plain",
               "Content-Length": "13"}
-    r = requests.post(f"{BASE}/uploads2", headers=header, data="Hello, World!")
+    r = requests.post(f"{BASE}/uploads2/", headers=header, data="Hello, World!")
     assert r.status_code == 201
 
     assert 'Location' in r.headers
-    r = requests.get(f"{BASE}{r.headers['Location']}")
+    r = requests.get(f"{BASE[:-1]}{r.headers['Location']}")
     assert r.status_code == 200
     assert r.text == "Hello, World!"
     print("Simple POST test passed.")
@@ -248,7 +248,7 @@ def test_post_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
     header = {"Content-Type": "text/plain",
               "Content-Length": "10000000"}
-    r = requests.post(f"{BASE}/uploads2", headers=header, data=large_content)
+    r = requests.post(f"{BASE}/uploads2/", headers=header, data=large_content)
     assert r.status_code == 201
 
     assert 'Location' in r.headers
@@ -259,7 +259,7 @@ def test_post_large_file():
 
 def test_post_without_content_length():
     req = (
-        b"POST /uploads/nolength.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"\r\n"
@@ -272,7 +272,7 @@ def test_post_without_content_length():
 
 def test_post_exceeding_content_length():
     req = (
-        b"POST /uploads/exceed.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"Content-Length: 10\r\n"
@@ -286,7 +286,7 @@ def test_post_exceeding_content_length():
 
 def test_post_chunked_transfer():
     req = (
-        b"POST /uploads/chunked.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"Transfer-Encoding: chunked\r\n"
@@ -314,7 +314,7 @@ def test_post_chunked_large_file():
     chunk_size = 4096
     chunks = [large_content[i:i+chunk_size] for i in range(0, len(large_content), chunk_size)]
     req = (
-        b"POST /uploads/chunked_large.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"Transfer-Encoding: chunked\r\n"
@@ -328,15 +328,15 @@ def test_post_chunked_large_file():
     assert resp, "server sent no response (it may have kept the connection open)"
     assert b"201" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
     
-    r = requests.get(f"{BASE}/uploads/chunked_large.txt")
+    r = requests.get(f"{BASE}/uploads2/chunked_large.txt")
     assert r.status_code == 200
     assert r.text == large_content
-    os.remove(f"{HOME}/www/app/uploads/chunked_large.txt")
+    os.remove(f"{HOME}/www/app/uploads2/chunked_large.txt")
     print("POST chunked transfer large file test passed.")
 
 def test_post_chunked_transfer_invalid_header():
     req = (
-        b"POST /uploads/chunked.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"Transfer-Encoding: chunked\r\n"
@@ -358,7 +358,7 @@ def test_post_chunked_transfer_invalid_header():
 
 def test_post_chunked_incorrect_chunk_size():
     req = (
-        b"POST /uploads/chunked.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"Transfer-Encoding: chunked\r\n"
@@ -375,7 +375,7 @@ def test_post_chunked_incorrect_chunk_size():
 
 def test_post_chunked_incorrect_chunk_tail():
     req = (
-        b"POST /uploads/chunked.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"Transfer-Encoding: chunked\r\n"
@@ -392,7 +392,7 @@ def test_post_chunked_incorrect_chunk_tail():
 
 def test_post_chunked_extra_data_after_last_chunk():
     req = (
-        b"POST /uploads/chunked.txt HTTP/1.1\r\n"
+        b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
         b"Content-Type: text/plain\r\n"
         b"Transfer-Encoding: chunked\r\n"
@@ -455,8 +455,8 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_get_404()
+    test_default_html()
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    run_all()
+    #run_one()
