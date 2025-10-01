@@ -42,6 +42,11 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	std::string root = server.locations[rootDestination].root;
 	LOG_DEBUG("rootDestination: ", rootDestination);
 	LOG_DEBUG("Root: ", root);
+
+	// Check Redirect
+	if (rootDestination == "is_redirect")
+		throw WebServErr::MethodException(ERR_301_REDIRECT, root);
+
 	t_method realMethod = convertMethod(chosenMethod);
 	LOG_DEBUG("Real Method: ", realMethod);
 	if (std::find(server.locations[rootDestination].methods.begin(), server.locations[rootDestination].methods.end(), realMethod) == server.locations[rootDestination].methods.end())
@@ -91,6 +96,8 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	}
 	case CGI:
 		return (callCGIMethod(canonical, requestLine, requestHeader, requestBody, epoll_helper));
+	case REDIRECT:
+		return (callRedirectMethod());
 	default:
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 	}
@@ -216,6 +223,12 @@ t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_
 	LOG_TRACE("Calling CGI: ", path);
 	CGIHandler cgi(epoll_helper);
 	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody);
+	return (std::move(requested_));
+}
+
+t_file MethodHandler::callRedirectMethod(std::filesystem::path &path, t_server_config server, const std::string &root)
+{
+	if (server.locations["is_redirect"] != )
 	return (std::move(requested_));
 }
 
