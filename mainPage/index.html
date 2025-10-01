@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+
+<head>
+	<title>Webserv 42Project</title>
+</head>
+
+<body>
+	<div className="container">
+		<div className="header">
+			<h3>Weclome to our webserver project for 42 school</h3>
+			<P>Done by: <a href="https://github.com/danielxfeng">Daniel Xfeng</a> , <a
+					href="https://github.com/OneGameDad">Gregory Pellechi</a> and <a
+					href="https://github.com/Mohdkhlouf">Mohammad Khlouf</a> </P>
+		</div>
+
+		<div className="main">
+			<div className="uppload-file-section">
+				<form id="uploadForm">
+					<label for="upload" class="uploadButton">Upload</label>
+					<input type="file" id="fileInput">
+					<button type="submit">Upload</button>
+				</form>
+			</div>
+		</div>
+
+		<div className="footer">
+			<h5>Thank you so much </h5>
+		</div>
+
+	</div>
+
+
+	<script>
+		const form = document.getElementById('uploadForm');
+		const fileInput = document.getElementById('fileInput');
+
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();  // prevent default form submit
+
+			const file = fileInput.files[0];
+			if (!file) {
+				alert('Please select a file!');
+				return;
+			}
+
+			try {
+				const response = await fetch('/uploads', {
+					method: 'POST',
+					headers: {
+						'Content-Type': file.type | 'application/octet-stream', // send with file MIME type
+						// You can add other headers if needed
+					},
+					body: file,  // sending raw file content
+				});
+
+				if (response.ok) {
+					alert('Upload successful!');
+				} else {
+					alert('Upload failed.');
+				}
+			} catch (err) {
+				console.error('Upload error:', err);
+				alert('Error uploading file.');
+			}
+		});
+	</script>
+
+</body>
+
+</html>
