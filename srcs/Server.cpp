@@ -81,6 +81,7 @@ t_msg_from_serv Server::resetConnMap(t_conn *conn)
             msg.fds_to_unregister.push_back(conn->inner_fd_in);
         else
             inner_fd_map_.erase(conn->inner_fd_in);
+        
         conn->inner_fd_in = -1;
     }
 

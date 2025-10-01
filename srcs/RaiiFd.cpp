@@ -53,18 +53,17 @@ void RaiiFd::cleanUp()
     {
         epoll_helper_.removeFd(fd_);
     }
-    catch (const WebServErr::SysCallErrException &)
+    catch (const WebServErr::SysCallErrException &e)
     {
-        throw;
+        LOG_ERROR("epoll_unregister error", e.what());
     }
     catch (const std::exception &e)
     {
         LOG_ERROR("RaiiFd::cleanUp exception: ", e.what());
     }
-
+    
     close(fd_);
     fd_ = -1;
-    LOG_INFO("RaiiFd cleaned up", "");
 }
 
 void RaiiFd::closeFd()
