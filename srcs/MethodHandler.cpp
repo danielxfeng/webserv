@@ -42,6 +42,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	std::string root = server.locations[rootDestination].root;
 	LOG_DEBUG("rootDestination: ", rootDestination);
 	LOG_DEBUG("Root: ", root);
+
 	t_method realMethod = convertMethod(chosenMethod);
 	LOG_DEBUG("Real Method: ", realMethod);
 	if (std::find(server.locations[rootDestination].methods.begin(), server.locations[rootDestination].methods.end(), realMethod) == server.locations[rootDestination].methods.end())
