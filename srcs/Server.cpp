@@ -41,6 +41,11 @@ Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) 
 {
     for (size_t i = 0; i < configs_.size(); ++i)
         cookies_.emplace_back();
+
+    for (auto &config: configs_)
+    {
+        LOG_INFO("server config:", config.server_name, config.err_pages[ERR_404_NOT_FOUND]);
+    }
 }
 
 const std::vector<t_server_config> &Server::getConfigs() const { return configs_; }
@@ -543,18 +548,21 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     {
         try
         {
+            LOG_INFO("err_pages", configs_[conn->config_idx].err_pages[ERR_404_NOT_FOUND]);
             t_file err_page = ErrorResponse(epoll_).getErrorPage(configs_[conn->config_idx].err_pages, conn->error_code);
             inner_fd_map_.emplace(err_page.FD_handler_OUT.get()->get(), err_page.FD_handler_OUT);
             conn->inner_fd_out = err_page.FD_handler_OUT.get()->get();
-            size_error_page += err_page.expectedSize;
+            size_error_page += err_page.fileSize;
         }
         catch (const WebServErr::ErrorResponseException &)
         {}
     }
 
+    LOG_INFO("the size_error_page", size_error_page, "inner_fd_out", conn->inner_fd_out);
+
     const std::string header = (conn->error_code == ERR_NO_ERROR)
-                                   ? conn->response->successResponse(conn, cookies_[conn->config_idx])
-                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, , cookies_[conn->config_idx], size_error_page);
+                                   ? conn->response->successResponse(conn)
+                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, size_error_page);
 
     
 

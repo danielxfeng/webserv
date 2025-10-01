@@ -16,8 +16,8 @@ private:
 
 public:
     Cookie();
-    Cookie(const Cookie &other) = delete;
-    Cookie &operator=(const Cookie &other) = delete;
+    Cookie(const Cookie &other) = default;
+    Cookie &operator=(const Cookie &other) = default;
     ~Cookie();
     std::string set(HttpRequests &request);
 };

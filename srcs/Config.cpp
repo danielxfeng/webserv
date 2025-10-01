@@ -104,9 +104,9 @@ void Config::fromJson(const std::string &json_string)
             }
         }
 
-        if (server_obj.contains("err_pages"))
+        if (server_obj.contains("error_pages"))
         {
-            const auto err_pages = TinyJson::as<JsonObject>(*server_obj.at("err_pages"));
+            const auto err_pages = TinyJson::as<JsonObject>(*server_obj.at("error_pages"));
             for (const auto& [key, val] : err_pages) {
                 server_config.err_pages[stringToErrCode(TinyJson::as<std::string>(key))] =
                     TinyJson::as<std::string>(*val);

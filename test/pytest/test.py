@@ -70,6 +70,10 @@ def test_get_autoindex_inherit():
 def test_get_404():
     r = requests.get(f"{BASE}/nonexistent")
     assert r.status_code == 404
+
+    with open(f"{HOME}/www/app/errors/404.html", "r") as f:
+        expected_content = f.read()
+    assert expected_content in r.text
     print("GET 404 test passed.")
 
 def test_get_extra_slash():
