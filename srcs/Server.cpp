@@ -566,8 +566,8 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     LOG_INFO("the size_error_page", size_error_page, "inner_fd_out", conn->inner_fd_out);
 
     const std::string header = (conn->error_code == ERR_NO_ERROR)
-                                   ? conn->response->successResponse(conn)
-                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, size_error_page);
+                                   ? conn->response->successResponse(conn, cookies_[conn->config_idx])
+                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, size_error_page, cookies_[conn->config_idx]);
 
     
 
