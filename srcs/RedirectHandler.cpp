@@ -21,7 +21,8 @@ void	RedirectHandler::checkRedirection(t_server_config &server, std::unordered_m
 	//Check methods, if not redirect return else throw 301 with root
 	if (!requestLine.contains("Method"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Redirect Handler: Http Method does not exist");
-	if (std::find(server.locations[rootDestination].methods.begin(), server.locations[rootDestination].methods.end(), REDIRECT) == server.locations[rootDestination].methods.end())
+	std::vector<t_method> methods = server.locations[rootDestination].methods;
+	if (std::find(methods.begin(), methods.end(), REDIRECT) == server.locations[rootDestination].methods.end())
 		return ;
 	throw WebServErr::MethodException(ERR_301_REDIRECT, root);
 }

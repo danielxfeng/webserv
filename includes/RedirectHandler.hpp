@@ -1,8 +1,10 @@
+#pragma once
 #include "SharedTypes.hpp"
 #include "LogSys.hpp"
 #include "WebServErr.hpp"
 #include <string>
 #include <unordered_map>
+#include <algorithm>
 
 class RedirectHandler
 {
