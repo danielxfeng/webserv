@@ -188,6 +188,11 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
     // EOF reached, should not be here since header has not been parsed yet.
     if (bytes_read == EOF_REACHED)
     {
+        if (conn->bytes_received == 0)
+        {
+            LOG_INFO("Client requested to close the conn", fd);
+            return terminatedHandler(fd, conn);
+        }
         LOG_ERROR("EOF reached while reading from socket for fd: ", fd);
         conn->error_code = ERR_400_BAD_REQUEST;
         return resheaderProcessingHandler(conn);
