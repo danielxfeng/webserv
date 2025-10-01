@@ -187,6 +187,18 @@ def test_get_diff_host_same_port():
     assert expected_content in r.text
     print("Different Host same port test passed.")
 
+def test_get_auto_redirect():
+    r = requests.get(f"{BASE}/second", allow_redirects=False)
+    assert r.status_code == 301
+    assert 'Location' in r.headers
+    assert r.headers['Location'] == '/second/'
+    print("GET auto redirect test passed.")
+
+def test_get_auto_redirect2():
+    r = requests.get(f"{BASE}/second")
+    assert r.status_code == 200
+    print("GET auto redirect2 test passed.")
+
 def test_delete_not_allowed_method():
     r = requests.delete(f"{BASE}/second/pic.png")
     assert r.status_code == 405
@@ -248,11 +260,11 @@ def test_post_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
     header = {"Content-Type": "text/plain",
               "Content-Length": "10000000"}
-    r = requests.post(f"{BASE}/uploads2/", headers=header, data=large_content)
+    r = requests.post(f"{BASE[:-1]}/uploads2/", headers=header, data=large_content)
     assert r.status_code == 201
 
     assert 'Location' in r.headers
-    r = requests.get(f"{BASE}{r.headers['Location']}")
+    r = requests.get(f"{BASE[:-1]}{r.headers['Location']}")
     assert r.status_code == 200
     assert r.text == large_content
     print("POST large file test passed.")
@@ -303,7 +315,7 @@ def test_post_chunked_transfer():
     resp = send_raw(req)
     assert resp, "server sent no response (it may have kept the connection open)"
     assert b"201" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
-    r = requests.get(f"{BASE}/uploads/chunked.txt")
+    r = requests.get(f"{BASE}uploads/chunked.txt")
     assert r.status_code == 200
     assert r.text == "MozillaDeveloperNetwork"
     os.remove(f"{HOME}/www/app/uploads/chunked.txt")
@@ -328,7 +340,7 @@ def test_post_chunked_large_file():
     assert resp, "server sent no response (it may have kept the connection open)"
     assert b"201" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
     
-    r = requests.get(f"{BASE}/uploads2/chunked_large.txt")
+    r = requests.get(f"{BASE}uploads2/chunked_large.txt")
     assert r.status_code == 200
     assert r.text == large_content
     os.remove(f"{HOME}/www/app/uploads2/chunked_large.txt")
@@ -434,6 +446,8 @@ def run_all():
     test_get_incorrect_protocol()
     test_get_not_allowed_method()
     test_get_diff_host_same_port()
+    test_get_auto_redirect()
+    test_get_auto_redirect2()
 
     test_delete_not_allowed_method()
     test_delete_ok()
@@ -442,10 +456,10 @@ def run_all():
     test_delete_folder_more()
     test_delete_with_body()
 
-    test_simple_post()
-    test_post_large_file()
-    test_post_without_content_length()
-    test_post_exceeding_content_length()
+    #test_simple_post()
+    #test_post_large_file()
+    #test_post_without_content_length()
+    #test_post_exceeding_content_length()
     #test_post_chunked_transfer()
     #test_post_chunked_large_file()
     #test_post_chunked_transfer_invalid_header()
@@ -455,7 +469,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_default_html()
+    test_simple_post()
 
 if __name__=="__main__":
     run_all()
