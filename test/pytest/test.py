@@ -469,7 +469,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_post()
+    test_get_html()
 
 if __name__=="__main__":
     run_all()
