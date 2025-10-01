@@ -346,10 +346,6 @@ void HttpRequests::header_connection_validator(void)
 		if (!(requestHeaderMap["connection"] == "keep-alive" || requestHeaderMap["connection"] == "close"))
 			throw WebServErr::BadRequestException("Incrorrect connection value,	must be keep-alive or close");
 	}
-	else
-	{
-		requestHeaderMap["connection"] = "keep-alive";
-	}
 }
 
 /**
