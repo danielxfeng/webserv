@@ -224,10 +224,20 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
                 conn->config_idx = 0;
         }
         LOG_INFO("select config_idx", configs_[conn->config_idx].server_name);
+
+        try {
+            auto lineMap = conn->request->getrequestLineMap();
+            RedirectHandler().checkRedirection(configs_[conn->config_idx], lineMap);
+        } catch (WebServErr::MethodException &e)
+        {
+            conn->error_code = e.code();
+            conn->error_message = e.what();
+            return resheaderProcessingHandler(conn);
+        }
+
         conn->content_length = configs_[conn->config_idx].max_request_size;
         conn->output_length = configs_[conn->config_idx].max_request_size;
-        // TODO: add err page.
-        //  After successful parsing, determine the method and content length
+        
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
             conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestHeaderMap().at("content-length")));

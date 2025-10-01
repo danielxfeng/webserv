@@ -17,6 +17,7 @@
 #include "utils.hpp"
 #include "ErrorResponse.hpp"
 #include "Cookie.hpp"
+#include "RedirectHandler.hpp"
 
 class Config;
 class Cookie;

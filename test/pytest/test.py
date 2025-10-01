@@ -199,6 +199,13 @@ def test_get_auto_redirect2():
     assert r.status_code == 200
     print("GET auto redirect2 test passed.")
 
+def test_get_redirect():
+    r = requests.get(f"{BASE}/redirect", allow_redirects=False)
+    assert r.status_code == 301
+    assert 'Location' in r.headers
+    assert r.headers['Location'] == 'http://localhost:8081/second/'
+    print("GET redirect test passed.")
+
 def test_delete_not_allowed_method():
     r = requests.delete(f"{BASE}/second/pic.png")
     assert r.status_code == 405
@@ -469,7 +476,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_get_html()
+    test_get_redirect()
 
 if __name__=="__main__":
     #run_all()
