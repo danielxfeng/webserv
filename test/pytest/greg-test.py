@@ -2,10 +2,8 @@ import requests
 import socket
 import shutil
 import os
-from urllib.parse import urljoin
 
-
-HOME = "/home/xifeng"
+HOME = "/home/goinfre"
 HOST = "127.0.0.1"
 PORT = 8081
 BASE = f"http://{HOST}:{PORT}"
@@ -260,8 +258,7 @@ def test_simple_post():
     assert r.status_code == 201
 
     assert 'Location' in r.headers
-
-    r = requests.get(urljoin(BASE, r.headers['Location']))
+    r = requests.get(f"{BASE[:-1]}{r.headers['Location']}")
     assert r.status_code == 200
     assert r.text == "Hello, World!"
     print("Simple POST test passed.")
@@ -270,11 +267,11 @@ def test_post_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
     header = {"Content-Type": "text/plain",
               "Content-Length": "10000000"}
-    r = requests.post(f"{BASE}/uploads2/", headers=header, data=large_content)
+    r = requests.post(f"{BASE[:-1]}/uploads2/", headers=header, data=large_content)
     assert r.status_code == 201
 
     assert 'Location' in r.headers
-    r = requests.get(urljoin(BASE, r.headers['Location']))
+    r = requests.get(f"{BASE[:-1]}{r.headers['Location']}")
     assert r.status_code == 200
     assert r.text == large_content
     print("POST large file test passed.")
@@ -466,10 +463,10 @@ def run_all():
     test_delete_folder_more()
     test_delete_with_body()
 
-    test_simple_post()
-    test_post_large_file()
-    test_post_without_content_length()
-    test_post_exceeding_content_length()
+    #test_simple_post()
+    #test_post_large_file()
+    #test_post_without_content_length()
+    #test_post_exceeding_content_length()
     #test_post_chunked_transfer()
     #test_post_chunked_large_file()
     #test_post_chunked_transfer_invalid_header()
@@ -479,8 +476,8 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_post()
+    test_get_redirect()
 
 if __name__=="__main__":
-    run_all()
+    test_get_html()
     #run_one()

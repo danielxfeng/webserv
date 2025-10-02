@@ -37,7 +37,16 @@ t_msg_from_serv defaultMsg()
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
 }
 
-Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), conns_(), cookies_(), conn_map_(), inner_fd_map_() {}
+Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), cookies_(), conns_(), conn_map_(), inner_fd_map_() 
+{
+    for (size_t i = 0; i < configs_.size(); ++i)
+        cookies_.emplace_back();
+
+    for (auto &config: configs_)
+    {
+        LOG_INFO("server config:", config.server_name, config.err_pages[ERR_404_NOT_FOUND]);
+    }
+}
 
 const std::vector<t_server_config> &Server::getConfigs() const { return configs_; }
 
@@ -179,6 +188,11 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
     // EOF reached, should not be here since header has not been parsed yet.
     if (bytes_read == EOF_REACHED)
     {
+        if (conn->bytes_received == 0)
+        {
+            LOG_INFO("Client requested to close the conn", fd);
+            return terminatedHandler(fd, conn);
+        }
         LOG_ERROR("EOF reached while reading from socket for fd: ", fd);
         conn->error_code = ERR_400_BAD_REQUEST;
         return resheaderProcessingHandler(conn);
@@ -210,10 +224,20 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
                 conn->config_idx = 0;
         }
         LOG_INFO("select config_idx", configs_[conn->config_idx].server_name);
+
+        try {
+            auto lineMap = conn->request->getrequestLineMap();
+            RedirectHandler().checkRedirection(configs_[conn->config_idx], lineMap);
+        } catch (WebServErr::MethodException &e)
+        {
+            conn->error_code = e.code();
+            conn->error_message = e.what();
+            return resheaderProcessingHandler(conn);
+        }
+
         conn->content_length = configs_[conn->config_idx].max_request_size;
         conn->output_length = configs_[conn->config_idx].max_request_size;
-        // TODO: add err page.
-        //  After successful parsing, determine the method and content length
+        
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
             conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestHeaderMap().at("content-length")));
@@ -254,6 +278,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         if (conn->read_buf->isEOF()) // EOF reached but header not complete
         {
             LOG_ERROR("Invalid request header for fd: ", fd, e.what());
+            conn->config_idx = 0;
             conn->error_code = ERR_400_BAD_REQUEST;
             return resheaderProcessingHandler(conn);
         }
@@ -264,6 +289,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         if (is_max_length_reached)
         {
             LOG_ERROR("Header size exceeded for fd: ", fd);
+            conn->config_idx = 0;
             conn->error_code = ERR_400_BAD_REQUEST;
             return resheaderProcessingHandler(conn);
         }
@@ -273,12 +299,14 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
     catch (const WebServErr::BadRequestException &e)
     {
         LOG_ERROR("Bad request for fd: ", fd, e.what());
+        conn->config_idx = 0;
         conn->error_code = ERR_400_BAD_REQUEST;
         return resheaderProcessingHandler(conn);
     }
     catch (const std::exception &e)
     {
         LOG_ERROR("Exception during header parsing for fd: ", fd, e.what());
+        conn->config_idx = 0;
         conn->error_code = ERR_500_INTERNAL_SERVER_ERROR;
         return resheaderProcessingHandler(conn);
     }
@@ -357,6 +385,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     catch (const WebServErr::MethodException &e)
     {
         LOG_ERROR("Method exception occurred: ", e.code(), e.what());
+        conn->config_idx = 0;
         conn->error_code = e.code();
         conn->error_message = e.what();
         return resheaderProcessingHandler(conn);
@@ -533,9 +562,29 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
 {
     LOG_TRACE("Response Header Processing: ", "Starting...");
     conn->status = RES_HEADER_PROCESSING;
+
+    size_t size_error_page = 0;
+
+    if (conn->error_code != ERR_NO_ERROR && conn->error_code != ERR_301_REDIRECT)
+    {
+        try
+        {
+            t_file err_page = ErrorResponse(epoll_).getErrorPage(configs_[conn->config_idx].err_pages, conn->error_code);
+            inner_fd_map_.emplace(err_page.FD_handler_OUT.get()->get(), err_page.FD_handler_OUT);
+            conn->inner_fd_out = err_page.FD_handler_OUT.get()->get();
+            size_error_page += err_page.fileSize;
+        }
+        catch (const WebServErr::ErrorResponseException &)
+        {}
+    }
+
+    LOG_INFO("the size_error_page", size_error_page, "inner_fd_out", conn->inner_fd_out);
+
     const std::string header = (conn->error_code == ERR_NO_ERROR)
-                                   ? conn->response->successResponse(conn)
-                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message);
+                                   ? conn->response->successResponse(conn, cookies_[conn->config_idx])
+                                   : conn->response->failedResponse(conn, conn->error_code, conn->error_message, size_error_page, cookies_[conn->config_idx]);
+
+    
 
     LOG_INFO("Response header prepared for fd: ", conn->socket_fd, "\n", header);
 
@@ -550,7 +599,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     if (conn->error_code != ERR_NO_ERROR)
     {
         LOG_ERROR("Error occurred, preparing error response: ", conn->error_code);
-        conn->output_length = header.size();
+        conn->output_length = header.size() + size_error_page;
         return defaultMsg();
     }
     t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
@@ -558,7 +607,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     switch (method)
     {
     case GET:
-        conn->output_length = conn->res.fileSize + header.size();
+        conn->output_length = conn->res.isDynamic ? header.size() :  header.size() + conn->res.fileSize;
         break;
     case DELETE:
     case POST:
@@ -575,7 +624,6 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     // Register the inner fd for writing response body if CGI method
     if (method == CGI)
         conn->inner_fd_out = conn->inner_fd_in;
-    LOG_INFO(" REMOVE DEBUG MK TEST: ", conn->output_length, "\n", header);
     return defaultMsg();
 }
 
@@ -645,7 +693,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
 
 /**
  * @details
- * Reads required data from file server for GET.
+ * Reads required data from file server for GET / Static error page.
  * Sends data from the write buffer to the client socket.
  * If the entire response has been sent, transitions to the done state.
  * If buffer is empty, waits for the next write event.
@@ -675,7 +723,11 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 
     // Skip when buffer is empty
     if (conn->write_buf->isEmpty())
+    {
+        //LOG_TRACE("buffer is empty.", conn->bytes_sent, " , ", conn->output_length);
         return defaultMsg();
+    }
+        
 
     // Write data to socket
     ssize_t bytes_written = conn->write_buf->writeSocket(fd);
@@ -716,6 +768,7 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
     }
 
     // Not done yet
+    LOG_TRACE("bytes_sent: ", conn->bytes_sent, " length: ", conn->output_length);
     return defaultMsg();
 }
 
@@ -745,8 +798,10 @@ t_msg_from_serv Server::doneHandler(int fd, t_conn *conn)
 
     // Reset the connection for next request if keep-alive
     t_msg_from_serv msg = resetConnMap(conn);
+    size_t config_idx = conn->config_idx;
     resetConn(conn, conn->socket_fd, configs_[conn->config_idx].max_request_size);
-    LOG_INFO("Keep-alive: ready for next request on fd: ", fd);
+    conn->config_idx = config_idx;
+    LOG_INFO("Keep-alive: ready for next request on fd: ", fd, "config_idx", config_idx);
     return msg;
 }
 
@@ -784,6 +839,9 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
     if (event_type == ERROR_EVENT)
         return terminatedHandler(fd, conn);
 
+    //if (event_type == 0)
+    //    LOG_DEBUG("scheduler: fd: ", fd, " status: ", status, " type: ", event_type);
+    
     switch (status)
     {
     case REQ_HEADER_PARSING:

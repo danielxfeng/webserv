@@ -15,8 +15,12 @@
 #include "LogSys.hpp"
 #include "WebServErr.hpp"
 #include "utils.hpp"
+#include "ErrorResponse.hpp"
+#include "Cookie.hpp"
+#include "RedirectHandler.hpp"
 
 class Config;
+class Cookie;
 
 /**
  * @brief Server class to manage connections.
@@ -30,8 +34,8 @@ class Server
 private:
     EpollHelper &epoll_;                                            // Reference to the epoll helper
     std::vector<t_server_config> configs_;                          // List of server configurations
+    std::vector<Cookie> cookies_;                                   // List of server cookies
     std::list<t_conn> conns_;                                       // List of active connections
-    std::vector<std::string> cookies_;                              // List of cookies for session management
     std::unordered_map<int, t_conn *> conn_map_;                    // Map of fds(in epoll) to connections
     std::unordered_map<int, std::shared_ptr<RaiiFd>> inner_fd_map_; // Map of internal fds to RaiiFd objects
 

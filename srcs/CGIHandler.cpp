@@ -1,7 +1,5 @@
 #include "../includes/CGIHandler.hpp"
-#include <cctype>
-#include <cstring>
-#include <unistd.h>
+
 
 CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 {
@@ -27,7 +25,7 @@ void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLin
 	auto addToENVP = [this](const std::string &key, const std::string &value)
 	{
 		std::string temp;
-		for (char c: key) 
+		for (char c: key)
 		{
 			if (c == '-')
 				temp.push_back('_');
@@ -76,13 +74,13 @@ void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::file
 	argv.push_back(const_cast<char*>(scriptStr.c_str()));
 	argv.push_back(nullptr);
 	if (dup2(inPipe[READ], STDIN_FILENO) == -1)
-		throw WebServErr::CGIException("Dup2 inPipe Failure");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Dup2 inPipe Failure");
 	close(inPipe[WRITE]);
 	if (dup2(outPipe[WRITE], STDOUT_FILENO) == -1)
-		throw WebServErr::CGIException("Dup2 outPipe Failure");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Dup2 outPipe Failure");
 	close(outPipe[READ]);
 	if (execve(path.c_str(), argv.data(), final_envp) == -1)
-		throw WebServErr::CGIException("Failed to execute CGI");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Failed to execute CGI");
 }
 
 t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
@@ -90,24 +88,26 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 	setENVP(requestLine, requestHeader, requestBody);
 	const std::filesystem::path script = "/cgi_bin/python/cgi.py";
 	if (!std::filesystem::exists(script))
-		throw WebServErr::CGIException("CGI script does not exist.");
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
 	if (std::filesystem::is_directory(script))
-		throw WebServErr::CGIException("CGI script is a directory");
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a directory");
 	if (std::filesystem::is_symlink(script))
-		throw WebServErr::CGIException("CGI script is a symlink");
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a symlink");
 	if (!std::filesystem::is_regular_file(script))
-		throw WebServErr::CGIException("CGI script is not a regular file.");
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not a regular file.");
+	if  (access(script.c_str(), X_OK) == -1)
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not executable");
 	int inPipe[2] = {-1, -1};
 	int outPipe[2] = {-1, -1};
 	if (pipe(inPipe) == -1)
-		throw WebServErr::CGIException("inPipe failed to initialize");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "inPipe failed to initialize");
 	if (pipe(outPipe) == -1)
-		throw WebServErr::CGIException("outPipe failed to initialize");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "outPipe failed to initialize");
 	result.FD_handler_IN->setFd(inPipe[WRITE]);
 	result.FD_handler_OUT->setFd(outPipe[READ]);
 	pid_t pid = fork();
 	if (pid == -1)
-		throw WebServErr::CGIException("Failed to fork");
+		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "CGI Failed to fork");
 	if (pid == 0)
 		handleCGIProcess(script, path, inPipe, outPipe);
 	close(inPipe[READ]);

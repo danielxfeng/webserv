@@ -13,6 +13,8 @@ t_method convertMethod(const std::string &method_str)
         return DELETE;
     else if (upper_method == "CGI")
         return CGI;
+    else if (upper_method == "REDIRECT")
+        return REDIRECT;
     else
         return UNKNOWN;
 }

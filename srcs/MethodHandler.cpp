@@ -42,6 +42,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	std::string root = server.locations[rootDestination].root;
 	LOG_DEBUG("rootDestination: ", rootDestination);
 	LOG_DEBUG("Root: ", root);
+
 	t_method realMethod = convertMethod(chosenMethod);
 	LOG_DEBUG("Real Method: ", realMethod);
 	if (std::find(server.locations[rootDestination].methods.begin(), server.locations[rootDestination].methods.end(), realMethod) == server.locations[rootDestination].methods.end())
@@ -151,10 +152,10 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string & targetRef, const std::string &root)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string &targetRef, const std::string &root)
 {
 	LOG_TRACE("Calling POST: ", path);
-	if (checkFileCount(root) > 25)
+	if (checkFileCount(root) > 20000)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
 	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
@@ -169,7 +170,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 	else
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Type");
 	std::filesystem::path filename = createRandomFilename(path, extension);
-	std::string result = targetRef + '/' + filename.filename().string();
+	std::string result = targetRef.back() == '/' ? targetRef + filename.filename().string() : targetRef + '/' + filename.filename().string();
 	LOG_DEBUG("postFilename: ", result);
 	requested_.postFilename = result;
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
@@ -183,17 +184,14 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 std::filesystem::path MethodHandler::createRandomFilename(std::filesystem::path &path, std::string &extension)
 {
 	std::string result = path.string();
-	if (result.back() != '/')
-		result.push_back('/');
-	result += "upload_";
 	static const std::string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 	static std::mt19937 rng{static_cast<unsigned long>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
 	std::uniform_int_distribution<size_t> dist(0, chars.size() - 1);
-
+	std::string code = "upload_";
 	for (size_t i = 0; i < 12; i++)
-		result.push_back(chars[dist(rng)]);
-	result += extension;
-	std::filesystem::path uploadCheck(result);
+		code.push_back(chars[dist(rng)]);
+	code += extension;
+	std::filesystem::path uploadCheck = std::filesystem::path(result) / std::filesystem::path(code);
 	if (std::filesystem::exists(uploadCheck))
 		createRandomFilename(path, extension);
 	return (uploadCheck);
@@ -266,7 +264,7 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 	LOG_DEBUG("realPath: ", targetRef);
 	LOG_DEBUG("Canonical: ", path);
 	if (!targetRef.empty() && targetRef.back() != '/' && targetRef.back() != std::filesystem::path::preferred_separator)
-		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/'); //TODO @Mohammad use this string to create a url that is included in the response
+		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/'); // TODO @Mohammad use this string to create a url that is included in the response
 	LOG_TRACE("This is a directory: ", path);
 	if (locations.contains(rootDestination))
 	{
@@ -351,7 +349,7 @@ std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, std:
 	{
 		std::string name = entry.path().filename().string();
 		if (std::filesystem::is_directory(name))
-			name += '/';	
+			name += '/';
 		std::string link = "<a href=\"" + name + "\">" + name + "</a>";
 		page.append("<li>" + link + "</li>");
 	}

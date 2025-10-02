@@ -3,7 +3,7 @@
 Cookie::Cookie() : cookies_() {}
 Cookie::~Cookie() {}
 
-bool Cookie::isValidCookie(const std::string &cookie)
+bool Cookie::checkValidAndExtendCookie(const std::string &cookie)
 {
     if (!cookies_.contains(cookie))
         return false;
@@ -15,6 +15,8 @@ bool Cookie::isValidCookie(const std::string &cookie)
         cookies_.erase(cookie);
         return false;
     }
+
+    cookies_[cookie] = current_time;
     return true;
 }
 
@@ -32,7 +34,7 @@ std::string Cookie::set(HttpRequests &request)
 {
     const auto headers = request.getrequestHeaderMap();
     const auto has_cookie = headers.contains("Cookie");
-    const auto has_valid_cookie = has_cookie && isValidCookie(headers.at("Cookie"));
+    const auto has_valid_cookie = has_cookie && checkValidAndExtendCookie(headers.at("Cookie"));
     if (has_valid_cookie)
     {
         auto cookie = headers.at("Cookie");

@@ -139,6 +139,9 @@ void WebServ::eventLoop()
             const bool isNewConn = server != server_map_.end() && (events[i].events & EPOLLIN);
             if (isNewConn)
             {
+                if (conn_map_.size() >= MAX_CONN)
+                    continue;
+
                 int connClientFd = acceptNewConnection(server->first);
                 if (connClientFd == -1)
                 {

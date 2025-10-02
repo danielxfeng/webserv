@@ -74,6 +74,7 @@ typedef enum e_method
     POST,
     DELETE,
     CGI,
+    REDIRECT,
     UNKNOWN,
 } t_method;
 
@@ -151,18 +152,16 @@ typedef struct s_location_config
  */
 typedef struct s_server_config
 {
-    std::string server_name;                                        // Name of the server
-    unsigned int port;                                              // Port number for the server
-    unsigned int max_request_timeout;                               // Maximum request timeout in milliseconds
-    unsigned int max_heartbeat_timeout;                             // Maximum heartbeat timeout in milliseconds
-    unsigned int max_request_size;                                  // Maximum size of a request in bytes
-    unsigned int max_headers_size;                                  // Maximum size of headers in bytes
-    bool is_redirect;                                               // Is this a redirect server?
-    std::string redirect_path;                                      // Redirect path if is_redirect is true
-    bool is_cgi;                                                    // Is this an CGI server?
-    std::unordered_map<std::string, t_location_config> locations;   // Locations : methods
-    std::unordered_map<std::string, std::string> cgi_paths;         // CGI paths for different extensions
-    std::unordered_map<t_status_error_codes, std::string> errPages; // Error Page paths
+    std::string server_name;                                         // Name of the server
+    unsigned int port;                                               // Port number for the server
+    unsigned int max_request_timeout;                                // Maximum request timeout in milliseconds
+    unsigned int max_heartbeat_timeout;                              // Maximum heartbeat timeout in milliseconds
+    unsigned int max_request_size;                                   // Maximum size of a request in bytes
+    unsigned int max_headers_size;                                   // Maximum size of headers in bytes
+    bool is_cgi;                                                     // Is this an CGI server?
+    std::unordered_map<std::string, t_location_config> locations;    // Locations : methods
+    std::unordered_map<std::string, std::string> cgi_paths;          // CGI paths for different extensions
+    std::unordered_map<t_status_error_codes, std::string> err_pages; // Error Page paths
 } t_server_config;
 
 /**
@@ -170,13 +169,13 @@ typedef struct s_server_config
  */
 typedef struct s_global_config
 {
-    unsigned int max_poll_events;                             // Maximum number of events to poll
-    unsigned int max_poll_timeout;                            // Maximum timeout for polling events in milliseconds
-    unsigned int global_request_timeout;                      // Global request timeout in milliseconds
-    unsigned int max_heartbeat_timeout;                       // Global heartbeat timeout in milliseconds
-    unsigned int max_request_size;                            // Maximum size of a request in bytes
-    unsigned int max_headers_size;                            // Maximum size of headers in bytes
-    std::vector<t_server_config> servers;                     // Server names and their corresponding configurations
+    unsigned int max_poll_events;         // Maximum number of events to poll
+    unsigned int max_poll_timeout;        // Maximum timeout for polling events in milliseconds
+    unsigned int global_request_timeout;  // Global request timeout in milliseconds
+    unsigned int max_heartbeat_timeout;   // Global heartbeat timeout in milliseconds
+    unsigned int max_request_size;        // Maximum size of a request in bytes
+    unsigned int max_headers_size;        // Maximum size of headers in bytes
+    std::vector<t_server_config> servers; // Server names and their corresponding configurations
 } t_global_config;
 
 t_method convertMethod(const std::string &method_str);
