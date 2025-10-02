@@ -172,13 +172,11 @@ ssize_t Buffer::readFdChunked(int fd)
         // If we need to create a new block, we need to copy any remaining header/body part to the new block.
         if (remain_header_size_ > 0)
         {
-            auto &curr = data_.back();
-            remain_header = std::string_view(curr.data() + write_pos_ - remain_header_size_, remain_header_size_);
+            remain_header = std::string_view((data_.back()).data() + write_pos_ - remain_header_size_, remain_header_size_);
         }
         else if (remain_body_size_ > 0)
         {
-            auto &curr = data_.back();
-            remain_body = std::string_view(curr.data() + write_pos_ - remain_body_size_, remain_body_size_);
+            remain_body = std::string_view(data_.back().data() + write_pos_ - remain_body_size_, remain_body_size_);
         }
 
         data_.push_back(std::string(block_size_, '\0'));
@@ -198,9 +196,8 @@ ssize_t Buffer::readFdChunked(int fd)
     }
 
     // Now read into the last block
-    std::string &buf = data_.back();
     size_t read_size = std::min(block_size_ - write_pos_, capacity_ - size_);
-    ssize_t read_bytes = read(fd, &(buf.data()[write_pos_]), read_size);
+    ssize_t read_bytes = read(fd, &(data_.back().data()[write_pos_]), read_size);
 
     if (read_bytes < 0)
         return RW_ERROR;
@@ -213,7 +210,7 @@ ssize_t Buffer::readFdChunked(int fd)
 
     // Parse read data, + any unprocessed partial header/body.
     size_t prefix_offset = remain_body_size_ + remain_header_size_;
-    std::string_view chunked_data(buf.data() + write_pos_ - prefix_offset, read_bytes + prefix_offset);
+    std::string_view chunked_data(data_.back().data() + write_pos_ - prefix_offset, read_bytes + prefix_offset);
 
     // Reset the remain sizes, since we have updated the view to include them.
     remain_body_size_ = 0;
@@ -257,10 +254,8 @@ ssize_t Buffer::readFd(int fd)
     }
 
     // Now read into the last block
-    std::string &buf = data_.back();
-
     size_t read_size = std::min(block_size_ - write_pos_, capacity_ - size_);
-    ssize_t read_bytes = read(fd, &(buf.data()[write_pos_]), read_size);
+    ssize_t read_bytes = read(fd, &(data_.back().data()[write_pos_]), read_size);
 
     if (read_bytes < 0)
         return RW_ERROR;
@@ -277,11 +272,11 @@ ssize_t Buffer::readFd(int fd)
 
     if (new_block)
     {
-        data_view_.push_back(std::string_view(buf.data(), write_pos_));
+        data_view_.push_back(std::string_view(data_.back().data(), write_pos_));
         ref_.push_back(1);
     }
     else
-        data_view_.back() = std::string_view(buf.data(), write_pos_);
+        data_view_.back() = std::string_view(data_.back().data(), write_pos_);
 
     return read_bytes;
 }
