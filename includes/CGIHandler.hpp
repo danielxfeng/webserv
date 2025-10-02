@@ -31,8 +31,9 @@ private:
     void setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader);
 
     // Processes
-    void handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path, int inPipe[2], int outPipe[2]);
-    std::filesystem::path getTargetCGI(const std::filesystem::path &path, t_server_config &server);
+    void handleCGIProcess(char **argv, std::filesystem::path &path, int inPipe[2], int outPipe[2]);
+    std::filesystem::path getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython);
+    void checkScriptValidity(const std::filesystem::path &script);
 
 public:
     CGIHandler() = delete;

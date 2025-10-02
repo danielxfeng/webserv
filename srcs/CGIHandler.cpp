@@ -61,26 +61,23 @@ void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLin
 	envp.push_back(nullptr);
 }
 
-void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path, int inPipe[2], int outPipe[2])
+void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, int inPipe[2], int outPipe[2])
 {
 	char **final_envp = envp.data();
-	std::string scriptStr = script.string();
-	std::vector<char*> argv;
-	argv.push_back(const_cast<char*>(scriptStr.c_str()));
-	argv.push_back(nullptr);
+	
 	if (dup2(inPipe[READ], STDIN_FILENO) == -1)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Dup2 inPipe Failure");
 	close(inPipe[WRITE]);
 	if (dup2(outPipe[WRITE], STDOUT_FILENO) == -1)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Dup2 outPipe Failure");
 	close(outPipe[READ]);
-	if (execve(path.c_str(), argv.data(), final_envp) == -1)
+	if (execve(path.c_str(), argv, final_envp) == -1)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Failed to execute CGI");
 }
 
 t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server)
 {
-	setENVP(requestLine, requestHeader);
+	
 	
 	//TODO create Path
 	std::string rootDestination = matchLocation(server.locations, targetRef); // Find best matching location
@@ -94,18 +91,29 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	LOG_DEBUG("Real Path: ", realPath);
 	
 	// Get Script
-	const std::filesystem::path script = getTargetCGI(realPath, server);
-	if (!std::filesystem::exists(script))
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
-	if (std::filesystem::is_directory(script))
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a directory");
-	if (std::filesystem::is_symlink(script))
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a symlink");
-	if (!std::filesystem::is_regular_file(script))
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not a regular file.");
-	if  (access(script.c_str(), X_OK) == -1)
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not executable");
+	bool isPython = false;
+	const std::filesystem::path script = getTargetCGI(realPath, server, &isPython);
 
+	//TODO Comparisons of Script && realPath?
+	if (script != /*TODO*/)
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script and target do not match");
+
+	//Check Script
+	checkScriptValidity(script);
+	
+	//Set up ENVP and ARGV
+	setENVP(requestLine, requestHeader);
+	std::string callPath = "";
+	std::vector<char*> argv;
+	if (isPython)
+	{
+		callPath = "/usr/bin/python3";//TODO This needs to passed in place of realPath if it's python
+		argv.push_back(const_cast<char*>(callPath.c_str()));
+	}
+	std::string scriptStr = script.string();
+	argv.push_back(const_cast<char*>(scriptStr.c_str()));
+	argv.push_back(nullptr);
+	
 	int inPipe[2] = {-1, -1};
 	int outPipe[2] = {-1, -1};
 	if (pipe(inPipe) == -1)
@@ -118,23 +126,53 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	if (pid == -1)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "CGI Failed to fork");
 	if (pid == 0)
-		handleCGIProcess(script, realPath, inPipe, outPipe);
+	{
+		if (isPython)
+		{
+			std::filesystem::path pythonPath(callPath);
+			handleCGIProcess(argv.data(), pythonPath, inPipe, outPipe);
+		}
+		else
+			handleCGIProcess(argv.data(), realPath, inPipe, outPipe);
+	}
+	int status;
+	waitpid(pid, &status, WNOHANG);
 	close(inPipe[READ]);
 	close(outPipe[WRITE]);
 	return (result);
 }
 
-std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server)
+std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython)
 {
 	std::string targetCGI;
 	if (path.string().find("/cgi/python"))
+	{
 		targetCGI = "python";
+		*isPython = true;
+	}
 	else if (path.string().find("/cgi/go"))
+	{
 		targetCGI = "go";
+		*isPython = false;
+	}
 	else
 		throw WebServErr::MethodException(ERR_501_NOT_IMPLEMENTED, "CGI extension not supported");
 	if (server.cgi_paths.find(targetCGI) == server.cgi_paths.end())	
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI extension does not exist");
 	std::filesystem::path script(server.cgi_paths.find(targetCGI)->second);
 	return (script);
+}
+
+void	CGIHandler::checkScriptValidity(const std::filesystem::path &script)
+{
+	if (!std::filesystem::exists(script))
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
+	if (std::filesystem::is_directory(script))
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a directory");
+	if (std::filesystem::is_symlink(script))
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a symlink");
+	if (!std::filesystem::is_regular_file(script))
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not a regular file.");
+	if  (access(script.c_str(), X_OK) == -1)
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not executable");
 }

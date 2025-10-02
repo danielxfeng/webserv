@@ -1,4 +1,5 @@
 #include "WebServ.hpp"
+#include "signalHandler.hpp"
 
 bool validateConfigFile(std::string_view &fileName)
 {
@@ -26,7 +27,7 @@ int main(int argc, char **argv)
 		std::cerr << "Error, you have to include the config file.";
 		return (1);
 	}
-
+	setup_sigchld_handler();
 	/**
 	try
 	{
