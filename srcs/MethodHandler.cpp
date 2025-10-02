@@ -155,7 +155,7 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string &targetRef, const std::string &root)
 {
 	LOG_TRACE("Calling POST: ", path);
-	if (checkFileCount(root) > 25)
+	if (checkFileCount(root) > 20000)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
 	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
