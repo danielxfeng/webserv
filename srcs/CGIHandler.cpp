@@ -87,11 +87,8 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 {
 	setENVP(requestLine, requestHeader, requestBody);
 	const std::filesystem::path script = getTargetCGI(path, server);
-<<<<<<< HEAD
 	if (!std::filesystem::exists(script))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
-=======
->>>>>>> origin/fix/cgi-select
 	if (std::filesystem::is_directory(script))
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a directory");
 	if (std::filesystem::is_symlink(script))
