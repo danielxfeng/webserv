@@ -607,7 +607,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     switch (method)
     {
     case GET:
-        conn->output_length = conn->res.fileSize + header.size();
+        conn->output_length = conn->res.isDynamic ? header.size() :  header.size() + conn->res.fileSize;
         break;
     case DELETE:
     case POST:
@@ -624,7 +624,6 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     // Register the inner fd for writing response body if CGI method
     if (method == CGI)
         conn->inner_fd_out = conn->inner_fd_in;
-    LOG_INFO(" REMOVE DEBUG MK TEST: ", conn->output_length, "\n", header);
     return defaultMsg();
 }
 
@@ -724,7 +723,11 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
 
     // Skip when buffer is empty
     if (conn->write_buf->isEmpty())
+    {
+        //LOG_TRACE("buffer is empty.", conn->bytes_sent, " , ", conn->output_length);
         return defaultMsg();
+    }
+        
 
     // Write data to socket
     ssize_t bytes_written = conn->write_buf->writeSocket(fd);
@@ -765,6 +768,7 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
     }
 
     // Not done yet
+    LOG_TRACE("bytes_sent: ", conn->bytes_sent, " length: ", conn->output_length);
     return defaultMsg();
 }
 
@@ -835,6 +839,9 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
     if (event_type == ERROR_EVENT)
         return terminatedHandler(fd, conn);
 
+    //if (event_type == 0)
+    //    LOG_DEBUG("scheduler: fd: ", fd, " status: ", status, " type: ", event_type);
+    
     switch (status)
     {
     case REQ_HEADER_PARSING:
