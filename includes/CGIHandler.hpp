@@ -34,6 +34,7 @@ private:
     void handleCGIProcess(char **argv, std::filesystem::path &path, int inPipe[2], int outPipe[2]);
     std::filesystem::path getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython);
     void checkScriptValidity(const std::filesystem::path &script);
+    void checkCGIprograms(const t_server_config &server, const bool isPython);
 
 public:
     CGIHandler() = delete;

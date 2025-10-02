@@ -1,6 +1,5 @@
 #include "../includes/CGIHandler.hpp"
 
-
 CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 {
 	result.FD_handler_IN = std::make_shared<RaiiFd>(epoll_helper);
@@ -77,8 +76,6 @@ void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, int 
 
 t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server)
 {
-	
-	
 	//TODO create Path
 	std::string rootDestination = matchLocation(server.locations, targetRef); // Find best matching location
 	std::string root = server.locations[rootDestination].root;
@@ -93,12 +90,9 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	// Get Script
 	bool isPython = false;
 	const std::filesystem::path script = getTargetCGI(realPath, server, &isPython);
-
-	//TODO Comparisons of Script && realPath?
-	if (script != /*TODO*/)
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script and target do not match");
-
-	//Check Script
+	
+	//Check Script && Program
+	checkCGIprograms(server, isPython);
 	checkScriptValidity(script);
 	
 	//Set up ENVP and ARGV
@@ -107,7 +101,7 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	std::vector<char*> argv;
 	if (isPython)
 	{
-		callPath = "/usr/bin/python3";//TODO This needs to passed in place of realPath if it's python
+		callPath = "/usr/bin/python3";
 		argv.push_back(const_cast<char*>(callPath.c_str()));
 	}
 	std::string scriptStr = script.string();
@@ -142,7 +136,7 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	return (result);
 }
 
-std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython)
+std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython)//TODO Make more robust
 {
 	std::string targetCGI;
 	if (path.string().find("/cgi/python"))
@@ -175,4 +169,22 @@ void	CGIHandler::checkScriptValidity(const std::filesystem::path &script)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not a regular file.");
 	if  (access(script.c_str(), X_OK) == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not executable");
+}
+
+void CGIHandler::checkCGIprograms(const t_server_config &server, const bool isPython)//TODO Make more robust
+{
+	if (isPython)
+	{
+		if (!std::filesystem::exists("/usr/bin/python3"))
+			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Python not found");
+		if (access("/usr/bin/python3", X_OK) == -1)
+			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Python is not accessible");
+	}
+	else
+	{
+		if (!std::filesystem::exists("usr/bin/go"))
+			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Go not found");
+		if (access("/usr/bin/go", X_OK) == -1)
+			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Go is not accessible");
+	}
 }
