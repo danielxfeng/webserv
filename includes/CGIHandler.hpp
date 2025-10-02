@@ -16,6 +16,7 @@
 #include <cctype>
 #include <cstring>
 #include <unistd.h>
+#include "urlHelper.hpp"
 
 #define READ 0
 #define WRITE 1
@@ -27,7 +28,7 @@ private:
     t_file result;
 
     // Setters
-    void setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody);
+    void setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader);
 
     // Processes
     void handleCGIProcess(const std::filesystem::path &script, std::filesystem::path &path, int inPipe[2], int outPipe[2]);
@@ -41,5 +42,5 @@ public:
     CGIHandler &operator=(const CGIHandler &copy) = delete;
 
     // Getters
-    t_file getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, t_server_config &server);
+    t_file getCGIOutput(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server);
 };

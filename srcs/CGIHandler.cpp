@@ -20,7 +20,7 @@ CGIHandler::~CGIHandler()
 	envp.clear();
 }
 
-void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody)
+void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader)
 {
 	auto addToENVP = [this](const std::string &key, const std::string &value)
 	{
@@ -58,11 +58,6 @@ void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLin
 			addToENVP(key.first, key.second);
 		}
 	}
-	// Sets requestBody into vector of strings
-	for (const auto &key : requestBody)
-	{
-		addToENVP(key.first, key.second);
-	}
 	envp.push_back(nullptr);
 }
 
@@ -83,10 +78,23 @@ void CGIHandler::handleCGIProcess(const std::filesystem::path &script, std::file
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Failed to execute CGI");
 }
 
-t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, t_server_config &server)
+t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server)
 {
-	setENVP(requestLine, requestHeader, requestBody);
-	const std::filesystem::path script = getTargetCGI(path, server);
+	setENVP(requestLine, requestHeader);
+	
+	//TODO create Path
+	std::string rootDestination = matchLocation(server.locations, targetRef); // Find best matching location
+	std::string root = server.locations[rootDestination].root;
+	LOG_DEBUG("rootDestination: ", rootDestination);
+	LOG_DEBUG("Root: ", root);
+	std::string path = stripLocation(rootDestination, targetRef);
+	
+	// Create realPath
+	std::filesystem::path realPath(root + path);
+	LOG_DEBUG("Real Path: ", realPath);
+	
+	// Get Script
+	const std::filesystem::path script = getTargetCGI(realPath, server);
 	if (!std::filesystem::exists(script))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
 	if (std::filesystem::is_directory(script))
@@ -97,6 +105,7 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not a regular file.");
 	if  (access(script.c_str(), X_OK) == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not executable");
+
 	int inPipe[2] = {-1, -1};
 	int outPipe[2] = {-1, -1};
 	if (pipe(inPipe) == -1)
@@ -109,7 +118,7 @@ t_file CGIHandler::getCGIOutput(std::filesystem::path &path, std::unordered_map<
 	if (pid == -1)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "CGI Failed to fork");
 	if (pid == 0)
-		handleCGIProcess(script, path, inPipe, outPipe);
+		handleCGIProcess(script, realPath, inPipe, outPipe);
 	close(inPipe[READ]);
 	close(outPipe[WRITE]);
 	return (result);
@@ -123,9 +132,9 @@ std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path
 	else if (path.string().find("/cgi/go"))
 		targetCGI = "go";
 	else
-		throw WebServErr::CGIException("CGI extension not supported");
+		throw WebServErr::MethodException(ERR_501_NOT_IMPLEMENTED, "CGI extension not supported");
 	if (server.cgi_paths.find(targetCGI) == server.cgi_paths.end())	
-		throw WebServErr::CGIException("CGI extension does not exist");
+		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI extension does not exist");
 	std::filesystem::path script(server.cgi_paths.find(targetCGI)->second);
 	return (script);
 }

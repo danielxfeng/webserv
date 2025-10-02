@@ -20,7 +20,8 @@ typedef enum e_status_error_codes
     ERR_404_NOT_FOUND = 404,
     ERR_405_METHOD_NOT_ALLOWED = 405,
     ERR_409_CONFLICT = 409,
-    ERR_500_INTERNAL_SERVER_ERROR = 500
+    ERR_500_INTERNAL_SERVER_ERROR = 500,
+    ERR_501_NOT_IMPLEMENTED = 501
 } t_status_error_codes;
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;

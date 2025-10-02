@@ -26,6 +26,7 @@
 #include "Config.hpp"
 #include "CGIHandler.hpp"
 #include "RaiiFd.hpp"
+#include "urlHelper.hpp"
 
 #define MAX_BODY_SIZE 1024
 
@@ -44,7 +45,7 @@ private:
 	t_file callGetMethod(bool useAutoIndex, std::filesystem::path &path, std::string &targetRef);
 	t_file callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string &targetRef, const std::string &root);
 	void callDeleteMethod(std::filesystem::path &path);
-	t_file callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper, t_server_config &server);
+	t_file callCGIMethod(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, EpollHelper &epoll_helper, t_server_config &server);
 
 	void setContentLength(std::unordered_map<std::string, std::string> requestHeader);
 	void checkContentType(std::unordered_map<std::string, std::string> requestBody) const;
@@ -55,7 +56,7 @@ private:
 	size_t	checkFileCount(const std::string &root);
 
 	std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
-	std::string	stripLocation(const std::string &server, const std::string &target);
+	
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
 	std::filesystem::path createRandomFilename(std::filesystem::path &path, std::string &extension);
 	std::string generateDynamicPage(std::filesystem::path &path, std::string &targetRef);
