@@ -22,9 +22,11 @@ void	RedirectHandler::checkRedirection(t_server_config &server, std::unordered_m
 	if (!requestLine.contains("Method"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Redirect Handler: Http Method does not exist");
 	std::vector<t_method> methods = server.locations[rootDestination].methods;
-	if (std::find(methods.begin(), methods.end(), REDIRECT) == server.locations[rootDestination].methods.end())
-		return ;
-	throw WebServErr::MethodException(ERR_301_REDIRECT, root);
+	for (size_t i = 0; i < methods.size(); i++)
+	{
+		if (methods[i] == REDIRECT)
+			WebServErr::MethodException(ERR_301_REDIRECT, root);
+	}
 }
 
 std::string RedirectHandler::matchLocation(const std::unordered_map<std::string, t_location_config> &locations, const std::string &targetRef)

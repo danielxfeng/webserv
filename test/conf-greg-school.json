@@ -15,8 +15,26 @@
         "max_headers_size": 99999999,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET", "POST"], "root": "/home/gpellech/goinfre/www/app/", "index": "index.html" },
-          "/static": { "methods": ["GET"], "root": "/home/gpellech/goinfre/www/app/static" }
+          "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/goinfre/www/app", "index": "index.html" },
+          "/static": { "methods": ["GET"], "root": "/home/goinfre/www/app/static" },
+          "/uploads": { "methods": ["POST", "DELETE"], "root": "/home/goinfre/www/app/uploads" },
+          "/second": { "methods": ["GET"], "root": "/home/goinfre/www/app/second" },
+          "/uploads2": { "methods": ["GET", "POST", "DELETE"], "root": "/home/goinfre/www/app/uploads2" },
+          "/redirect": { "methods": ["REDIRECT"], "root": "http://localhost:8081/second/" }
+        },
+        "error_pages": {
+          "404": "/home/goinfre/www/app/errors/404.html"
+        }
+      },
+      {
+        "server_name": "same_port.com",
+        "port": 8081,
+        "is_cgi": false,
+        "locations": {
+          "/":       { "methods": ["GET"], "root": "/home/goinfre/www/app2", "index": "index.html" }
+        },
+        "error_pages": {
+          "404": "/home/goinfre/www/app2/errors/404.html"
         }
       },
       {
@@ -28,5 +46,5 @@
           ".php": "/usr/bin/php-cgi"
         }
       }
-    ]
+    ]  
   }
