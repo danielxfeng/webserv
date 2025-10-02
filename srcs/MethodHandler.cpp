@@ -190,7 +190,7 @@ std::filesystem::path MethodHandler::createRandomFilename(std::filesystem::path 
 	std::string code = "upload_";
 	for (size_t i = 0; i < 12; i++)
 		code.push_back(chars[dist(rng)]);
-	result += extension;
+	code += extension;
 	std::filesystem::path uploadCheck = std::filesystem::path(result) / std::filesystem::path(code);
 	if (std::filesystem::exists(uploadCheck))
 		createRandomFilename(path, extension);
