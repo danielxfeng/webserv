@@ -13,6 +13,9 @@
 #include "LogSys.hpp"
 #include "SharedTypes.hpp"
 #include "RaiiFd.hpp"
+#include <cctype>
+#include <cstring>
+#include <unistd.h>
 
 #define READ 0
 #define WRITE 1
