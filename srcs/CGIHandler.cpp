@@ -25,6 +25,11 @@ void CGIHandler::setENVP(
     const std::unordered_map<std::string, std::string> &requestLine,
     const std::unordered_map<std::string, std::string> &requestHeader
 ) {
+
+	// Clear previous envp if any
+	for (char* p : envp) if (p) delete [] p;
+    envp.clear();
+
     auto addToENVP = [this](const std::string &key, const std::string &value) {
         std::string temp = key + "=" + value;
         char *cstr = new char[temp.size() + 1];
@@ -77,30 +82,35 @@ void CGIHandler::setENVP(
     envp.push_back(nullptr);
 }
 
-void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, int inPipe[2], int outPipe[2])
+void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, std::string &cmd, int inPipe[2], int outPipe[2])
 {
 	char **final_envp = envp.data();
-	
-	if (dup2(inPipe[READ], STDIN_FILENO) == -1)
-		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Dup2 inPipe Failure");
+
+	if (chdir(path.c_str()) == -1)
+        return; // We cannot exit bc of the assignment
 	close(inPipe[WRITE]);
+    close(outPipe[READ]);
+	if (dup2(inPipe[READ], STDIN_FILENO) == -1)
+		return;
 	if (dup2(outPipe[WRITE], STDOUT_FILENO) == -1)
-		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Dup2 outPipe Failure");
-	close(outPipe[READ]);
-	if (execve(path.c_str(), argv, final_envp) == -1)
-		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Failed to execute CGI");
+		return;
+
+	close(inPipe[READ]);
+    close(outPipe[WRITE]);
+	if (execve(cmd.c_str(), argv, final_envp) == -1)
+		return;
 }
 
-std::string_view getProgName(std::string &targetRef)
+std::string getProgName(std::string &targetRef)
 {
 	const char delimiter = '/';
 	auto pos = targetRef.find("/cgi-bin/");
 	if (pos == std::string::npos)
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, no cgi-bin found");
-	return std::string_view(targetRef).substr(pos + 9);
+	return targetRef.substr(pos + 9);
 }
 
-std::string_view getExtName(std::string_view prog_name)
+std::string getExtName(std::string &prog_name)
 {
 	auto pos = prog_name.rfind('.');
 	if (pos == std::string::npos || pos == prog_name.size() - 1)
@@ -108,7 +118,7 @@ std::string_view getExtName(std::string_view prog_name)
 	return prog_name.substr(pos);
 }
 
-t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server)
+t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server)
 {
 	auto prog_name = getProgName(targetRef);
 	auto ext_name = getExtName(prog_name);
@@ -127,15 +137,11 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	
 	//Set up ENVP and ARGV
 	setENVP(requestLine, requestHeader);
-	std::string callPath = "";
+	// Set up ARGV
 	std::vector<char*> argv;
-	if (isPython)
-	{
-		callPath = "/usr/bin/python3";
-		argv.push_back(const_cast<char*>(callPath.c_str()));
-	}
-	std::string scriptStr = script.string();
-	argv.push_back(const_cast<char*>(scriptStr.c_str()));
+	if (isInterpreter)
+		argv.push_back(const_cast<char*>(interpreter.c_str()));
+	argv.push_back(const_cast<char*>(prog_name.c_str()));
 	argv.push_back(nullptr);
 	
 	int inPipe[2] = {-1, -1};
@@ -149,16 +155,14 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	pid_t pid = fork();
 	if (pid == -1)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "CGI Failed to fork");
+
+	std::string cmd = isInterpreter ? interpreter : prog_name;
 	if (pid == 0)
 	{
-		if (isPython)
-		{
-			std::filesystem::path pythonPath(callPath);
-			handleCGIProcess(argv.data(), pythonPath, inPipe, outPipe);
-		}
-		else
-			handleCGIProcess(argv.data(), realPath, inPipe, outPipe);
+		handleCGIProcess(argv.data(), rootPath, cmd, inPipe, outPipe);
+		return; // We cannot throw or exit in child process
 	}
+		
 	int status;
 	waitpid(pid, &status, WNOHANG);
 	close(inPipe[READ]);
@@ -166,26 +170,26 @@ t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::
 	return (result);
 }
 
-std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython)//TODO Make more robust
-{
-	std::string targetCGI;
-	if (path.string().find("/cgi/python"))
-	{
-		targetCGI = "python";
-		*isPython = true;
-	}
-	else if (path.string().find("/cgi/go"))
-	{
-		targetCGI = "go";
-		*isPython = false;
-	}
-	else
-		throw WebServErr::MethodException(ERR_501_NOT_IMPLEMENTED, "CGI extension not supported");
-	if (server.cgi_paths.find(targetCGI) == server.cgi_paths.end())	
-		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI extension does not exist");
-	std::filesystem::path script(server.cgi_paths.find(targetCGI)->second);
-	return (script);
-}
+// std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython)//TODO Make more robust
+// {
+// 	std::string targetCGI;
+// 	if (path.string().find("/cgi/python"))
+// 	{
+// 		targetCGI = "python";
+// 		*isPython = true;
+// 	}
+// 	else if (path.string().find("/cgi/go"))
+// 	{
+// 		targetCGI = "go";
+// 		*isPython = false;
+// 	}
+// 	else
+// 		throw WebServErr::MethodException(ERR_501_NOT_IMPLEMENTED, "CGI extension not supported");
+// 	if (server.cgi_paths.find(targetCGI) == server.cgi_paths.end())	
+// 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI extension does not exist");
+// 	std::filesystem::path script(server.cgi_paths.find(targetCGI)->second);
+// 	return (script);
+// }
 
 void	CGIHandler::checkRootValidity(const std::filesystem::path &root)
 {

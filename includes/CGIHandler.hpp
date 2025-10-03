@@ -31,7 +31,7 @@ private:
     void setENVP(const std::unordered_map<std::string, std::string> &requestLine, const std::unordered_map<std::string, std::string> &requestHeader);
 
     // Processes
-    void handleCGIProcess(char **argv, std::filesystem::path &path, int inPipe[2], int outPipe[2]);
+    void handleCGIProcess(char **argv, std::filesystem::path &path, std::string &cmd, int inPipe[2], int outPipe[2]);
     std::filesystem::path getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython);
     void checkRootValidity(const std::filesystem::path &root);
 
@@ -43,5 +43,5 @@ public:
     CGIHandler &operator=(const CGIHandler &copy) = delete;
 
     // Getters
-    t_file getCGIOutput(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server);
+    t_file getCGIOutput(std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server);
 };
