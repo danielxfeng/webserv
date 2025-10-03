@@ -5,4 +5,4 @@
 #include <iostream>
 
 void sigchld_handler(int );
-void setup_sigchld_handler() {
+void setup_sigchld_handler();
