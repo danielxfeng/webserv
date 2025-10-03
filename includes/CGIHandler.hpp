@@ -28,13 +28,12 @@ private:
     t_file result;
 
     // Setters
-    void setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader);
+    void setENVP(const std::unordered_map<std::string, std::string> &requestLine, const std::unordered_map<std::string, std::string> &requestHeader);
 
     // Processes
     void handleCGIProcess(char **argv, std::filesystem::path &path, int inPipe[2], int outPipe[2]);
     std::filesystem::path getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython);
-    void checkScriptValidity(const std::filesystem::path &script);
-    void checkCGIprograms(const t_server_config &server, const bool isPython);
+    void checkRootValidity(const std::filesystem::path &root);
 
 public:
     CGIHandler() = delete;

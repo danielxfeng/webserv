@@ -13,51 +13,68 @@ CGIHandler::~CGIHandler()
 {
 	for (char* ptr : envp)
 	{
-		delete [] ptr;
-		ptr = nullptr;
+		if (ptr) {
+            delete [] ptr;
+			ptr = nullptr;
+        }
 	}
 	envp.clear();
 }
 
-void CGIHandler::setENVP(std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader)
-{
-	auto addToENVP = [this](const std::string &key, const std::string &value)
-	{
-		std::string temp;
-		for (char c: key)
-		{
-			if (c == '-')
-				temp.push_back('_');
-			else
-				temp.push_back(std::toupper(static_cast<unsigned char>(c)));
-		}
-		temp.push_back('=');
-		temp.append(value);
-		char *cstr = new char[temp.size() + 1];
-		std::strcpy(cstr, temp.c_str());
-		envp.push_back(cstr);
-	};
-	// Sets requestLine into vector of strings
-	for (const auto &key : requestLine)
-	{
-		addToENVP(key.first, key.second);
-	}
-	// Sets requestHeader into vector of strings
-	for (const auto &key : requestHeader)
-	{
-		if (key.first == "boundary" && !key.second.empty())
-		{
-			std::string boundary = "BOUNDARY=" + key.second;
-			char *cstr = new char[boundary.size() + 1];
-			std::strcpy(cstr, boundary.c_str());
-			envp.push_back(cstr);
-		}
-		else
-		{
-			addToENVP(key.first, key.second);
-		}
-	}
-	envp.push_back(nullptr);
+void CGIHandler::setENVP(
+    const std::unordered_map<std::string, std::string> &requestLine,
+    const std::unordered_map<std::string, std::string> &requestHeader
+) {
+    auto addToENVP = [this](const std::string &key, const std::string &value) {
+        std::string temp = key + "=" + value;
+        char *cstr = new char[temp.size() + 1];
+        std::strcpy(cstr, temp.c_str());
+        envp.push_back(cstr);
+    };
+
+    for (const auto &kv : requestLine) {
+        if (kv.first == "method")
+            addToENVP("REQUEST_METHOD", kv.second);
+        else if (kv.first == "uri")
+            addToENVP("SCRIPT_NAME", kv.second);
+        else if (kv.first == "query")
+            addToENVP("QUERY_STRING", kv.second);
+        else if (kv.first == "version")
+            addToENVP("SERVER_PROTOCOL", kv.second);
+        else {
+            std::string upper;
+            for (char c : kv.first)
+                upper.push_back(std::toupper((unsigned char)c));
+            addToENVP(upper, kv.second);
+        }
+    }
+
+    for (const auto &kv : requestHeader) {
+        std::string keyUpper;
+        keyUpper.reserve(kv.first.size());
+        for (char c : kv.first) {
+            if (c == '-') keyUpper.push_back('_');
+            else keyUpper.push_back(std::toupper((unsigned char)c));
+        }
+
+        if (keyUpper == "CONTENT_TYPE")
+            addToENVP("CONTENT_TYPE", kv.second);
+        else if (keyUpper == "CONTENT_LENGTH")
+            addToENVP("CONTENT_LENGTH", kv.second);
+        else if (keyUpper == "HOST")
+            continue;
+        else if (keyUpper == "SERVERNAME" || keyUpper == "REQUESTPORT")
+            continue;
+        else
+            addToENVP("HTTP_" + keyUpper, kv.second);
+    }
+
+    if (requestHeader.count("servername"))
+        addToENVP("SERVER_NAME", requestHeader.at("servername"));
+    if (requestHeader.count("requestport"))
+        addToENVP("SERVER_PORT", requestHeader.at("requestport"));
+
+    envp.push_back(nullptr);
 }
 
 void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, int inPipe[2], int outPipe[2])
