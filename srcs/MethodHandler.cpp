@@ -38,16 +38,16 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	chosenMethod = requestLine["Method"];
 	LOG_TRACE("Method found: ", chosenMethod);
 
+	// Check if the server is_cgi
+	if (server.is_cgi)
+		return (callCGIMethod(targetRef, requestLine, requestHeader, epoll_helper, server));
+
 	std::string rootDestination = matchLocation(server.locations, targetRef); // Find best matching location
 	std::string root = server.locations[rootDestination].root;
 	LOG_DEBUG("rootDestination: ", rootDestination);
 	LOG_DEBUG("Root: ", root);
 
 	t_method realMethod = convertMethod(chosenMethod);
-
-	// Check if the server is_cgi
-	if (server.is_cgi)
-		return (callCGIMethod(root, targetRef, requestLine, requestHeader, epoll_helper, server));
 
 	// Check Method
 	LOG_DEBUG("Real Method: ", realMethod);
@@ -188,11 +188,11 @@ void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }
 
-t_file MethodHandler::callCGIMethod(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, EpollHelper &epoll_helper, t_server_config &server)
+t_file MethodHandler::callCGIMethod(std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, EpollHelper &epoll_helper, t_server_config &server)
 {
-	LOG_TRACE("Calling CGI root: ", root, " targetRef: ", targetRef);
+	LOG_TRACE("Calling CGI targetRef: ", targetRef);
 	CGIHandler cgi(epoll_helper);
-	requested_ = cgi.getCGIOutput(root, targetRef, requestLine, requestHeader, server);
+	requested_ = cgi.getCGIOutput(targetRef, requestLine, requestHeader, server);
 	return (std::move(requested_));
 }
 
