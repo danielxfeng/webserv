@@ -345,7 +345,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         conn->res = MethodHandler(epoll_).handleRequest(configs_[conn->config_idx], conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap(), epoll_);
         LOG_INFO("Resource prepared for fd: ", fd, " file size: ", conn->res.fileSize, " isDynamic: ", conn->res.isDynamic);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
-        conn->is_cgi = (method == CGI);
+        conn->is_cgi = configs_[conn->config_idx].is_cgi;
         LOG_INFO("Method determined: ", conn->request->getrequestLineMap().at("Method"), " for fd: ", fd);
         switch (method)
         {
