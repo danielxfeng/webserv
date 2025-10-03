@@ -25,6 +25,17 @@ def send_raw(raw_bytes: bytes) -> bytes:
             pass
         return resp
 
+def parse_http_response(raw: bytes):
+    header_part, _, body = raw.partition(b"\r\n\r\n")
+    header_lines = header_part.split(b"\r\n")
+    status_line = header_lines[0].decode("latin1")
+    headers = {}
+    for line in header_lines[1:]:
+        if b":" in line:
+            k, v = line.split(b":", 1)
+            headers[k.decode("latin1").strip()] = v.decode("latin1").strip()
+    return status_line, headers, body
+
 def test_get_html():
     r = requests.get(f"{BASE}/index.html")
     assert r.status_code == 200
@@ -322,19 +333,27 @@ def test_post_chunked_transfer():
         b"0\r\n"
         b"\r\n"
     )
-    resp = send_raw(req)
-    assert resp, "server sent no response (it may have kept the connection open)"
-    assert b"201" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
-    r = requests.get(f"{BASE}uploads/chunked.txt")
+    raw_resp = send_raw(req)
+    assert raw_resp, "server sent no response (it may have kept the connection open)"
+
+    status_line, headers, body = parse_http_response(raw_resp)
+
+    # check we got a 201 response
+    assert status_line.startswith("HTTP/1.1 201"), f"unexpected status line: {status_line}"
+
+    assert "Location" in headers, "missing Location header"
+    resource_url = urljoin(BASE, headers["Location"])
+
+    r = requests.get(resource_url)
     assert r.status_code == 200
     assert r.text == "MozillaDeveloperNetwork"
-    os.remove(f"{HOME}/www/app/uploads/chunked.txt")
     print("POST chunked transfer test passed.")
 
 def test_post_chunked_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
     chunk_size = 4096
     chunks = [large_content[i:i+chunk_size] for i in range(0, len(large_content), chunk_size)]
+
     req = (
         b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
@@ -345,15 +364,19 @@ def test_post_chunked_large_file():
     for chunk in chunks:
         req += f"{len(chunk):X}\r\n".encode() + chunk.encode() + b"\r\n"
     req += b"0\r\n\r\n"
-    
-    resp = send_raw(req)
-    assert resp, "server sent no response (it may have kept the connection open)"
-    assert b"201" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
-    
-    r = requests.get(f"{BASE}uploads2/chunked_large.txt")
+
+    raw_resp = send_raw(req)
+    assert raw_resp, "server sent no response (it may have kept the connection open)"
+
+    status_line, headers, body = parse_http_response(raw_resp)
+    assert status_line.startswith("HTTP/1.1 201"), f"unexpected status line: {status_line}"
+
+    assert "Location" in headers, "missing Location header"
+    resource_url = urljoin(BASE, headers["Location"])
+
+    r = requests.get(resource_url)
     assert r.status_code == 200
     assert r.text == large_content
-    os.remove(f"{HOME}/www/app/uploads2/chunked_large.txt")
     print("POST chunked transfer large file test passed.")
 
 def test_post_chunked_transfer_invalid_header():
@@ -431,9 +454,6 @@ def test_post_chunked_extra_data_after_last_chunk():
     print("POST chunked transfer with extra data after last chunk test passed.")
 
 # test_timeout()
-# test_keep_alive()
-# test_exceed_max_body_size()
-# test_exceed_max_header_size()
 # test_cgi_execution()
 
 
@@ -470,16 +490,16 @@ def run_all():
     test_post_large_file()
     test_post_without_content_length()
     test_post_exceeding_content_length()
-    #test_post_chunked_transfer()
-    #test_post_chunked_large_file()
-    #test_post_chunked_transfer_invalid_header()
-    #test_post_chunked_incorrect_chunk_size()
-    #test_post_chunked_incorrect_chunk_tail()
-    #test_post_chunked_extra_data_after_last_chunk()
+    test_post_chunked_transfer()
+    test_post_chunked_large_file()
+    test_post_chunked_transfer_invalid_header()
+    test_post_chunked_incorrect_chunk_size()
+    test_post_chunked_incorrect_chunk_tail()
+    test_post_chunked_extra_data_after_last_chunk()
     print("All tests passed.")
 
 def run_one():
-    test_simple_post()
+    test_post_chunked_large_file()
 
 if __name__=="__main__":
     run_all()
