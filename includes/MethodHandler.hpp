@@ -55,7 +55,7 @@ private:
 	bool checkIfSafe(const std::filesystem::path &root, const std::filesystem::path &path);
 	size_t	checkFileCount(const std::string &root);
 
-	std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
+	// std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef);
 	
 	std::filesystem::path createRealPath(const std::string &server, const std::string &target);
 	std::filesystem::path createRandomFilename(std::filesystem::path &path, std::string &extension);
@@ -69,5 +69,5 @@ public:
 	~MethodHandler();
 	MethodHandler &operator=(const MethodHandler &copy) = delete;
 
-	t_file handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper);
+	t_file handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, EpollHelper &epoll_helper);
 };

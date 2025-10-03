@@ -18,7 +18,7 @@ MethodHandler::~MethodHandler()
 	LOG_TRACE("Method Handler deconstructed", " Yay!");
 }
 
-t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
+t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, EpollHelper &epoll_helper)
 {
 	LOG_TRACE("Handle Request Started: ", "Let's see what happens...");
 	std::string targetRef;

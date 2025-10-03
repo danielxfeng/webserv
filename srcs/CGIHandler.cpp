@@ -103,7 +103,6 @@ void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, std:
 
 std::string getProgName(std::string &targetRef)
 {
-	const char delimiter = '/';
 	auto pos = targetRef.find("/cgi-bin/");
 	if (pos == std::string::npos)
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, no cgi-bin found");
@@ -160,7 +159,7 @@ t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::
 	if (pid == 0)
 	{
 		handleCGIProcess(argv.data(), rootPath, cmd, inPipe, outPipe);
-		return; // We cannot throw or exit in child process
+		return {}; // We cannot throw or exit in child process
 	}
 		
 	int status;

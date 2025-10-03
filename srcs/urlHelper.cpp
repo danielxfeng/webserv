@@ -1,6 +1,6 @@
 #include "urlHelper.hpp"
 
-std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef)
+std::string matchLocation(std::unordered_map<std::string, t_location_config> &locations, const std::string &targetRef)
 {
 	LOG_TRACE("Matching Location for: ", targetRef);
 	std::string bestMatch = "";

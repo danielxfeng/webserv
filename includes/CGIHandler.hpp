@@ -16,7 +16,6 @@
 #include <cctype>
 #include <cstring>
 #include <unistd.h>
-#include "urlHelper.hpp"
 
 #define READ 0
 #define WRITE 1
