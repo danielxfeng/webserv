@@ -76,10 +76,10 @@ void handleSignal(int sig)
     }
 }
 
-void timeoutKiller(const std::unordered_map<int, Server *> &serverMap)
+void WebServ::timeoutKiller(const std::unordered_map<int, Server *> &serverMap)
 {
     for (const auto &server : serverMap)
-        server.second->timeoutKiller();
+        handleServerMsg(server.second->timeoutKiller(), server.second);
 }
 
 WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())

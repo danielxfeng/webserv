@@ -2,6 +2,7 @@ import requests
 import socket
 import shutil
 import os
+import time
 from urllib.parse import urljoin
 
 
@@ -453,7 +454,109 @@ def test_post_chunked_extra_data_after_last_chunk():
     assert b"400" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
     print("POST chunked transfer with extra data after last chunk test passed.")
 
-# test_timeout()
+def test_keep_alive():
+    sock = socket.create_connection((HOST, PORT), timeout=5)
+
+    req1 = (
+        b"GET /index.html HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Connection: keep-alive\r\n"
+        b"\r\n"
+    )
+    sock.sendall(req1)
+
+    resp1 = b""
+    sock.settimeout(1)
+    while True:
+        try:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            resp1 += chunk
+            if b"\r\n\r\n" in resp1:  # crude stop after headers (or you could parse Content-Length)
+                break
+        except socket.timeout:
+            break
+
+    assert b"200 OK" in resp1, "first response not 200 OK"
+
+    # ---- Second request (close) ----
+    req2 = (
+        b"GET /second/test.txt HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Connection: close\r\n"
+        b"\r\n"
+    )
+    sock.sendall(req2)
+
+    resp2 = b""
+    while True:
+        chunk = sock.recv(4096)
+        if not chunk:  # server closed after response
+            break
+        resp2 += chunk
+
+    assert b"200 OK" in resp2, "second response not 200 OK"
+    assert b"Connection: close" in resp2, "second response missing Connection: close"
+
+    # ---- Verify connection is closed ----
+    try:
+        extra = sock.recv(1024)
+        assert extra == b"", f"expected closed connection, got extra data: {extra}"
+    except Exception:
+        pass  # already closed
+
+    sock.close()
+    print("Keep-Alive reuse + Connection: close test passed.")
+
+
+def test_max_request_size_exceeded():
+    body = b"A" * 2048
+    req = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: size_limit.com\r\n"
+        b"Content-Type: text/plain\r\n"
+        + f"Content-Length: {len(body)}\r\n".encode()
+        + b"\r\n"
+        + body
+    )
+
+    resp = send_raw(req)
+    status_line, headers, body_resp = parse_http_response(resp)
+
+    assert status_line.startswith("HTTP/1.1 400"), f"expected 400, got {status_line}"
+    print("Max request size exceeded test passed.")
+
+
+def test_timeout():
+    sock = socket.create_connection((HOST, PORT), timeout=5)
+
+    # Declare a big body so server expects more data
+    body_size = 5000
+    headers = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: timeout.com\r\n"
+        + f"Content-Length: {body_size}\r\n".encode()
+        + b"Content-Type: text/plain\r\n"
+        b"\r\n"
+    )
+    sock.sendall(headers)
+
+    time.sleep(3)
+    sock.settimeout(1)
+    try:
+        data = sock.recv(1024)
+        if data == b"":
+            print("Server closed connection after timeout (EOF)")
+        else:
+            print("Server responded:", data[:100])
+    except ConnectionResetError:
+        print("Server reset connection after timeout")
+    except socket.timeout:
+        assert False, "Server did not close connection after timeout"
+    sock.close()
+    print("Timeout test passed.")
+
 # test_cgi_execution()
 
 
@@ -496,10 +599,15 @@ def run_all():
     test_post_chunked_incorrect_chunk_size()
     test_post_chunked_incorrect_chunk_tail()
     test_post_chunked_extra_data_after_last_chunk()
+
+    #test_keep_alive()
+    test_max_request_size_exceeded()
+    test_timeout()
+
     print("All tests passed.")
 
 def run_one():
-    test_post_chunked_large_file()
+    test_timeout()
 
 if __name__=="__main__":
     run_all()
