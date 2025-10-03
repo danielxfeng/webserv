@@ -46,7 +46,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	t_method realMethod = convertMethod(chosenMethod);
 
 	// Check if the server is_cgi
-	if (server.is_cgi && realMethod == CGI)
+	if (server.is_cgi)
 		return (callCGIMethod(root, targetRef, requestLine, requestHeader, epoll_helper, server));
 
 	// Check Method
