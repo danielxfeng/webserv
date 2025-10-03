@@ -148,6 +148,12 @@ typedef struct s_location_config
     std::string index;             // Default index file for this location
 } t_location_config;
 
+typedef struct s_cgi_config
+{
+    std::string root;        // Default root path for this CGI
+    std::string interpreter; // Interpreter path for this CGI
+} t_cgi_config;
+
 /**
  * @brief Structure representing the configuration of a server.
  */
@@ -161,7 +167,7 @@ typedef struct s_server_config
     unsigned int max_headers_size;                                   // Maximum size of headers in bytes
     bool is_cgi;                                                     // Is this an CGI server?
     std::unordered_map<std::string, t_location_config> locations;    // Locations : methods
-    std::unordered_map<std::string, std::string> cgi_paths;          // CGI paths for different extensions
+    std::unordered_map<std::string, t_cgi_config> cgi_paths;         // CGI paths for different extensions
     std::unordered_map<t_status_error_codes, std::string> err_pages; // Error Page paths
 } t_server_config;
 

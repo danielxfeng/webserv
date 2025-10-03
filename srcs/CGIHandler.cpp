@@ -74,26 +74,39 @@ void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, int 
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Failed to execute CGI");
 }
 
+std::string_view getProgName(std::string &targetRef)
+{
+	const char delimiter = '/';
+	auto pos = targetRef.find("/cgi-bin/");
+	if (pos == std::string::npos)
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, no cgi-bin found");
+	return std::string_view(targetRef).substr(pos + 9);
+}
+
+std::string_view getExtName(std::string_view prog_name)
+{
+	auto pos = prog_name.rfind('.');
+	if (pos == std::string::npos || pos == prog_name.size() - 1)
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, no extension found");
+	return prog_name.substr(pos);
+}
+
 t_file CGIHandler::getCGIOutput(std::string &root, std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, t_server_config &server)
 {
-	//TODO create Path
-	std::string rootDestination = matchLocation(server.locations, targetRef); // Find best matching location
-	std::string root = server.locations[rootDestination].root;
-	LOG_DEBUG("rootDestination: ", rootDestination);
-	LOG_DEBUG("Root: ", root);
-	std::string path = stripLocation(rootDestination, targetRef);
+	auto prog_name = getProgName(targetRef);
+	auto ext_name = getExtName(prog_name);
+	LOG_INFO("Program Name: ", prog_name, " Extension Name: ", ext_name);
+	if (!server.cgi_paths.contains(ext_name))
+		throw WebServErr::MethodException(ERR_501_NOT_IMPLEMENTED, "CGI extension not supported");
+
+	const std::string interpreter = server.cgi_paths.at(ext_name).interpreter;
+	const std::string root = server.cgi_paths.at(ext_name).root;
+
+	const bool isInterpreter = !interpreter.empty();
 	
-	// Create realPath
-	std::filesystem::path realPath(root + path);
-	LOG_DEBUG("Real Path: ", realPath);
-	
-	// Get Script
-	bool isPython = false;
-	const std::filesystem::path script = getTargetCGI(realPath, server, &isPython);
-	
-	//Check Script && Program
-	checkCGIprograms(server, isPython);
-	checkScriptValidity(script);
+	//Check Root Validity
+	std::filesystem::path rootPath(root);
+	checkRootValidity(rootPath);
 	
 	//Set up ENVP and ARGV
 	setENVP(requestLine, requestHeader);
@@ -157,34 +170,30 @@ std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path
 	return (script);
 }
 
-void	CGIHandler::checkScriptValidity(const std::filesystem::path &script)
+void	CGIHandler::checkRootValidity(const std::filesystem::path &root)
 {
-	if (!std::filesystem::exists(script))
+	if (!std::filesystem::exists(root))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
-	if (std::filesystem::is_directory(script))
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a directory");
-	if (std::filesystem::is_symlink(script))
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is a symlink");
-	if (!std::filesystem::is_regular_file(script))
-		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not a regular file.");
-	if  (access(script.c_str(), X_OK) == -1)
+	if (!std::filesystem::is_directory(root))
+		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not a directory");
+	if (access(root.c_str(), R_OK | X_OK) == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not executable");
 }
 
-void CGIHandler::checkCGIprograms(const t_server_config &server, const bool isPython)//TODO Make more robust
-{
-	if (isPython)
-	{
-		if (!std::filesystem::exists("/usr/bin/python3"))
-			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Python not found");
-		if (access("/usr/bin/python3", X_OK) == -1)
-			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Python is not accessible");
-	}
-	else
-	{
-		if (!std::filesystem::exists("usr/bin/go"))
-			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Go not found");
-		if (access("/usr/bin/go", X_OK) == -1)
-			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Go is not accessible");
-	}
-}
+// void CGIHandler::checkCGIprograms(const t_server_config &server, const bool isPython)//TODO Make more robust
+// {
+// 	if (isPython)
+// 	{
+// 		if (!std::filesystem::exists("/usr/bin/python3"))
+// 			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Python not found");
+// 		if (access("/usr/bin/python3", X_OK) == -1)
+// 			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Python is not accessible");
+// 	}
+// 	else
+// 	{
+// 		if (!std::filesystem::exists("usr/bin/go"))
+// 			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Go not found");
+// 		if (access("/usr/bin/go", X_OK) == -1)
+// 			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Go is not accessible");
+// 	}
+// }
