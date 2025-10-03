@@ -1,7 +1,7 @@
 #include "Buffer.hpp"
 #include <LogSys.hpp>
 
-Buffer::Buffer(size_t capacity, size_t block_size) : data_(), ref_(), data_view_(), capacity_(capacity), write_pos_(0), size_(0), block_size_(block_size), remain_header_size_(0), remain_body_size_(0), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}
+Buffer::Buffer(size_t capacity, size_t block_size) : data_(), ref_(), data_view_(), capacity_(capacity), write_pos_(0), size_(0), block_size_(block_size), scratch_type_(None), scratched_() {}
 
 /**
  * @details
@@ -16,11 +16,12 @@ ssize_t Buffer::handleNextHeader(std::string_view data, ssize_t parsed, size_t s
     size_t pos = data.find("\r\n");
     if (pos == std::string_view::npos)
     {
-        remain_header_size_ = data.size();
+        scratch_type_ = Header;
+        scratched_ = std::string(data);
         return parsed;
     }
 
-    remain_header_size_ = 0;
+    scratch_type_ = None;
     std::string_view header = data.substr(0, pos);
     std::string_view crlf = data.substr(pos, CRLF);
     if (crlf != "\r\n")
@@ -51,7 +52,7 @@ ssize_t Buffer::handleNextHeader(std::string_view data, ssize_t parsed, size_t s
             return handleChunkedEOF(parsed);
         }
 
-        remain_body_size_ = 0;
+        scratch_type_ = None;
         remain_chunk_size_ = chunk_size;
         return handleBodyProcessing(rest, parsed, skipped);
     }
@@ -83,7 +84,8 @@ ssize_t Buffer::handleBodyProcessing(std::string_view data, ssize_t parsed, size
         {
             // Not enough to keep body and full CRLF together: leave 1 byte to join with CRLF next time
             to_read = remain_chunk_size_ - 1;
-            remain_body_size_ = 1;
+            scratch_type_ = Body;
+            scratched_ = std::string(data.substr(to_read));
         }
         else
         {
@@ -124,16 +126,14 @@ ssize_t Buffer::handleBodyProcessing(std::string_view data, ssize_t parsed, size
 
 ssize_t Buffer::handleChunkedEOF(ssize_t parsed)
 {
-    remain_header_size_ = 0;
-    remain_body_size_ = 0;
+    scratch_type_ = None;
     is_eof_ = true;
     return parsed;
 }
 
 ssize_t Buffer::handleChunkedError()
 {
-    remain_header_size_ = 0;
-    remain_body_size_ = 0;
+    scratch_type_ = None;
     return CHUNKED_ERROR;
 }
 
@@ -166,33 +166,18 @@ ssize_t Buffer::readFdChunked(int fd)
     if (data_.empty() || remain_space < MAX_CHUNK_HEADER_SPACE                                   // Ensure enough space for chunk header
         || ((remain_chunk_size_ <= remain_space) && (remain_space < remain_chunk_size_ + CRLF))) // Ensure the trailing CRLF will not be split
     {
-        std::string_view remain_header;
-        std::string_view remain_body;
-
-        // If we need to create a new block, we need to copy any remaining header/body part to the new block.
-        if (remain_header_size_ > 0)
-        {
-            remain_header = std::string_view((data_.back()).data() + write_pos_ - remain_header_size_, remain_header_size_);
-        }
-        else if (remain_body_size_ > 0)
-        {
-            remain_body = std::string_view(data_.back().data() + write_pos_ - remain_body_size_, remain_body_size_);
-        }
-
         data_.push_back(std::string(block_size_, '\0'));
         ref_.push_back(0);
         auto &new_buf = data_.back();
 
-        if (!remain_header.empty())
+        if (scratch_type_ != None)
         {
-            std::copy(remain_header.begin(), remain_header.end(), new_buf.begin());
-        }
-        else if (!remain_body.empty())
-        {
-            std::copy(remain_body.begin(), remain_body.end(), new_buf.begin());
-        }
-
-        write_pos_ = remain_body_size_ + remain_header_size_;
+            std::copy(scratched_.begin(), scratched_.end(), new_buf.begin());
+            scratch_type_ = None;
+            write_pos_ = scratched_.size();
+            scratched_.clear();
+        } else
+            write_pos_ = 0;
     }
 
     // Now read into the last block
@@ -209,21 +194,9 @@ ssize_t Buffer::readFdChunked(int fd)
     }
 
     // Parse read data, + any unprocessed partial header/body.
-    size_t prefix_offset = remain_body_size_ + remain_header_size_;
-    std::string_view chunked_data(data_.back().data() + write_pos_ - prefix_offset, read_bytes + prefix_offset);
+    std::string_view chunked_data(data_.back().data(), write_pos_ + read_bytes);
 
-    // Reset the remain sizes, since we have updated the view to include them.
-    remain_body_size_ = 0;
-    remain_header_size_ = 0;
-
-    t_chunked_status status;
-
-    // The chunked_data view always starts from the last unparsed byte
-    // (including any partial header/body), so FSM never sees a truncated token.
-    if (remain_chunk_size_ > 0)
-        status = BODY_PROCESSING;
-    else
-        status = NEXT_HEADER;
+    t_chunked_status status = remain_chunk_size_ > 0 ? BODY_PROCESSING : NEXT_HEADER;
 
     ssize_t parsed = fsmScheduler(status, chunked_data);
     if (parsed == CHUNKED_ERROR)
@@ -448,4 +421,4 @@ bool Buffer::insertHeader(std::string str)
     return true;
 }
 
-Buffer::Buffer() : data_(), ref_(), data_view_(), capacity_(8192), write_pos_(0), size_(0), block_size_(4096), remain_header_size_(0), remain_body_size_(0), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}
+Buffer::Buffer() : data_(), ref_(), data_view_(), capacity_(163840), write_pos_(0), size_(0), block_size_(16384), scratch_type_(None), scratched_(), remain_chunk_size_(0), is_chunked_(false), is_eof_(false) {}

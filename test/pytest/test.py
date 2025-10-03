@@ -454,9 +454,6 @@ def test_post_chunked_extra_data_after_last_chunk():
     print("POST chunked transfer with extra data after last chunk test passed.")
 
 # test_timeout()
-# test_keep_alive()
-# test_exceed_max_body_size()
-# test_exceed_max_header_size()
 # test_cgi_execution()
 
 
@@ -494,16 +491,16 @@ def run_all():
     test_post_without_content_length()
     test_post_exceeding_content_length()
     test_post_chunked_transfer()
-    #test_post_chunked_large_file()
-    #test_post_chunked_transfer_invalid_header()
-    #test_post_chunked_incorrect_chunk_size()
-    #test_post_chunked_incorrect_chunk_tail()
-    #test_post_chunked_extra_data_after_last_chunk()
+    test_post_chunked_large_file()
+    test_post_chunked_transfer_invalid_header()
+    test_post_chunked_incorrect_chunk_size()
+    test_post_chunked_incorrect_chunk_tail()
+    test_post_chunked_extra_data_after_last_chunk()
     print("All tests passed.")
 
 def run_one():
     test_post_chunked_large_file()
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    run_all()
+    #run_one()
