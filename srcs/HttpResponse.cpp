@@ -12,7 +12,7 @@
 std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
 {
     std::string cookieStr = cookie.set(*conn->request);
-
+    std::string connection = conn->request->getrequestHeaderMap()["connection"];
     std::cout << "RUN fom Response" << std::endl;
     std::string res_target = conn->request->getrequestLineMap()["Target"];
     std::string content_type;
@@ -40,7 +40,8 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
     {
         result.append("HTTP/1.1").append(" 200 OK\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
-         result.append("Connection: ").append(request->getrequestHeaderMap().at("connection")).append("\r\n");
+        if (connection == "close")
+            result.append("Connection: ").append(connection).append("\r\n");
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(conn->res.fileSize)).append("\r\n\r\n");
         if (conn->res.isDynamic)
@@ -51,7 +52,8 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
         result.append("HTTP/1.1").append(" 201 Created\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
         result.append("Location: ").append(conn->res.postFilename).append("\r\n");
-         result.append("Connection: ").append(request->getrequestHeaderMap().at("connection")).append("\r\n");
+        if (connection == "close")
+            result.append("Connection: ").append(connection).append("\r\n");
         result.append(cookieStr);
         result.append("Content-Length: 0").append("\r\n\r\n");
     }
@@ -67,7 +69,8 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
                                     "</html>";
         result.append("HTTP/1.1").append(" 204 OK\r\n");
         result.append("Content-Type: text/html\r\n");
-        result.append("Connection: ").append(request->getrequestHeaderMap().at("connection")).append("\r\n");
+        if (connection == "close")
+            result.append("Connection: ").append(connection).append("\r\n");
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
