@@ -703,6 +703,8 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
                 LOG_ERROR("Failed to replace CGI header in buffer for fd: ", fd);
                 return terminatedHandler(fd, conn);
             }
+            conn->cgi_header_ready = true;
+            LOG_INFO("CGI header parsed and replaced for fd: ", fd, "\n", header);
         }
         catch (const WebServErr::CgiHeaderNotFound &e) {
             return defaultMsg(); // Wait for more data
