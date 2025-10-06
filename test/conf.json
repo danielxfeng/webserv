@@ -8,7 +8,7 @@
     "max_heartbeat_timeout": 1000,
     "servers": [
       {
-        "server_name": "localhost",
+        "server_name": "bighost",
         "port": 8081,
         "max_request_timeout": 999999,
         "max_request_size": 99999999,
@@ -30,8 +30,8 @@
         }
       },
       {
-        "server_name": "besthost",
-        "port": 8081,
+        "server_name": "bighost",
+        "port": 8080,
           "locations": {
           "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app2", "index": "index.html" },
           "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app2/static"},

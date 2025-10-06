@@ -1,4 +1,5 @@
 #include "../includes/Config.hpp"
+#include "../includes/LogSys.hpp"
 
 const std::string randomServerName()
 {
@@ -59,6 +60,7 @@ void Config::fromJson(const std::string &json_string)
         
         server_config.port = TinyJson::as<unsigned int>(*server_obj.at("port"));
 
+
         const unsigned int max_request_timeout = server_obj.contains("max_request_timeout") ? TinyJson::as<unsigned int>(*server_obj.at("max_request_timeout")) : global_config_.global_request_timeout;
         server_config.max_request_timeout = std::min(max_request_timeout, global_config_.global_request_timeout);
 
@@ -116,6 +118,15 @@ void Config::fromJson(const std::string &json_string)
 
         global_config_.servers.push_back(server_config);
     }
+
+    //validate the porst and the server name
+    for (auto it = global_config_.servers.begin(); it != global_config_.servers.end(); ++it) {
+        for (auto it2 = std::next(it); it2 != global_config_.servers.end(); ++it2) {
+            if (it->port == it2->port && it->server_name == it2->server_name)
+                throw std::invalid_argument("Duplicated port and servername");
+        }
+}
+
 }
 
 t_global_config Config::parseConfigFromFile(const std::string &conf_file_path)
