@@ -54,6 +54,7 @@ void Config::fromJson(const std::string &json_string)
     {
         const JsonObject server_obj = TinyJson::as<JsonObject>(*server_value_ptr);
         t_server_config server_config;
+        
         server_config.server_name = server_obj.contains("server_name") ? toLower(TinyJson::as<std::string>(*server_obj.at("server_name"))) : randomServerName();
         
         server_config.port = TinyJson::as<unsigned int>(*server_obj.at("port"));

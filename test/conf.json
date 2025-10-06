@@ -28,6 +28,16 @@
           ".py":  "/usr/bin/python3",
           ".php": "/usr/bin/php-cgi"
         }
+      },
+      {
+        "server_name": "besthost",
+        "port": 8081,
+          "locations": {
+          "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app2", "index": "index.html" },
+          "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app2/static"},
+          "/uploads": { "methods": ["GET","POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app2/uploads"}
+        }
       }
+      
     ]
   }
