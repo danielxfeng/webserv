@@ -1,5 +1,5 @@
 #include "../includes/Config.hpp"
-#include "../includes/LogSys.hpp"
+
 
 const std::string randomServerName()
 {
