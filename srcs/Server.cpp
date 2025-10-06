@@ -125,8 +125,9 @@ t_msg_from_serv Server::timeoutKiller()
         size_t max_request_timeout = it->config_idx != -1 ? configs_[it->config_idx].max_request_timeout : GLOBAL_REQUEST_TIMEOUT;
         if (difftime(now, it->last_heartbeat) > max_heartbeat_timeout || difftime(now, it->start_timestamp) > max_request_timeout)
         {
+            LOG_WARN("Connection timed out: ", it->socket_fd);
             int fd = it->socket_fd;
-            t_msg_from_serv temp = closeConn(&*it);
+            t_msg_from_serv temp = closeConn(&(*it));
             msg.fds_to_unregister.insert(
                 msg.fds_to_unregister.end(),
                 temp.fds_to_unregister.begin(),
