@@ -21,6 +21,6 @@ public:
     ErrorResponse(const ErrorResponse &copy) = delete;
     ErrorResponse &operator= (const ErrorResponse &copy) = delete;
     ~ErrorResponse();
-
+    
     t_file  getErrorPage(std::unordered_map<t_status_error_codes, std::string> &errPages, t_status_error_codes &code);
 };

@@ -148,3 +148,13 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
     }
     return (result);
 }
+
+
+
+std::string HttpResponse::CGIResponse(std::string_view cgiString)
+{
+    std::string result = "";
+    LOG_DEBUG("CGI STRING: ", cgiString);
+
+    return (result);
+}
