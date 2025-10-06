@@ -3,7 +3,7 @@
     "max_poll_timeout": 5,
     "max_connections": 500,
     "global_request_timeout": 30,
-    "max_request_size": 500,
+    "max_request_size": 102400000,
     "max_headers_size": 4096,
     "max_heartbeat_timeout": 5,
     "servers": [
@@ -19,7 +19,8 @@
           "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/static" },
           "/uploads": { "methods": ["POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app/uploads" },
           "/second": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/second" },
-          "/uploads2": { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app/uploads2" }
+          "/uploads2": { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app/uploads2" },
+          "/redirect": { "methods": ["REDIRECT"], "root": "http://localhost:8081/second/" }
         },
         "error_pages": {
           "404": "/home/mkhlouf/goinfre/www/app/errors/404.html"
