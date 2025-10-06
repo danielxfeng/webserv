@@ -116,6 +116,7 @@ typedef struct s_conn
     int inner_fd_out;                       // Internal file descriptor for writing response body
     int config_idx;                         // Index of the server configuration used
     bool is_cgi;                            // Is this connection handling a CGI request?
+    bool cgi_header_ready;                  // Is the CGI response header ready
     t_status status;                        // Current status of the connection
     t_status_error_codes error_code;        // Error code if any error occurs
     time_t start_timestamp;                 // Timestamp when the connection was established
