@@ -68,8 +68,6 @@ private:
     size_t block_size_;                      // The size of each block in the buffer.
     t_scratch_type scratch_type_;            // The current scratch type.
     std::string scratched_;                  // The scratched data for chunked transfer.
-    //size_t remain_header_size_;              // The remain size of the incomplete chunk header left in data_.
-    //size_t remain_body_size_;                // The remain size of the chunk body which is waiting for the delimiter in data_.
     size_t remain_chunk_size_;               // The remain size of the chunk in chunked mode.
     bool is_chunked_;                        // Whether the buffer is in chunked mode.
     bool is_eof_;                            // Whether the EOF has been reached in chunked mode.
@@ -147,6 +145,14 @@ public:
      * If the buffer is in chunked mode, it also processes the rest body in chunked mode.
      */
     bool removeHeaderAndSetChunked(const std::size_t size, bool is_chunked);
+
+    /**
+     * @brief Replaces the header in the buffer with the given string.
+     * @details
+     * It is used for replacing request header after CGI response parsing.
+     * At that time, there should be only one block in the buffer.
+     */
+    bool replaceHeader(std::string str);
 
     /**
      * @brief Inserts a header string into the buffer.

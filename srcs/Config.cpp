@@ -25,6 +25,8 @@ t_status_error_codes stringToErrCode(std::string str)
         return ERR_409_CONFLICT;
     if (str == "500")
         return ERR_500_INTERNAL_SERVER_ERROR;
+    if (str == "501")
+        return ERR_501_NOT_IMPLEMENTED;
     throw std::invalid_argument("invalid error code");
 }
 
@@ -79,7 +81,20 @@ void Config::fromJson(const std::string &json_string)
         {
             JsonObject cgi_obj = TinyJson::as<JsonObject>(*server_obj.at("cgi_config"));
             for (const auto &cgi_pair : cgi_obj)
-                server_config.cgi_paths[cgi_pair.first] = TinyJson::as<std::string>(*cgi_pair.second);
+            {
+                const std::string extension = cgi_pair.first;
+                if (extension.empty() || extension[0] != '.')
+                    throw std::invalid_argument("invalid cgi extension: " + extension);
+
+                const JsonObject &cgi_detail_obj = TinyJson::as<JsonObject>(*cgi_pair.second);
+                t_cgi_config cgi_config;
+                if (cgi_detail_obj.contains("interpreter"))
+                    cgi_config.interpreter = TinyJson::as<std::string>(*cgi_detail_obj.at("interpreter"));
+                cgi_config.root = TinyJson::as<std::string>(*cgi_detail_obj.at("root"));
+                if (cgi_config.root.empty())
+                    throw std::invalid_argument("cgi root cannot be empty for extension: " + extension);
+                server_config.cgi_paths[extension] = std::move(cgi_config);
+            }
         }
         else
         {

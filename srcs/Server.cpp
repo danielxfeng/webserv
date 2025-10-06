@@ -7,6 +7,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->inner_fd_out = -1;
     conn->config_idx = -1;
     conn->is_cgi = false;
+    conn->cgi_header_ready = true;
     conn->status = REQ_HEADER_PARSING;
     conn->start_timestamp = time(NULL);
     conn->last_heartbeat = conn->start_timestamp;
@@ -239,6 +240,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         conn->content_length = configs_[conn->config_idx].max_request_size;
         conn->output_length = configs_[conn->config_idx].max_request_size;
         
+        LOG_DEBUG("has method?: ", conn->request->getrequestLineMap().contains("Method"));
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
         {
@@ -352,10 +354,10 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
     try
     {
         LOG_INFO("Processing request header for fd: ", fd);
-        conn->res = MethodHandler(epoll_).handleRequest(configs_[conn->config_idx], conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), conn->request->getrequestBodyMap(), epoll_);
+        conn->res = MethodHandler(epoll_).handleRequest(configs_[conn->config_idx], conn->request->getrequestLineMap(), conn->request->getrequestHeaderMap(), epoll_);
         LOG_INFO("Resource prepared for fd: ", fd, " file size: ", conn->res.fileSize, " isDynamic: ", conn->res.isDynamic);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
-        conn->is_cgi = (method == CGI);
+        conn->is_cgi = configs_[conn->config_idx].is_cgi;
         LOG_INFO("Method determined: ", conn->request->getrequestLineMap().at("Method"), " for fd: ", fd);
         switch (method)
         {
@@ -384,6 +386,9 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
             conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
             msg.fds_to_register.push_back(std::move(conn->res.FD_handler_IN));
             conn_map_.emplace(conn->inner_fd_in, conn);
+            conn->inner_fd_out = conn->res.FD_handler_OUT.get()->get();
+            msg.fds_to_register.push_back(std::move(conn->res.FD_handler_OUT));
+            conn_map_.emplace(conn->inner_fd_out, conn);
             LOG_INFO("Switching to processing state for fd: ", fd);
             conn->status = REQ_BODY_PROCESSING;
             return msg;
@@ -608,7 +613,8 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     conn->status = RESPONSE;
     conn->bytes_sent = 0;
 
-    conn->write_buf->insertHeader(header);
+    if (!conn->is_cgi ||  conn->error_code != ERR_NO_ERROR)
+        conn->write_buf->insertHeader(header);
 
     LOG_INFO("Response header size for fd: ", conn->socket_fd, " size: ", header.size());
     LOG_INFO("Header content:\n", header);
@@ -631,16 +637,12 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         conn->output_length = header.size();
         break;
     case CGI:
-        conn->status = RES_HEADER_PROCESSING;
         conn->output_length = configs_[conn->config_idx].max_request_size; // Unknown length, send until EOF
         break;
     default:
         throw WebServErr::ShouldNotBeHereException("Unhandled method in response header processing");
     }
 
-    // Register the inner fd for writing response body if CGI method
-    if (method == CGI)
-        conn->inner_fd_out = conn->inner_fd_in;
     return defaultMsg();
 }
 
@@ -692,10 +694,23 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
     if (bytes_read == BUFFER_FULL)
         return defaultMsg();
 
-    if (conn->status == RES_HEADER_PROCESSING)
+    if (conn->is_cgi && !conn->cgi_header_ready)
     {
-        // TODO: Implement CGI response header parsing
-        conn->status = RESPONSE;
+        try {
+            const std::string header = conn->response->cgiParser(conn->write_buf->peek());
+            if (!conn->write_buf->replaceHeader(header))
+            {
+                LOG_ERROR("Failed to replace CGI header in buffer for fd: ", fd);
+                return terminatedHandler(fd, conn);
+            }
+        }
+        catch (const WebServErr::CgiHeaderNotFound &e) {
+            return defaultMsg(); // Wait for more data
+        }
+        catch (const WebServErr::InvalidCgiHeader &e) {
+            LOG_ERROR("Error parsing CGI header for fd: ", fd, " error: ", e.what());
+            return terminatedHandler(fd, conn);
+        }
     }
 
     // Check if done
@@ -726,7 +741,8 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
         return defaultMsg();
     }
 
-    conn->last_heartbeat = time(NULL);
+    if (conn->is_cgi && !conn->cgi_header_ready)
+        return defaultMsg(); // Skip until CGI header is ready
 
     if (!conn->is_cgi && conn->inner_fd_out != -1)
     {

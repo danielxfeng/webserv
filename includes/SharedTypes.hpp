@@ -20,7 +20,8 @@ typedef enum e_status_error_codes
     ERR_404_NOT_FOUND = 404,
     ERR_405_METHOD_NOT_ALLOWED = 405,
     ERR_409_CONFLICT = 409,
-    ERR_500_INTERNAL_SERVER_ERROR = 500
+    ERR_500_INTERNAL_SERVER_ERROR = 500,
+    ERR_501_NOT_IMPLEMENTED = 501
 } t_status_error_codes;
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
@@ -115,6 +116,7 @@ typedef struct s_conn
     int inner_fd_out;                       // Internal file descriptor for writing response body
     int config_idx;                         // Index of the server configuration used
     bool is_cgi;                            // Is this connection handling a CGI request?
+    bool cgi_header_ready;                  // Is the CGI response header ready
     t_status status;                        // Current status of the connection
     t_status_error_codes error_code;        // Error code if any error occurs
     time_t start_timestamp;                 // Timestamp when the connection was established
@@ -147,6 +149,12 @@ typedef struct s_location_config
     std::string index;             // Default index file for this location
 } t_location_config;
 
+typedef struct s_cgi_config
+{
+    std::string root;        // Default root path for this CGI
+    std::string interpreter; // Interpreter path for this CGI
+} t_cgi_config;
+
 /**
  * @brief Structure representing the configuration of a server.
  */
@@ -160,7 +168,7 @@ typedef struct s_server_config
     unsigned int max_headers_size;                                   // Maximum size of headers in bytes
     bool is_cgi;                                                     // Is this an CGI server?
     std::unordered_map<std::string, t_location_config> locations;    // Locations : methods
-    std::unordered_map<std::string, std::string> cgi_paths;          // CGI paths for different extensions
+    std::unordered_map<std::string, t_cgi_config> cgi_paths;         // CGI paths for different extensions
     std::unordered_map<t_status_error_codes, std::string> err_pages; // Error Page paths
 } t_server_config;
 
