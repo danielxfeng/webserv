@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 		std::cerr << "Error, you have to include the config file.";
 		return (1);
 	}
-	setup_sigchld_handler();
+	setup_signal_handlers();
 	/**
 	try
 	{
