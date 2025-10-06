@@ -239,6 +239,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         conn->content_length = configs_[conn->config_idx].max_request_size;
         conn->output_length = configs_[conn->config_idx].max_request_size;
         
+        LOG_DEBUG("has method?: ", conn->request->getrequestLineMap().contains("Method"));
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
         {
@@ -631,7 +632,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         conn->output_length = header.size();
         break;
     case CGI:
-        conn->status = RES_HEADER_PROCESSING;
+        //conn->status = RES_HEADER_PROCESSING;
         conn->output_length = configs_[conn->config_idx].max_request_size; // Unknown length, send until EOF
         break;
     default:

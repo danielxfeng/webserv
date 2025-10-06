@@ -192,6 +192,7 @@ t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::
 
 void	CGIHandler::checkRootValidity(const std::filesystem::path &root)
 {
+	LOG_INFO("Checking root validity: ", root.string());
 	if (!std::filesystem::exists(root))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI script does not exist.");
 	if (!std::filesystem::is_directory(root))
