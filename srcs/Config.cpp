@@ -1,5 +1,6 @@
 #include "../includes/Config.hpp"
 
+
 const std::string randomServerName()
 {
     static int counter = 1; // Static counter to ensure unique names
@@ -56,9 +57,11 @@ void Config::fromJson(const std::string &json_string)
     {
         const JsonObject server_obj = TinyJson::as<JsonObject>(*server_value_ptr);
         t_server_config server_config;
+        
         server_config.server_name = server_obj.contains("server_name") ? toLower(TinyJson::as<std::string>(*server_obj.at("server_name"))) : randomServerName();
         
         server_config.port = TinyJson::as<unsigned int>(*server_obj.at("port"));
+
 
         const unsigned int max_request_timeout = server_obj.contains("max_request_timeout") ? TinyJson::as<unsigned int>(*server_obj.at("max_request_timeout")) : global_config_.global_request_timeout;
         server_config.max_request_timeout = std::min(max_request_timeout, global_config_.global_request_timeout);
@@ -130,6 +133,15 @@ void Config::fromJson(const std::string &json_string)
 
         global_config_.servers.push_back(server_config);
     }
+
+    //validate the porst and the server name
+    for (auto it = global_config_.servers.begin(); it != global_config_.servers.end(); ++it) {
+        for (auto it2 = std::next(it); it2 != global_config_.servers.end(); ++it2) {
+            if (it->port == it2->port && it->server_name == it2->server_name)
+                throw std::invalid_argument("Duplicated port and servername");
+        }
+}
+
 }
 
 t_global_config Config::parseConfigFromFile(const std::string &conf_file_path)
