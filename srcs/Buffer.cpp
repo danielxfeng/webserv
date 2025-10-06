@@ -407,9 +407,11 @@ bool Buffer::replaceHeader(std::string str)
         return false;
 
     data_.pop_front();
+    size_ -= data_view_.front().size();
     data_view_.pop_front();
     data_.push_front(str);
     data_view_.push_front(std::string_view(data_.front().data(), str.size()));
+    size_ += str.size();
     return true;
 }
 
