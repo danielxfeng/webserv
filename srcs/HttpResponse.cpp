@@ -40,6 +40,7 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
     {
         result.append("HTTP/1.1").append(" 200 OK\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
+         result.append("Connection: ").append(request->getrequestHeaderMap().at("connection")).append("\r\n");
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(conn->res.fileSize)).append("\r\n\r\n");
         if (conn->res.isDynamic)
@@ -50,6 +51,7 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
         result.append("HTTP/1.1").append(" 201 Created\r\n");
         result.append("Content-Type: ").append(content_type).append("\r\n");
         result.append("Location: ").append(conn->res.postFilename).append("\r\n");
+         result.append("Connection: ").append(request->getrequestHeaderMap().at("connection")).append("\r\n");
         result.append(cookieStr);
         result.append("Content-Length: 0").append("\r\n\r\n");
     }
@@ -65,6 +67,7 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
                                     "</html>";
         result.append("HTTP/1.1").append(" 204 OK\r\n");
         result.append("Content-Type: text/html\r\n");
+        result.append("Connection: ").append(request->getrequestHeaderMap().at("connection")).append("\r\n");
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
@@ -127,6 +130,7 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
         htmlPage.append("</p></body></html>");
         result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
         result.append("Content-Type: text/html\r\n");
+        result.append("Connection: close\r\n");
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(htmlPage.size())).append("\r\n\r\n");
         result.append(htmlPage);
@@ -135,6 +139,7 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
     {
         result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
         result.append("Content-Type: text/html\r\n");
+        result.append("Connection: close\r\n");
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(errPageSize)).append("\r\n\r\n");
     }
