@@ -696,7 +696,21 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
 
     if (conn->is_cgi && !conn->cgi_header_ready)
     {
-        // TODO: Implement CGI response header parsing
+        try {
+            const std::string header = conn->response->cgiParser(conn->write_buf->peek());
+            if (!conn->write_buf->replaceHeader(header))
+            {
+                LOG_ERROR("Failed to replace CGI header in buffer for fd: ", fd);
+                return terminatedHandler(fd, conn);
+            }
+        }
+        catch (const WebServErr::CgiHeaderNotFound &e) {
+            return defaultMsg(); // Wait for more data
+        }
+        catch (const WebServErr::InvalidCgiHeader &e) {
+            LOG_ERROR("Error parsing CGI header for fd: ", fd, " error: ", e.what());
+            return terminatedHandler(fd, conn);
+        }
     }
 
     // Check if done

@@ -401,6 +401,18 @@ bool Buffer::removeHeaderAndSetChunked(const std::size_t size, bool is_chunked)
     return true;
 }
 
+bool Buffer::replaceHeader(std::string str)
+{
+    if (data_.size() == 0 || data_view_.size() != data_.size())
+        return false;
+
+    data_.pop_front();
+    data_view_.pop_front();
+    data_.push_front(str);
+    data_view_.push_front(std::string_view(data_.front().data(), str.size()));
+    return true;
+}
+
 bool Buffer::insertHeader(std::string str)
 {
     if (str.size() + size_ > capacity_)
