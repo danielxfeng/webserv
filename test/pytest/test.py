@@ -2,6 +2,9 @@ import requests
 import socket
 import shutil
 import os
+import time
+from urllib.parse import urljoin
+
 
 HOME = "/home/xifeng"
 HOST = "127.0.0.1"
@@ -22,6 +25,17 @@ def send_raw(raw_bytes: bytes) -> bytes:
         except socket.timeout:
             pass
         return resp
+
+def parse_http_response(raw: bytes):
+    header_part, _, body = raw.partition(b"\r\n\r\n")
+    header_lines = header_part.split(b"\r\n")
+    status_line = header_lines[0].decode("latin1")
+    headers = {}
+    for line in header_lines[1:]:
+        if b":" in line:
+            k, v = line.split(b":", 1)
+            headers[k.decode("latin1").strip()] = v.decode("latin1").strip()
+    return status_line, headers, body
 
 def test_get_html():
     r = requests.get(f"{BASE}/index.html")
@@ -258,7 +272,8 @@ def test_simple_post():
     assert r.status_code == 201
 
     assert 'Location' in r.headers
-    r = requests.get(f"{BASE[:-1]}{r.headers['Location']}")
+
+    r = requests.get(urljoin(BASE, r.headers['Location']))
     assert r.status_code == 200
     assert r.text == "Hello, World!"
     print("Simple POST test passed.")
@@ -267,11 +282,11 @@ def test_post_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
     header = {"Content-Type": "text/plain",
               "Content-Length": "10000000"}
-    r = requests.post(f"{BASE[:-1]}/uploads2/", headers=header, data=large_content)
+    r = requests.post(f"{BASE}/uploads2/", headers=header, data=large_content)
     assert r.status_code == 201
 
     assert 'Location' in r.headers
-    r = requests.get(f"{BASE[:-1]}{r.headers['Location']}")
+    r = requests.get(urljoin(BASE, r.headers['Location']))
     assert r.status_code == 200
     assert r.text == large_content
     print("POST large file test passed.")
@@ -319,19 +334,27 @@ def test_post_chunked_transfer():
         b"0\r\n"
         b"\r\n"
     )
-    resp = send_raw(req)
-    assert resp, "server sent no response (it may have kept the connection open)"
-    assert b"201" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
-    r = requests.get(f"{BASE}uploads/chunked.txt")
+    raw_resp = send_raw(req)
+    assert raw_resp, "server sent no response (it may have kept the connection open)"
+
+    status_line, headers, body = parse_http_response(raw_resp)
+
+    # check we got a 201 response
+    assert status_line.startswith("HTTP/1.1 201"), f"unexpected status line: {status_line}"
+
+    assert "Location" in headers, "missing Location header"
+    resource_url = urljoin(BASE, headers["Location"])
+
+    r = requests.get(resource_url)
     assert r.status_code == 200
     assert r.text == "MozillaDeveloperNetwork"
-    os.remove(f"{HOME}/www/app/uploads/chunked.txt")
     print("POST chunked transfer test passed.")
 
 def test_post_chunked_large_file():
     large_content = "A" * 10_000_000  # 10 MB of 'A's
     chunk_size = 4096
     chunks = [large_content[i:i+chunk_size] for i in range(0, len(large_content), chunk_size)]
+
     req = (
         b"POST /uploads2/ HTTP/1.1\r\n"
         b"Host: localhost\r\n"
@@ -342,15 +365,19 @@ def test_post_chunked_large_file():
     for chunk in chunks:
         req += f"{len(chunk):X}\r\n".encode() + chunk.encode() + b"\r\n"
     req += b"0\r\n\r\n"
-    
-    resp = send_raw(req)
-    assert resp, "server sent no response (it may have kept the connection open)"
-    assert b"201" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
-    
-    r = requests.get(f"{BASE}uploads2/chunked_large.txt")
+
+    raw_resp = send_raw(req)
+    assert raw_resp, "server sent no response (it may have kept the connection open)"
+
+    status_line, headers, body = parse_http_response(raw_resp)
+    assert status_line.startswith("HTTP/1.1 201"), f"unexpected status line: {status_line}"
+
+    assert "Location" in headers, "missing Location header"
+    resource_url = urljoin(BASE, headers["Location"])
+
+    r = requests.get(resource_url)
     assert r.status_code == 200
     assert r.text == large_content
-    os.remove(f"{HOME}/www/app/uploads2/chunked_large.txt")
     print("POST chunked transfer large file test passed.")
 
 def test_post_chunked_transfer_invalid_header():
@@ -427,10 +454,109 @@ def test_post_chunked_extra_data_after_last_chunk():
     assert b"400" in resp or b"HTTP/1.1" in resp, "unexpected server reaction"
     print("POST chunked transfer with extra data after last chunk test passed.")
 
-# test_timeout()
-# test_keep_alive()
-# test_exceed_max_body_size()
-# test_exceed_max_header_size()
+def test_keep_alive():
+    sock = socket.create_connection((HOST, PORT), timeout=5)
+
+    req1 = (
+        b"GET /index.html HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Connection: keep-alive\r\n"
+        b"\r\n"
+    )
+    sock.sendall(req1)
+
+    resp1 = b""
+    sock.settimeout(1)
+    while True:
+        try:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            resp1 += chunk
+            if b"\r\n\r\n" in resp1:  # crude stop after headers (or you could parse Content-Length)
+                break
+        except socket.timeout:
+            break
+
+    assert b"200 OK" in resp1, "first response not 200 OK"
+
+    # ---- Second request (close) ----
+    req2 = (
+        b"GET /second/test.txt HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Connection: close\r\n"
+        b"\r\n"
+    )
+    sock.sendall(req2)
+
+    resp2 = b""
+    while True:
+        chunk = sock.recv(4096)
+        if not chunk:  # server closed after response
+            break
+        resp2 += chunk
+
+    assert b"200 OK" in resp2, "second response not 200 OK"
+    assert b"Connection: close" in resp2, "second response missing Connection: close"
+
+    # ---- Verify connection is closed ----
+    try:
+        extra = sock.recv(1024)
+        assert extra == b"", f"expected closed connection, got extra data: {extra}"
+    except Exception:
+        pass  # already closed
+
+    sock.close()
+    print("Keep-Alive reuse + Connection: close test passed.")
+
+
+def test_max_request_size_exceeded():
+    body = b"A" * 2048
+    req = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: size_limit.com\r\n"
+        b"Content-Type: text/plain\r\n"
+        + f"Content-Length: {len(body)}\r\n".encode()
+        + b"\r\n"
+        + body
+    )
+
+    resp = send_raw(req)
+    status_line, headers, body_resp = parse_http_response(resp)
+
+    assert status_line.startswith("HTTP/1.1 400"), f"expected 400, got {status_line}"
+    print("Max request size exceeded test passed.")
+
+
+def test_timeout():
+    sock = socket.create_connection((HOST, PORT), timeout=5)
+
+    # Declare a big body so server expects more data
+    body_size = 5000
+    headers = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: timeout.com\r\n"
+        + f"Content-Length: {body_size}\r\n".encode()
+        + b"Content-Type: text/plain\r\n"
+        b"\r\n"
+    )
+    sock.sendall(headers)
+
+    time.sleep(3)
+    sock.settimeout(1)
+    try:
+        data = sock.recv(1024)
+        if data == b"":
+            print("Server closed connection after timeout (EOF)")
+        else:
+            print("Server responded:", data[:100])
+    except ConnectionResetError:
+        print("Server reset connection after timeout")
+    except socket.timeout:
+        assert False, "Server did not close connection after timeout"
+    sock.close()
+    print("Timeout test passed.")
+
 # test_cgi_execution()
 
 
@@ -463,21 +589,26 @@ def run_all():
     test_delete_folder_more()
     test_delete_with_body()
 
-    #test_simple_post()
-    #test_post_large_file()
-    #test_post_without_content_length()
-    #test_post_exceeding_content_length()
-    #test_post_chunked_transfer()
-    #test_post_chunked_large_file()
-    #test_post_chunked_transfer_invalid_header()
-    #test_post_chunked_incorrect_chunk_size()
-    #test_post_chunked_incorrect_chunk_tail()
-    #test_post_chunked_extra_data_after_last_chunk()
+    test_simple_post()
+    test_post_large_file()
+    test_post_without_content_length()
+    test_post_exceeding_content_length()
+    test_post_chunked_transfer()
+    test_post_chunked_large_file()
+    test_post_chunked_transfer_invalid_header()
+    test_post_chunked_incorrect_chunk_size()
+    test_post_chunked_incorrect_chunk_tail()
+    test_post_chunked_extra_data_after_last_chunk()
+
+    #test_keep_alive()
+    test_max_request_size_exceeded()
+    test_timeout()
+
     print("All tests passed.")
 
 def run_one():
-    test_get_redirect()
+    test_timeout()
 
 if __name__=="__main__":
-    test_get_html()
+    run_all()
     #run_one()

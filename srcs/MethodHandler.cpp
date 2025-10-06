@@ -131,10 +131,10 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	return (std::move(requested_));
 }
 
-t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string & targetRef, const std::string &root)
+t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestHeader, std::string &targetRef, const std::string &root)
 {
 	LOG_TRACE("Calling POST: ", path);
-	if (checkFileCount(root) > 25)
+	if (checkFileCount(root) > 20000)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Too Many Files, Delete Some");
 	if (requestHeader.contains("multipart/form"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Requet, Multipart/Form Not Found");
@@ -149,7 +149,7 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 	else
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Type");
 	std::filesystem::path filename = createRandomFilename(path, extension);
-	std::string result = targetRef + '/' + filename.filename().string();
+	std::string result = targetRef.back() == '/' ? targetRef + filename.filename().string() : targetRef + '/' + filename.filename().string();
 	LOG_DEBUG("postFilename: ", result);
 	requested_.postFilename = result;
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
@@ -243,7 +243,7 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 	LOG_DEBUG("realPath: ", targetRef);
 	LOG_DEBUG("Canonical: ", path);
 	if (!targetRef.empty() && targetRef.back() != '/' && targetRef.back() != std::filesystem::path::preferred_separator)
-		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/'); //TODO @Mohammad use this string to create a url that is included in the response
+		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/'); // TODO @Mohammad use this string to create a url that is included in the response
 	LOG_TRACE("This is a directory: ", path);
 	if (locations.contains(rootDestination))
 	{
@@ -311,7 +311,7 @@ std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, std:
 	{
 		std::string name = entry.path().filename().string();
 		if (std::filesystem::is_directory(name))
-			name += '/';	
+			name += '/';
 		std::string link = "<a href=\"" + name + "\">" + name + "</a>";
 		page.append("<li>" + link + "</li>");
 	}

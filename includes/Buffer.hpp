@@ -11,6 +11,13 @@
 static constexpr size_t MAX_CHUNK_HEADER_SPACE = 20;
 static constexpr size_t CRLF = 2; // CRLF size
 
+typedef enum e_scratch_type
+{
+    None,
+    Header,
+    Body
+} t_scratch_type;
+
 typedef enum e_chunked_status
 {
     NEXT_HEADER,
@@ -59,8 +66,10 @@ private:
     size_t write_pos_;                       // The current write position in the last block
     size_t size_;                            // The current size of the buffer.
     size_t block_size_;                      // The size of each block in the buffer.
-    size_t remain_header_size_;              // The remain size of the incomplete chunk header left in data_.
-    size_t remain_body_size_;                // The remain size of the chunk body which is waiting for the delimiter in data_.
+    t_scratch_type scratch_type_;            // The current scratch type.
+    std::string scratched_;                  // The scratched data for chunked transfer.
+    //size_t remain_header_size_;              // The remain size of the incomplete chunk header left in data_.
+    //size_t remain_body_size_;                // The remain size of the chunk body which is waiting for the delimiter in data_.
     size_t remain_chunk_size_;               // The remain size of the chunk in chunked mode.
     bool is_chunked_;                        // Whether the buffer is in chunked mode.
     bool is_eof_;                            // Whether the EOF has been reached in chunked mode.

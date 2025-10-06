@@ -125,8 +125,9 @@ t_msg_from_serv Server::timeoutKiller()
         size_t max_request_timeout = it->config_idx != -1 ? configs_[it->config_idx].max_request_timeout : GLOBAL_REQUEST_TIMEOUT;
         if (difftime(now, it->last_heartbeat) > max_heartbeat_timeout || difftime(now, it->start_timestamp) > max_request_timeout)
         {
+            LOG_WARN("Connection timed out: ", it->socket_fd);
             int fd = it->socket_fd;
-            t_msg_from_serv temp = closeConn(&*it);
+            t_msg_from_serv temp = closeConn(&(*it));
             msg.fds_to_unregister.insert(
                 msg.fds_to_unregister.end(),
                 temp.fds_to_unregister.begin(),
@@ -240,7 +241,16 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
+        {
             conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestHeaderMap().at("content-length")));
+            if (conn->content_length > configs_[conn->config_idx].max_request_size)
+            {
+                conn->error_code = ERR_400_BAD_REQUEST;
+                conn->error_message = "Content length is too big";
+                return resheaderProcessingHandler(conn);
+            }
+        }
+            
         else
         {
             // For GET/DELETE, no body is expected
@@ -435,7 +445,9 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn, bool is
         // EOF reached, should not be here since header has not been parsed yet.
         if (bytes_read == EOF_REACHED)
         {
-            LOG_ERROR("EOF reached while reading from socket for fd: ", fd);
+            if (conn->bytes_received == conn->content_length)
+                return defaultMsg();
+            LOG_ERROR("EOF reached while reading from socket for fd: ", fd, " content_length: ", conn->content_length, " bytes_received: ", conn->bytes_received);
             conn->error_code = ERR_400_BAD_REQUEST;
             return resheaderProcessingHandler(conn);
         }
@@ -472,14 +484,19 @@ t_msg_from_serv Server::reqBodyProcessingInHandler(int fd, t_conn *conn, bool is
     if (is_chunked_eof_reached)
     {
         LOG_INFO("Chunked request body fully received for fd: ", fd);
-        conn->content_length = conn->read_buf->size();
+        conn->content_length = conn->bytes_received;
+        if (conn->read_buf.get()->isEmpty())
+        {
+            LOG_INFO("Data received and wroten", conn->socket_fd);
+            return resheaderProcessingHandler(conn);
+        }
         return defaultMsg(); // Wait for the main loop to notify when inner fd is ready.
     }
 
     const bool is_content_length_exceeded = conn->bytes_received > conn->content_length;
     if (is_content_length_exceeded || conn->read_buf->isEOF())
     {
-        LOG_ERROR("Request size exceeded or EOF reached but content length not reached for fd: ", fd);
+        LOG_ERROR("Request size exceeded or EOF reached but content length not reached for fd: ", fd, " bytes_received: ", conn->bytes_received, " content-length: ", conn->content_length);
         // TODO: delete the created file.
         conn->error_code = ERR_400_BAD_REQUEST;
         return resheaderProcessingHandler(conn);
