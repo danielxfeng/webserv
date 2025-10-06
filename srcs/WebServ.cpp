@@ -94,7 +94,7 @@ WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
 
     std::unordered_map<size_t, std::vector<t_server_config>> ports_map;
 
-    // Validate server instances based on the configuration.
+    // Validate server porst and servernames
     for (auto it = config_.servers.begin(); it != config_.servers.end(); ++it)
     {
         auto port = it->port;
@@ -114,10 +114,7 @@ WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
     for (auto it = config_.servers.begin(); it != config_.servers.end(); ++it)
     {
         auto port = it->port;
-        if (ports_map.contains(port))
-            ports_map.at(port).push_back(*it);
-        else
-            ports_map.emplace(port, std::vector<t_server_config>{*it});
+        ports_map.emplace(port, std::vector<t_server_config>{*it});
     }
     for (auto &kv : ports_map)
         servers_.push_back(Server(epoll_, kv.second));
