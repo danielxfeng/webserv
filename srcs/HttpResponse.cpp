@@ -13,7 +13,6 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
 {
     std::string cookieStr = cookie.set(*conn->request);
     std::string connection = conn->request->getrequestHeaderMap()["connection"];
-    std::cout << "RUN fom Response" << std::endl;
     std::string res_target = conn->request->getrequestLineMap()["Target"];
     std::string content_type;
     if (!conn->res.isDynamic && res_target.find(".") != std::string::npos)
@@ -75,7 +74,6 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
     }
-    std::cout << result << std::endl;
     return (result);
 }
 

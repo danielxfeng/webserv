@@ -31,8 +31,6 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	else
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Target does not exist");
 	std::string chosenMethod;
-	std::cout << requestLine["Method"] << std::endl;
-
 	if (!requestLine.contains("Method"))
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Method does not exist");
 	chosenMethod = requestLine["Method"];
@@ -355,7 +353,6 @@ std::string MethodHandler::generateDynamicPage(std::filesystem::path &path, std:
 	}
 
 	page.append("</ul>\n</body>\n</html>\n");
-	std::cout << "Page Size: " << page.size() << std::endl;
 	return (page);
 }
 
