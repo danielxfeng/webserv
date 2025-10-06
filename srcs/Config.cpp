@@ -24,6 +24,8 @@ t_status_error_codes stringToErrCode(std::string str)
         return ERR_409_CONFLICT;
     if (str == "500")
         return ERR_500_INTERNAL_SERVER_ERROR;
+    if (str == "501")
+        return ERR_501_NOT_IMPLEMENTED;
     throw std::invalid_argument("invalid error code");
 }
 
