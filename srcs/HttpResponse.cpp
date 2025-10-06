@@ -65,6 +65,7 @@ std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
                                     "</html>";
         result.append("HTTP/1.1").append(" 204 OK\r\n");
         result.append("Content-Type: text/html\r\n");
+        result.append("Connection: ").append(request->getrequestHeaderMap().at("connetion")).append("\r\n");
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(deleteSuccess.size())).append("\r\n\r\n");
         result.append(deleteSuccess);
