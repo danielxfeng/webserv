@@ -558,7 +558,7 @@ def test_timeout():
     sock.close()
     print("Timeout test passed.")
 
-def test_simple_cgi():
+def test_simple_get_cgi():
     sock = socket.create_connection((HOST, PORT_CGI), timeout=5)
 
     req = (
@@ -585,6 +585,25 @@ def test_simple_cgi2():
     r = requests.get(f"{BASE_CGI}test.py")
     print("Status code:", r.status_code)
     print("Simple CGI test passed.")
+
+def test_simple_cgi_post():
+    r = requests.post(f"{BASE_CGI}test.py", data="Hello from POST")
+    print("Status code:", r.status_code)
+    print("Response body:", r.text)
+    print("Simple CGI POST test passed.")
+
+def test_cgi_post_large():
+    large_content = "A" * 50_000_000  # 50 MB of 'A's
+    r = requests.post(f"{BASE_CGI}test.py", data=large_content)
+    print("Status code:", r.status_code)
+    print("Response body length:", len(r.text))
+    print("CGI POST large test passed.")
+
+def test_simple_cgi_get_go():
+    r = requests.get(f"{BASE_CGI}test.go")
+    print("Status code:", r.status_code)
+    print("Response body:", r.text)
+    print("Simple CGI Go test passed.")
 
 
 def run_all():
@@ -636,7 +655,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_cgi2()
+    test_cgi_post_large()
 
 if __name__=="__main__":
     #run_all()

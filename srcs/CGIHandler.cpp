@@ -38,14 +38,8 @@ void CGIHandler::setENVP(
     };
 
     for (const auto &kv : requestLine) {
-        if (kv.first == "method")
+        if (kv.first == "Method")
             addToENVP("REQUEST_METHOD", kv.second);
-        else if (kv.first == "uri")
-            addToENVP("SCRIPT_NAME", kv.second);
-        else if (kv.first == "query")
-            addToENVP("QUERY_STRING", kv.second);
-        else if (kv.first == "version")
-            addToENVP("SERVER_PROTOCOL", kv.second);
         else {
             std::string upper;
             for (char c : kv.first)
