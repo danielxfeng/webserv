@@ -155,8 +155,15 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
 
 std::string HttpResponse::CGIResponse(std::string_view cgiString)
 {
-    std::string result = "";
-    LOG_DEBUG("****************CGI STRING: ", cgiString);
-
+    LOG_DEBUG("***********************Check CGI response Parser Function ", cgiString);
+    std::string result;
+    std::string htmlPage;
+    std::string_view status;
+    if (cgiString.substr(0,7) == "Status: "){
+        status = cgiString.substr(8,cgiString.size());
+        result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
+    }
+    else
+        throw WebServErr::InvalidCgiHeader("CGI has no status");
     return (result);
 }
