@@ -157,13 +157,22 @@ std::string HttpResponse::CGIResponse(std::string_view cgiString)
 {
     LOG_DEBUG("***********************Check CGI response Parser Function ", cgiString);
     std::string result;
-    std::string htmlPage;
-    std::string_view status;
-    if (cgiString.substr(0,7) == "Status: "){
-        status = cgiString.substr(8,cgiString.size());
-        result.append("HTTP/1.1").append(" ").append(status).append("\r\n");
+    std::string cleanStatus;
+    bool has_status = false;
+
+    if (cgiString.empty())
+        throw WebServErr::CgiHeaderNotFound("CGI header is empty");
+
+    std::string_view status = cgiString.substr(0, 7);
+    if (status == "Status: ")
+        has_status = true;
+    if (has_status)
+    {
+        cleanStatus = cgiString.substr(8, cgiString.size());
+        result.append("HTTP/1.1").append(" ").append(cleanStatus).append("\r\n");
     }
     else
         throw WebServErr::InvalidCgiHeader("CGI has no status");
+
     return (result);
 }
