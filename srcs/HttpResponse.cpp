@@ -160,16 +160,20 @@ std::string HttpResponse::CGIResponse(std::string_view cgiString)
     std::string cleanStatus;
     bool has_status = false;
 
-    if (cgiString.empty())
-        throw WebServErr::CgiHeaderNotFound("CGI header is empty");
+    if (cgiString.empty() || (cgiString.size() <8))
+        throw WebServErr::CgiHeaderNotFound("CGI header is not correct");
 
     std::string_view status = cgiString.substr(0, 8);
     if (status == "Status: ")
         has_status = true;
     if (has_status)
     {
-        cleanStatus = cgiString.substr(9, cgiString.size());
-        result.append("HTTP/1.1").append(" ").append(cleanStatus).append("\r\n");
+        if(cgiString.size() > 8){
+            cleanStatus = cgiString.substr(8, cgiString.size());
+            result.append("HTTP/1.1").append(" ").append(cleanStatus).append("\r\n");
+        }
+        else
+            throw WebServErr::CgiHeaderNotFound("CGI header is correct");
     }
     else
         throw WebServErr::InvalidCgiHeader("CGI has no status");
