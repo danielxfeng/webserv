@@ -636,7 +636,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_cgi()
+    test_simple_cgi2()
 
 if __name__=="__main__":
     #run_all()

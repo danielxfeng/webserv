@@ -235,6 +235,7 @@ ssize_t Buffer::readFd(int fd)
 
     if (read_bytes == 0)
     {
+        LOG_DEBUG("Buffer::readFd: EOF reached", "");
         is_eof_ = true;
         return EOF_REACHED;
     }

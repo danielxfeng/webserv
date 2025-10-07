@@ -7,6 +7,7 @@ A very simple Python CGI application that handles GET and POST requests.
 
 MAX_CONTENT_LENGTH = 1000 * 1024 * 1024
 
+BASE_DIR = "/home/xifeng/www/cgi/python"
 
 class CGIError(Exception):
     error_map = {
@@ -73,8 +74,11 @@ class Response:
             f"Content-Length: {len(body)}\r\n"
             "\r\n"
         )
-        sys.stdout.write(headers)
-        sys.stdout.buffer.write(body)
+        with open("python", "w") as err:
+            err.write(f"Response headers: {headers}\n")
+            err.write(f"Response Body: {body}\n")
+        sys.stdout.write(headers + self.message)
+        sys.stdout.buffer.flush()
 
 class Header:
     def __init__(self):

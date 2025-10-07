@@ -1,4 +1,5 @@
 #include "../includes/Server.hpp"
+#include "../includes/WebServ.hpp"
 
 void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
 {
@@ -7,7 +8,7 @@ void resetConn(t_conn *conn, int socket_fd, size_t max_request_size)
     conn->inner_fd_out = -1;
     conn->config_idx = -1;
     conn->is_cgi = false;
-    conn->cgi_header_ready = true;
+    conn->cgi_header_ready = false;
     conn->status = REQ_HEADER_PARSING;
     conn->start_timestamp = time(NULL);
     conn->last_heartbeat = conn->start_timestamp;
@@ -38,7 +39,7 @@ t_msg_from_serv defaultMsg()
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
 }
 
-Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), cookies_(), conns_(), conn_map_(), inner_fd_map_()
+Server::Server(WebServ &webserv, EpollHelper &epoll, const std::vector<t_server_config> &configs) : webserv_(webserv), epoll_(epoll), configs_(configs), cookies_(), conns_(), conn_map_(), inner_fd_map_()
 {
     for (size_t i = 0; i < configs_.size(); ++i)
         cookies_.emplace_back();
@@ -360,6 +361,29 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         LOG_INFO("Resource prepared for fd: ", fd, " file size: ", conn->res.fileSize, " isDynamic: ", conn->res.isDynamic);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         conn->is_cgi = configs_[conn->config_idx].is_cgi;
+        if (conn->is_cgi)
+        {
+            conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
+            webserv_.addFdToEpoll(std::move(conn->res.FD_handler_IN), this);
+            conn_map_.emplace(conn->inner_fd_in, conn);
+            conn->inner_fd_out = conn->res.FD_handler_OUT.get()->get();
+            webserv_.addFdToEpoll(std::move(conn->res.FD_handler_OUT), this);
+            conn_map_.emplace(conn->inner_fd_out, conn);
+            LOG_INFO("Switching to processing state for fd: ", fd);
+            switch (method)
+            {
+                case GET:
+                case DELETE:
+                    conn->status = RES_HEADER_PROCESSING;
+                    return resheaderProcessingHandler(conn);
+                case POST:
+                    conn->status = REQ_BODY_PROCESSING;
+                    return reqBodyProcessingInHandler(conn->socket_fd, conn, true);
+                default:
+                    throw WebServErr::ShouldNotBeHereException("Unhandled method after parsing header");
+            }
+        }
+
         LOG_INFO("Method determined: ", conn->request->getrequestLineMap().at("Method"), " for fd: ", fd, "and is_cgi: ", conn->is_cgi);
         switch (method)
         {
@@ -381,19 +405,6 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
             conn->status = REQ_BODY_PROCESSING;
             LOG_INFO("Switching to processing state for fd: ", fd);
             return reqBodyProcessingInHandler(fd, conn, true);
-        }
-        case CGI:
-        {
-            t_msg_from_serv msg = {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
-            conn->inner_fd_in = conn->res.FD_handler_IN.get()->get();
-            msg.fds_to_register.push_back(std::move(conn->res.FD_handler_IN));
-            conn_map_.emplace(conn->inner_fd_in, conn);
-            conn->inner_fd_out = conn->res.FD_handler_OUT.get()->get();
-            msg.fds_to_register.push_back(std::move(conn->res.FD_handler_OUT));
-            conn_map_.emplace(conn->inner_fd_out, conn);
-            LOG_INFO("Switching to processing state for fd: ", fd);
-            conn->status = REQ_BODY_PROCESSING;
-            return msg;
         }
         default:
             throw WebServErr::ShouldNotBeHereException("Unhandled method after parsing header");
@@ -626,6 +637,15 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
         conn->output_length = header.size() + size_error_page;
         return defaultMsg();
     }
+
+    if (conn->is_cgi)
+    {
+        conn->output_length = configs_[conn->config_idx].max_request_size; // Unknown length, send until EOF
+        LOG_INFO("CGI: set output_length to max_request_size", conn->output_length, " status: ", conn->status);
+        return defaultMsg(); // Wait for CGI to produce output
+    }
+
+
     t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
 
     switch (method)
@@ -636,9 +656,6 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     case DELETE:
     case POST:
         conn->output_length = header.size();
-        break;
-    case CGI:
-        conn->output_length = configs_[conn->config_idx].max_request_size; // Unknown length, send until EOF
         break;
     default:
         throw WebServErr::ShouldNotBeHereException("Unhandled method in response header processing");
@@ -680,7 +697,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
         return terminatedHandler(fd, conn);
     }
 
-    if (bytes_read == EOF_REACHED)
+    if (bytes_read == EOF_REACHED || conn->write_buf->isEOF())
     {
         conn->output_length = conn->write_buf->size();
         t_msg_from_serv msg = defaultMsg();
@@ -697,6 +714,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
         return defaultMsg();
 
     LOG_INFO("Data read from internal fd for fd: ", fd, " bytes: ", bytes_read, " total: ", conn->write_buf->size());
+    LOG_DEBUG("is_cgi: ", conn->is_cgi, " cgi_header_ready: ", conn->cgi_header_ready);
     if (conn->is_cgi && !conn->cgi_header_ready)
     {
         try
@@ -759,6 +777,8 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
             return terminatedHandler(fd, conn);
         }
     }
+
+    //LOG_DEBUG("Response Out Handler: fd: ", fd, " write_buffer: ", conn->write_buf->peek());
 
     // Skip when buffer is empty
     if (conn->write_buf->isEmpty())
@@ -929,7 +949,7 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
         case WRITE_EVENT:
             if (fd != conn->socket_fd)
             {
-                LOG_WARN("Invalid fd for RESPONSE WRITE_EVENT for fd: ", fd);
+                //LOG_WARN("Invalid fd for RESPONSE WRITE_EVENT for fd: ", fd);
                 return defaultMsg();
             }
             return responseOutHandler(fd, conn);

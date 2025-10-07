@@ -104,7 +104,7 @@ WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
     }
    
     for (auto &kv : ports_map)
-        servers_.push_back(Server(epoll_, kv.second));
+        servers_.push_back(Server(*this, epoll_, kv.second));
 }
 
 void WebServ::eventLoop()
@@ -191,10 +191,7 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, Server *server)
 {
     for (const auto &fd : msg.fds_to_register)
     {
-        fds_.push_back(fd);
-        fds_.back()->addToEpoll();
-        conn_map_[fds_.back()->get()] = server;
-        LOG_INFO("Registered fd to epoll:", fds_.back()->get());
+        addFdToEpoll(fd, server);
     }
     for (const auto &fd : msg.fds_to_unregister)
     {
@@ -204,6 +201,14 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, Server *server)
                        { return rfd->get() == fd; });
         LOG_INFO("Unregistered fd from epoll and removed from maps:", fd);
     }
+}
+
+void WebServ::addFdToEpoll(const std::shared_ptr<RaiiFd> fd, Server *server)
+{
+    fds_.push_back(fd);
+    fds_.back()->addToEpoll();
+    conn_map_[fds_.back()->get()] = server;
+    LOG_INFO("Registered fd to epoll:", fds_.back()->get());
 }
 
 WebServ::~WebServ()

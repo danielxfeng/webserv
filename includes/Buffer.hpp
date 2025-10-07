@@ -7,6 +7,7 @@
 #include <string_view>
 #include "WebServErr.hpp"
 #include "SharedTypes.hpp"
+#include "LogSys.hpp"
 
 static constexpr size_t MAX_CHUNK_HEADER_SPACE = 20;
 static constexpr size_t CRLF = 2; // CRLF size

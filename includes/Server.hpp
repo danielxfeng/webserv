@@ -21,6 +21,7 @@
 
 class Config;
 class Cookie;
+class WebServ;
 
 /**
  * @brief Server class to manage connections.
@@ -32,6 +33,7 @@ class Cookie;
 class Server
 {
 private:
+    WebServ &webserv_;                                              // Reference to the WebServ instance
     EpollHelper &epoll_;                                            // Reference to the epoll helper
     std::vector<t_server_config> configs_;                          // List of server configurations
     std::vector<Cookie> cookies_;                                   // List of server cookies
@@ -97,7 +99,7 @@ private:
 
 public:
     Server() = delete;
-    Server(EpollHelper &epoll, const std::vector<t_server_config> &configs);
+    Server(WebServ &webserv, EpollHelper &epoll, const std::vector<t_server_config> &configs);
     Server(const Server &) = default;
     Server(Server &&) = default;
     Server &operator=(const Server &) = delete;

@@ -52,4 +52,8 @@ public:
      * @brief Main event loop for the web server.
      */
     void eventLoop();
+    /**
+     * @brief Add a file descriptor to the epoll instance.
+     */
+    void addFdToEpoll(const std::shared_ptr<RaiiFd> fd, Server *server);
 };
