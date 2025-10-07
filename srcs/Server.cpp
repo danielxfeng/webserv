@@ -38,12 +38,12 @@ t_msg_from_serv defaultMsg()
     return {std::vector<std::shared_ptr<RaiiFd>>{}, std::vector<int>{}};
 }
 
-Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), cookies_(), conns_(), conn_map_(), inner_fd_map_() 
+Server::Server(EpollHelper &epoll, const std::vector<t_server_config> &configs) : epoll_(epoll), configs_(configs), cookies_(), conns_(), conn_map_(), inner_fd_map_()
 {
     for (size_t i = 0; i < configs_.size(); ++i)
         cookies_.emplace_back();
 
-    for (auto &config: configs_)
+    for (auto &config : configs_)
     {
         LOG_INFO("server config:", config.server_name, config.err_pages[ERR_404_NOT_FOUND]);
     }
@@ -82,7 +82,7 @@ t_msg_from_serv Server::resetConnMap(t_conn *conn)
             msg.fds_to_unregister.push_back(conn->inner_fd_in);
         else
             inner_fd_map_.erase(conn->inner_fd_in);
-        
+
         conn->inner_fd_in = -1;
     }
 
@@ -227,10 +227,12 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
         }
         LOG_INFO("select config_idx", configs_[conn->config_idx].server_name);
 
-        try {
+        try
+        {
             auto lineMap = conn->request->getrequestLineMap();
             RedirectHandler().checkRedirection(configs_[conn->config_idx], lineMap);
-        } catch (WebServErr::MethodException &e)
+        }
+        catch (WebServErr::MethodException &e)
         {
             conn->error_code = e.code();
             conn->error_message = e.what();
@@ -239,7 +241,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
 
         conn->content_length = configs_[conn->config_idx].max_request_size;
         conn->output_length = configs_[conn->config_idx].max_request_size;
-        
+
         LOG_DEBUG("has method?: ", conn->request->getrequestLineMap().contains("Method"));
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         if (conn->request->getrequestHeaderMap().contains("content-length"))
@@ -252,7 +254,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
                 return resheaderProcessingHandler(conn);
             }
         }
-            
+
         else
         {
             // For GET/DELETE, no body is expected
@@ -597,7 +599,8 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
             size_error_page += err_page.fileSize;
         }
         catch (const WebServErr::ErrorResponseException &)
-        {}
+        {
+        }
     }
 
     LOG_INFO("the size_error_page", size_error_page, "inner_fd_out", conn->inner_fd_out);
@@ -606,14 +609,12 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
                                    ? conn->response->successResponse(conn, cookies_[conn->config_idx])
                                    : conn->response->failedResponse(conn, conn->error_code, conn->error_message, size_error_page, cookies_[conn->config_idx]);
 
-    
-
     LOG_INFO("Response header prepared for fd: ", conn->socket_fd, "\n", header);
 
     conn->status = RESPONSE;
     conn->bytes_sent = 0;
 
-    if (!conn->is_cgi ||  conn->error_code != ERR_NO_ERROR)
+    if (!conn->is_cgi || conn->error_code != ERR_NO_ERROR)
         conn->write_buf->insertHeader(header);
 
     LOG_INFO("Response header size for fd: ", conn->socket_fd, " size: ", header.size());
@@ -630,7 +631,7 @@ t_msg_from_serv Server::resheaderProcessingHandler(t_conn *conn)
     switch (method)
     {
     case GET:
-        conn->output_length = conn->res.isDynamic ? header.size() :  header.size() + conn->res.fileSize;
+        conn->output_length = conn->res.isDynamic ? header.size() : header.size() + conn->res.fileSize;
         break;
     case DELETE:
     case POST:
@@ -694,10 +695,13 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
     if (bytes_read == BUFFER_FULL)
         return defaultMsg();
 
+    LOG_DEBUG("**********************************", "Befor the CGI response handller");
     if (conn->is_cgi && !conn->cgi_header_ready)
     {
-        try {
-            const std::string header = conn->response->cgiParser(conn->write_buf->peek());
+        try
+        {
+            LOG_DEBUG("**********************************", "test");
+            const std::string header = conn->response->CGIResponse(conn->write_buf->peek());
             if (!conn->write_buf->replaceHeader(header))
             {
                 LOG_ERROR("Failed to replace CGI header in buffer for fd: ", fd);
@@ -757,10 +761,9 @@ t_msg_from_serv Server::responseOutHandler(int fd, t_conn *conn)
     // Skip when buffer is empty
     if (conn->write_buf->isEmpty())
     {
-        //LOG_TRACE("buffer is empty.", conn->bytes_sent, " , ", conn->output_length);
+        // LOG_TRACE("buffer is empty.", conn->bytes_sent, " , ", conn->output_length);
         return defaultMsg();
     }
-        
 
     // Write data to socket
     ssize_t bytes_written = conn->write_buf->writeSocket(fd);
@@ -872,9 +875,9 @@ t_msg_from_serv Server::scheduler(int fd, t_event_type event_type)
     if (event_type == ERROR_EVENT)
         return terminatedHandler(fd, conn);
 
-    //if (event_type == 0)
-    //    LOG_DEBUG("scheduler: fd: ", fd, " status: ", status, " type: ", event_type);
-    
+    // if (event_type == 0)
+    //     LOG_DEBUG("scheduler: fd: ", fd, " status: ", status, " type: ", event_type);
+
     switch (status)
     {
     case REQ_HEADER_PARSING:
