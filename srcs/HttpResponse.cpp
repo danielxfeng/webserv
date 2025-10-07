@@ -163,12 +163,12 @@ std::string HttpResponse::CGIResponse(std::string_view cgiString)
     if (cgiString.empty())
         throw WebServErr::CgiHeaderNotFound("CGI header is empty");
 
-    std::string_view status = cgiString.substr(0, 7);
+    std::string_view status = cgiString.substr(0, 8);
     if (status == "Status: ")
         has_status = true;
     if (has_status)
     {
-        cleanStatus = cgiString.substr(8, cgiString.size());
+        cleanStatus = cgiString.substr(9, cgiString.size());
         result.append("HTTP/1.1").append(" ").append(cleanStatus).append("\r\n");
     }
     else
