@@ -10,6 +10,7 @@ MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 	requested_.expectedSize = 0;
 	requested_.fileSize = 0;
 	requested_.isDynamic = false;
+	requested_.pid = -1;
 	LOG_TRACE("Method Handler created", " Yay!");
 }
 

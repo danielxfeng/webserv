@@ -7,6 +7,7 @@ CGIHandler::CGIHandler(EpollHelper &epoll_helper)
 	result.expectedSize = 0;
 	result.fileSize = 0;
 	result.isDynamic = false;
+	result.pid = -1;
 }
 
 CGIHandler::~CGIHandler()
@@ -145,19 +146,19 @@ t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "outPipe failed to initialize");
 	result.FD_handler_IN->setFd(inPipe[WRITE]);
 	result.FD_handler_OUT->setFd(outPipe[READ]);
-	pid_t pid = fork();
-	if (pid == -1)
+	result.pid = fork();
+	if (result.pid == -1)
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "CGI Failed to fork");
 
 	std::string cmd = isInterpreter ? interpreter : prog_name;
-	if (pid == 0)
+	if (result.pid == 0)
 	{
 		handleCGIProcess(argv.data(), rootPath, cmd, inPipe, outPipe);
 		return {}; // We cannot throw or exit in child process
 	}
 		
 	int status;
-	waitpid(pid, &status, WNOHANG);
+	waitpid(result.pid, &status, WNOHANG);
 	close(inPipe[READ]);
 	close(outPipe[WRITE]);
 	return (result);

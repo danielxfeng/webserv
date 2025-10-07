@@ -52,6 +52,7 @@ typedef struct s_file
     bool isDynamic;
     std::string dynamicPage;
     std::string postFilename;
+    pid_t pid;
 } t_file;
 
 /**
