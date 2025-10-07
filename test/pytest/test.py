@@ -582,7 +582,7 @@ def test_simple_cgi():
     print("Simple CGI test passed.")
 
 def test_simple_cgi2():
-    r = requests.get(f"{BASE_CGI}test.i")
+    r = requests.get(f"{BASE_CGI}test.py")
     print("Status code:", r.status_code)
     print("Simple CGI test passed.")
 
@@ -636,7 +636,7 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_cgi2()
+    test_simple_cgi()
 
 if __name__=="__main__":
     #run_all()

@@ -360,7 +360,7 @@ t_msg_from_serv Server::reqHeaderProcessingHandler(int fd, t_conn *conn)
         LOG_INFO("Resource prepared for fd: ", fd, " file size: ", conn->res.fileSize, " isDynamic: ", conn->res.isDynamic);
         t_method method = convertMethod(conn->request->getrequestLineMap().at("Method"));
         conn->is_cgi = configs_[conn->config_idx].is_cgi;
-        LOG_INFO("Method determined: ", conn->request->getrequestLineMap().at("Method"), " for fd: ", fd);
+        LOG_INFO("Method determined: ", conn->request->getrequestLineMap().at("Method"), " for fd: ", fd, "and is_cgi: ", conn->is_cgi);
         switch (method)
         {
         case GET:
@@ -682,6 +682,7 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
 
     if (bytes_read == EOF_REACHED)
     {
+        conn->output_length = conn->write_buf->size();
         t_msg_from_serv msg = defaultMsg();
         if (conn->inner_fd_out != -1)
         {
@@ -695,12 +696,11 @@ t_msg_from_serv Server::responseInHandler(int fd, t_conn *conn)
     if (bytes_read == BUFFER_FULL)
         return defaultMsg();
 
-    LOG_DEBUG("**********************************", "Befor the CGI response handller");
+    LOG_INFO("Data read from internal fd for fd: ", fd, " bytes: ", bytes_read, " total: ", conn->write_buf->size());
     if (conn->is_cgi && !conn->cgi_header_ready)
     {
         try
         {
-            LOG_DEBUG("**********************************", "test");
             const std::string header = conn->response->CGIResponse(conn->write_buf->peek());
             if (!conn->write_buf->replaceHeader(header))
             {
