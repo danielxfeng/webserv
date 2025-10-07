@@ -558,53 +558,23 @@ def test_timeout():
     sock.close()
     print("Timeout test passed.")
 
-def test_simple_get_cgi():
-    sock = socket.create_connection((HOST, PORT_CGI), timeout=5)
-
-    req = (
-        b"GET /cgi-bin/test.py HTTP/1.1\r\n"
-        b"Host: localhost\r\n"
-        b"\r\n"
-    )
-    sock.sendall(req)
-
-    resp = b""
-    while True:
-        chunk = sock.recv(4096)
-        if not chunk:
-            break
-        resp += chunk
-
-    #assert b"200 OK" in resp, "CGI script did not return 200 OK"
-    print("Response body:", resp.split(b"\r\n\r\n", 1)[1][:100])  # print first 100 bytes of body
-
-    sock.close()
-    print("Simple CGI test passed.")
-
-def test_simple_cgi2():
+def test_simple_cgi_py():
     r = requests.get(f"{BASE_CGI}test.py")
     print("Status code:", r.status_code)
     print("Simple CGI test passed.")
 
-def test_simple_cgi_post():
+def test_simple_cgi_py_post():
     r = requests.post(f"{BASE_CGI}test.py", data="Hello from POST")
     print("Status code:", r.status_code)
     print("Response body:", r.text)
     print("Simple CGI POST test passed.")
 
-def test_cgi_post_large():
+def test_cgi_py_post_large():
     large_content = "A" * 50_000_000  # 50 MB of 'A's
     r = requests.post(f"{BASE_CGI}test.py", data=large_content)
     print("Status code:", r.status_code)
     print("Response body length:", len(r.text))
     print("CGI POST large test passed.")
-
-def test_simple_cgi_get_go():
-    r = requests.get(f"{BASE_CGI}test.go")
-    print("Status code:", r.status_code)
-    print("Response body:", r.text)
-    print("Simple CGI Go test passed.")
-
 
 def run_all():
     test_get_html()
@@ -646,7 +616,9 @@ def run_all():
     test_post_chunked_incorrect_chunk_tail()
     test_post_chunked_extra_data_after_last_chunk()
 
-    test_simple_cgi()
+    test_simple_cgi_py()
+    test_simple_cgi_py_post()
+    test_cgi_py_post_large()
 
     test_keep_alive()
     test_max_request_size_exceeded()
@@ -655,8 +627,8 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_cgi2()
+    test_simple_cgi_py_post()
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    run_all()
+    #run_one()
