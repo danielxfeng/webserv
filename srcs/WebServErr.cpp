@@ -23,6 +23,9 @@ const char *WebServErr::ShouldNotBeHereException::what() const noexcept
     return what_.c_str();
 }
 
+
+
+
 WebServErr::BadRequestException::BadRequestException(const std::string &what_arg)
     : what_(myFormat("Bad request:", what_arg)) {}
 
@@ -69,4 +72,22 @@ WebServErr::ErrorResponseException::ErrorResponseException(const std::string &wh
 const char *WebServErr::ErrorResponseException::what() const noexcept
 {
 	return what_.c_str();
+}
+
+
+WebServErr::InvalidCgiHeader::InvalidCgiHeader(const std::string &what_arg)
+    : what_(myFormat("Bad request:", what_arg)) {}
+
+const char *WebServErr::InvalidCgiHeader::what() const noexcept
+{
+    return what_.c_str();
+}
+
+
+WebServErr::CgiHeaderNotFound::CgiHeaderNotFound(const std::string &what_arg)
+    : what_(myFormat("Bad request:", what_arg)) {}
+
+const char *WebServErr::CgiHeaderNotFound::what() const noexcept
+{
+    return what_.c_str();
 }

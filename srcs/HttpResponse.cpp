@@ -11,9 +11,11 @@
 
 std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
 {
+    if (conn->is_cgi)
+        return("");
+
     std::string cookieStr = cookie.set(*conn->request);
     std::string connection = conn->request->getrequestHeaderMap()["connection"];
-    std::cout << "RUN fom Response" << std::endl;
     std::string res_target = conn->request->getrequestLineMap()["Target"];
     std::string content_type;
     if (!conn->res.isDynamic && res_target.find(".") != std::string::npos)
@@ -146,5 +148,15 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(errPageSize)).append("\r\n\r\n");
     }
+    return (result);
+}
+
+
+
+std::string HttpResponse::CGIResponse(std::string_view cgiString)
+{
+    std::string result = "";
+    LOG_DEBUG("****************CGI STRING: ", cgiString);
+
     return (result);
 }
