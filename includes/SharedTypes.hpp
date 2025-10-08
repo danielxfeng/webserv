@@ -25,11 +25,11 @@ typedef enum e_status_error_codes
 } t_status_error_codes;
 
 constexpr unsigned int MAX_POLL_EVENTS = 1024u;
-constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;         // in milliseconds
-constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 10000u;  // in milliseconds
-constexpr unsigned int GLOBAL_HEARTBEAT_TIMEOUT = 5000u; // 10 seconds
-constexpr unsigned int MAX_REQUEST_SIZE = 1048576u;      // 1 MB
-constexpr unsigned int MAX_HEADERS_SIZE = 8192u;         // 8 KB
+constexpr unsigned int MAX_POLL_TIMEOUT = 1000u;                    // in milliseconds
+constexpr unsigned int GLOBAL_REQUEST_TIMEOUT = 10000u;             // in milliseconds
+constexpr unsigned int GLOBAL_HEARTBEAT_TIMEOUT = 5000u;            // 5 seconds
+constexpr size_t MAX_REQUEST_SIZE = 2048 * 1024 * 1024u;            // 2 GB
+constexpr unsigned int MAX_HEADERS_SIZE = 8192u;                    // 8 KB
 
 class HttpRequests;
 class HttpResponse;

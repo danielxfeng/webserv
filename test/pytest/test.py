@@ -560,20 +560,18 @@ def test_timeout():
 
 def test_simple_cgi_py():
     r = requests.get(f"{BASE_CGI}test.py")
-    print("Status code:", r.status_code)
+    assert r.status_code == 200
     print("Simple CGI test passed.")
 
 def test_simple_cgi_py_post():
     r = requests.post(f"{BASE_CGI}test.py", data="Hello from POST")
-    print("Status code:", r.status_code)
-    print("Response body:", r.text)
+    assert r.status_code == 201
     print("Simple CGI POST test passed.")
 
 def test_cgi_py_post_large():
     large_content = "A" * 50_000_000  # 50 MB of 'A's
     r = requests.post(f"{BASE_CGI}test.py", data=large_content)
-    print("Status code:", r.status_code)
-    print("Response body length:", len(r.text))
+    assert r.status_code == 201
     print("CGI POST large test passed.")
 
 def run_all():
@@ -627,8 +625,8 @@ def run_all():
     print("All tests passed.")
 
 def run_one():
-    test_simple_cgi_py_post()
+    test_cgi_py_post_large()
 
 if __name__=="__main__":
-    run_all()
-    #run_one()
+    #run_all()
+    run_one()

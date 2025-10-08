@@ -125,9 +125,19 @@ t_msg_from_serv Server::timeoutKiller()
     {
         size_t max_heartbeat_timeout = it->config_idx != -1 ? configs_[it->config_idx].max_heartbeat_timeout : GLOBAL_HEARTBEAT_TIMEOUT;
         size_t max_request_timeout = it->config_idx != -1 ? configs_[it->config_idx].max_request_timeout : GLOBAL_REQUEST_TIMEOUT;
-        if (difftime(now, it->last_heartbeat) > max_heartbeat_timeout || difftime(now, it->start_timestamp) > max_request_timeout)
+        bool timeout = difftime(now, it->last_heartbeat) > max_heartbeat_timeout || difftime(now, it->start_timestamp) > max_request_timeout;
+        if (timeout)
         {
             LOG_WARN("Connection timed out: ", it->socket_fd);
+
+            // Kill CGI process if exists
+            if (it->res.pid > 0)
+            {
+                kill(it->res.pid, SIGKILL);
+                waitpid(it->res.pid, NULL, 0); // Prevent zombie process
+                it->res.pid = -1;
+            }
+
             int fd = it->socket_fd;
             t_msg_from_serv temp = closeConn(&(*it));
             msg.fds_to_unregister.insert(
@@ -136,11 +146,21 @@ t_msg_from_serv Server::timeoutKiller()
                 temp.fds_to_unregister.end());
 
             it = conns_.erase(it);
-
             LOG_INFO("Connection timed out and closed: ", fd);
         }
         else
+        {
+            if (it->res.pid > 0)
+            {
+                int status;
+                pid_t result = waitpid(it->res.pid, &status, WNOHANG);
+                if (result != 0)
+                    it->res.pid = -1; // Process ended
+            }
             ++it;
+        }
+
+
     }
 
     return msg;
@@ -250,6 +270,7 @@ t_msg_from_serv Server::reqHeaderParsingHandler(int fd, t_conn *conn)
             conn->content_length = static_cast<size_t>(stoull(conn->request->getrequestHeaderMap().at("content-length")));
             if (conn->content_length > configs_[conn->config_idx].max_request_size)
             {
+                LOG_INFO("Content length too big for fd: ", fd, " content_length: ", conn->content_length, " max_request_size: ", configs_[conn->config_idx].max_request_size);
                 conn->error_code = ERR_400_BAD_REQUEST;
                 conn->error_message = "Content length is too big";
                 return resheaderProcessingHandler(conn);

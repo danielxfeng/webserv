@@ -310,9 +310,6 @@ void HttpRequests::host_validator(void)
  */
 void HttpRequests::content_length_validator(void)
 {
-	size_t content_length_var;
-
-	content_length_var = 0;
 	if (requestLineMap["Method"] == "POST")
 	{
 		if (!requestHeaderMap.contains("content-length") && !requestHeaderMap.contains("transfer-encoding"))
@@ -323,9 +320,7 @@ void HttpRequests::content_length_validator(void)
 				throw WebServErr::BadRequestException("content-length must bee number only");
 			else
 			{
-				content_length_var = static_cast<size_t>(stoull(requestHeaderMap["content-length"]));
-				if (content_length_var > 1073741824)
-					throw WebServErr::BadRequestException("Bad content-length less than 1GB are allowed");
+				static_cast<size_t>(stoull(requestHeaderMap["content-length"]));
 			}
 		}
 	}

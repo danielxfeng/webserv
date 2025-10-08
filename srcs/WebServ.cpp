@@ -181,7 +181,6 @@ void WebServ::eventLoop()
                 }
             }
         }
-
         timeoutKiller(server_map_);
     }
     LOG_INFO("Server shutting down gracefully.", "");
