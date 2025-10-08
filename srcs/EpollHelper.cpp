@@ -40,7 +40,6 @@ void EpollHelper::addFd(int fd)
 {
     if (fd < 0)
     {
-        LOG_ERROR("Trying to add an invalid fd to epoll", "");
         return;
     }
 
@@ -58,17 +57,14 @@ void EpollHelper::addFd(int fd)
         else
             throw WebServErr::SysCallErrException("epoll_ctl MOD failed");
     }
-    LOG_INFO("Added fd to epoll: ", fd);
 }
 
 void EpollHelper::removeFd(int fd)
 {
     if (fd < 0)
     {
-        LOG_ERROR("Trying to remove an invalid fd from epoll", "");
         return;
     }
     if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr) == -1 && errno != ENOENT)
         throw WebServErr::SysCallErrException("epoll_ctl failed");
-    LOG_INFO("Connection closed to: ", fd);
 }

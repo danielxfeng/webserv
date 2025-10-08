@@ -628,5 +628,5 @@ def run_one():
     test_cgi_py_post_large()
 
 if __name__=="__main__":
-    #run_all()
-    run_one()
+    run_all()
+    #run_one()
