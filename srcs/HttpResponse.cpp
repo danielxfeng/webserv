@@ -1,14 +1,6 @@
 #include "HttpResponse.hpp"
 #include "HttpRequests.hpp"
 
-/*
- HTTP/1.1 200 OK
- Date: Wed, 21 Aug 2025 12:34:56 GMT
- Content-Type: text/html
- Content-Length: 72
-
- */
-
 std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
 {
     std::string cookieStr = cookie.set(*conn->request);

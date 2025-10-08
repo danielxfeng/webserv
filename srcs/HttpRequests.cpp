@@ -202,7 +202,6 @@ void HttpRequests::validateRequestLine()
 	validateHttpVersion();
 }
 
-
 /**
  * @brief extract the request body from the request.
  * @param (size_t &i, size_t requestLength, const std::string &request)
@@ -554,9 +553,6 @@ void HttpRequests::validateContentType()
 
 void HttpRequests::validateRequestBody(void)
 {
-	/*
-	content-type:image/png
-content-disposition:form-data; name="file"; filename="example.png"*/
 
 	std::string firstPart;
 	std::string secondPart;
