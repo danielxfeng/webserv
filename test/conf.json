@@ -1,23 +1,58 @@
 {
     "max_poll_events": 128,
-    "max_poll_timeout": 250,
+    "max_poll_timeout": 5,
     "max_connections": 500,
-    "global_request_timeout": 2000,
-    "max_request_size": 1000000,
+    "global_request_timeout": 30,
+    "max_request_size": 102400000,
     "max_headers_size": 4096,
-    "max_heartbeat_timeout": 1000,
+    "max_heartbeat_timeout": 5,
     "servers": [
       {
-        "server_name": "bighost",
+        "server_name": "localhost",
         "port": 8081,
         "max_request_timeout": 999999,
         "max_request_size": 99999999,
         "max_headers_size": 99999999,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app", "index": "index.html" },
-          "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/static"},
-          "/uploads": { "methods": ["GET","POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app/uploads"}
+          "/": { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app", "index": "index.html" },
+          "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/static" },
+          "/uploads": { "methods": ["POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app/uploads" },
+          "/second": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app/second" },
+          "/uploads2": { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app/uploads2" },
+          "/redirect": { "methods": ["REDIRECT"], "root": "http://localhost:8081/second/" }
+        },
+        "error_pages": {
+          "404": "/home/mkhlouf/goinfre/www/app/errors/404.html"
+        }
+      },
+      {
+        "server_name": "same_port.com",
+        "port": 8081,
+        "is_cgi": false,
+        "locations": {
+          "/": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app2", "index": "index.html" }
+        },
+        "error_pages": {
+          "404": "/home/mkhlouf/goinfre/www/app2/errors/404.html"
+        }
+      },
+      {
+        "server_name": "size_limit.com",
+        "port": 8081,
+        "max_request_size": 1024,
+        "is_cgi": false,
+        "locations": {
+          "/": { "methods": ["GET", "POST"], "root": "/home/mkhlouf/goinfre/www/size_limit" }
+        }
+      },
+      {
+        "server_name": "timeout.com",
+        "port": 8081,
+        "max_request_timeout": 2,
+        "is_cgi": false,
+        "locations": {
+          "/": { "methods": ["GET", "POST"], "root": "/home/mkhlouf/goinfre/www/timeout" }
         }
       },
       {
@@ -25,19 +60,9 @@
         "port": 9000,
         "is_cgi": true,
         "cgi_config": {
-          ".py":  "/usr/bin/python3",
-          ".php": "/usr/bin/php-cgi"
-        }
-      },
-      {
-        "server_name": "bighost",
-        "port": 8080,
-          "locations": {
-          "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app2", "index": "index.html" },
-          "/static": { "methods": ["GET"], "root": "/home/mkhlouf/goinfre/www/app2/static"},
-          "/uploads": { "methods": ["GET","POST", "DELETE"], "root": "/home/mkhlouf/goinfre/www/app2/uploads"}
+          ".py": { "interpreter": "/usr/bin/python3", "root": "/home/mkhlouf/goinfre/www/cgi/python" },
+          ".go": { "root": "/home/mkhlouf/goinfre/www/cgi/go" }
         }
       }
-      
-    ]
+    ]  
   }

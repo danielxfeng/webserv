@@ -21,4 +21,5 @@ public:
 
     std::string successResponse(t_conn *conn, Cookie &cookie);
     std::string failedResponse(t_conn *conn, t_status_error_codes error_code, const std::string &error_message,size_t errPageSize, Cookie &cookie);
+    std::string CGIResponse(std::string_view cgiString);
 };

@@ -3,9 +3,11 @@
 
 std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
 {
+    if (conn->is_cgi)
+        return("");
+
     std::string cookieStr = cookie.set(*conn->request);
     std::string connection = conn->request->getrequestHeaderMap()["connection"];
-    std::cout << "RUN fom Response" << std::endl;
     std::string res_target = conn->request->getrequestLineMap()["Target"];
     std::string content_type;
     if (!conn->res.isDynamic && res_target.find(".") != std::string::npos)
@@ -138,5 +140,34 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
         result.append(cookieStr);
         result.append("Content-Length: ").append(std::to_string(errPageSize)).append("\r\n\r\n");
     }
+    return (result);
+}
+
+
+
+std::string HttpResponse::CGIResponse(std::string_view cgiString)
+{
+    std::string result;
+    std::string cleanStatus;
+    bool has_status = false;
+
+    if (cgiString.empty() || (cgiString.size() < 8))
+        throw WebServErr::CgiHeaderNotFound("CGI header is not correct");
+
+    std::string_view status = cgiString.substr(0, 8);
+    if (status == "Status: ")
+        has_status = true;
+    if (has_status)
+    {
+        cleanStatus = cgiString.substr(8);
+        if(!cleanStatus.empty()){
+            result.append("HTTP/1.1").append(" ").append(cleanStatus).append("\r\n");
+        }
+        else
+            throw WebServErr::CgiHeaderNotFound("CGI header is correct");
+    }
+    else
+        throw WebServErr::InvalidCgiHeader("CGI has no status");
+
     return (result);
 }

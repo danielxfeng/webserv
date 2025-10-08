@@ -39,8 +39,8 @@ TEST(ConfigFromJson, HappyPath_AllBranches)
         "port": 9000,
         "is_cgi": true,
         "cgi_config": {
-          ".py":  "/usr/bin/python3",
-          ".php": "/usr/bin/php-cgi"
+          ".py":  {root: "/var/www/cgi/python", cmd: "/usr/bin/python"},
+          ".go": {root: "/var/www/cgi/go", cmd: ""},
         }
       }
     ]

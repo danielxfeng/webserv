@@ -17,8 +17,6 @@ void setNonBlocking(int fd)
 
     if (fcntl(fd, F_SETFD, fdflags | FD_CLOEXEC) == -1)
         throw WebServErr::SysCallErrException("fcntl(F_SETFD) failed");
-
-    LOG_INFO("Set fd to non-blocking:", fd);
 }
 
 int listenToPort(unsigned int port)
@@ -85,26 +83,33 @@ void WebServ::timeoutKiller(const std::unordered_map<int, Server *> &serverMap)
 WebServ::WebServ(const std::string &conf_file) : epoll_(EpollHelper())
 {
     // Load the configuration from the file.
-    config_ = std::move(Config::parseConfigFromFile(conf_file));
-    LOG_INFO("Configuration loaded from file:", conf_file);
-
-    // Setup signal handlers for graceful shutdown.
-    std::signal(SIGINT, handleSignal);
-    std::signal(SIGTERM, handleSignal);
-
-    std::unordered_map<size_t, std::vector<t_server_config>> ports_map;
-
-    for (auto it = config_.servers.begin(); it != config_.servers.end(); ++it)
+    try
     {
-        auto port = it->port;
-        if (ports_map.contains(port))
-            ports_map.at(port).push_back(*it);
-        else
-           ports_map.emplace(port, std::vector<t_server_config>{*it});
+        config_ = std::move(Config::parseConfigFromFile(conf_file));
+        LOG_INFO("Configuration loaded from file:", conf_file);
+
+        // Setup signal handlers for graceful shutdown.
+        std::signal(SIGINT, handleSignal);
+        std::signal(SIGTERM, handleSignal);
+
+        std::unordered_map<size_t, std::vector<t_server_config>> ports_map;
+
+        for (auto it = config_.servers.begin(); it != config_.servers.end(); ++it)
+        {
+            auto port = it->port;
+            if (ports_map.contains(port))
+                ports_map.at(port).push_back(*it);
+            else
+                ports_map.emplace(port, std::vector<t_server_config>{*it});
+        }
+
+        for (auto &kv : ports_map)
+            servers_.push_back(Server(*this, epoll_, kv.second));
     }
-   
-    for (auto &kv : ports_map)
-        servers_.push_back(Server(epoll_, kv.second));
+    catch (...)
+    {
+        throw std::runtime_error("Failed to initialize WebServ with config file: " + conf_file + " - " + std::string(std::current_exception().__cxa_exception_type()->name()));
+    }
 }
 
 void WebServ::eventLoop()
@@ -115,11 +120,9 @@ void WebServ::eventLoop()
     for (auto it = servers_.begin(); it != servers_.end(); ++it)
     {
         RaiiFd serverFd = RaiiFd(epoll_, listenToPort(it->getConfig(0).port)); // every config in one server should has same port
-        LOG_INFO("Server listening to port:", serverFd);
         serverFd.addToEpoll();
         fds_.push_back(std::make_shared<RaiiFd>(std::move(serverFd)));
         server_map_[fds_.back()->get()] = &(*it);
-        LOG_INFO("Mapped listening fd to server instance:", fds_.back()->get());
     }
 
     while (!stopFlag)
@@ -144,7 +147,6 @@ void WebServ::eventLoop()
                 int connClientFd = acceptNewConnection(server->first);
                 if (connClientFd == -1)
                 {
-                    LOG_ERROR("No new connection to accept or error occurred, server fd: ", server->first);
                     continue;
                 }
 
@@ -152,14 +154,12 @@ void WebServ::eventLoop()
                 fds_.back()->addToEpoll();
                 conn_map_[fds_.back()->get()] = server->second;
                 server->second->addConn(fds_.back()->get());
-                LOG_INFO("Mapped connection fd to server instance:", fds_.back()->get());
             }
             else
             {
                 const auto connServer = conn_map_.find(events[i].data.fd);
                 if (connServer == conn_map_.end())
                 {
-                    LOG_ERROR("Connection not found", " does not exist"); // TODO Double check Daniel
                     continue;
                 }
 
@@ -176,12 +176,10 @@ void WebServ::eventLoop()
                 if (events[i].events & (EPOLLHUP | EPOLLERR))
                 {
                     auto msg = connServer->second->scheduler(connServer->first, ERROR_EVENT);
-                    LOG_INFO("Error/Hangup event triggered for connection:", connServer->first);
                     handleServerMsg(msg, connServer->second);
                 }
             }
         }
-
         timeoutKiller(server_map_);
     }
     LOG_INFO("Server shutting down gracefully.", "");
@@ -191,10 +189,7 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, Server *server)
 {
     for (const auto &fd : msg.fds_to_register)
     {
-        fds_.push_back(fd);
-        fds_.back()->addToEpoll();
-        conn_map_[fds_.back()->get()] = server;
-        LOG_INFO("Registered fd to epoll:", fds_.back()->get());
+        addFdToEpoll(fd, server);
     }
     for (const auto &fd : msg.fds_to_unregister)
     {
@@ -202,8 +197,14 @@ void WebServ::handleServerMsg(const t_msg_from_serv &msg, Server *server)
         conn_map_.erase(fd);
         fds_.remove_if([&fd](const std::shared_ptr<RaiiFd> &rfd)
                        { return rfd->get() == fd; });
-        LOG_INFO("Unregistered fd from epoll and removed from maps:", fd);
     }
+}
+
+void WebServ::addFdToEpoll(const std::shared_ptr<RaiiFd> fd, Server *server)
+{
+    fds_.push_back(fd);
+    fds_.back()->addToEpoll();
+    conn_map_[fds_.back()->get()] = server;
 }
 
 WebServ::~WebServ()
