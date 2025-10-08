@@ -28,21 +28,6 @@ int main(int argc, char **argv)
 		return (1);
 	}
 	setup_signal_handlers();
-	/**
-	try
-	{
-		std::string_view fileName = argv[1];
-		if (!validateConfigFile(fileName))
-			throw std::invalid_argument("Invalid configuration file.");
-		auto webserv = WebServ(argv[1]);
-		webserv.eventLoop();
-	}
-	catch (const std::exception &e)
-	{
-		std::cerr << "Error: " << e.what() << std::endl;
-		return (1);
-	}
-	*/
 	std::string_view fileName = argv[1];
 	if (!validateConfigFile(fileName))
 		throw std::invalid_argument("Invalid configuration file.");

@@ -134,7 +134,6 @@ void Config::fromJson(const std::string &json_string)
         global_config_.servers.push_back(server_config);
     }
 
-    //validate the porst and the server name
     for (auto it = global_config_.servers.begin(); it != global_config_.servers.end(); ++it) {
         for (auto it2 = std::next(it); it2 != global_config_.servers.end(); ++it2) {
             if (it->port == it2->port && it->server_name == it2->server_name)

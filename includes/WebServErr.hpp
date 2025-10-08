@@ -58,19 +58,7 @@ public:
 
         const char *what() const noexcept override;
     };
-
-    // class MethodException: public std::exception
-    // {
-    // 	private:
-    // 		std::string what_;
-    // 	public:
-    // 		MethodException() = delete;
-    // 		explicit MethodException(t_status_error_codes code, const std::string &what_arg);
-    // 		MethodException(const MethodException &other) = default;
-    // 		MethodException &operator=(const MethodException &other) = delete;
-    // 		~MethodException() override = default;
-    // };
-
+    
     class MethodException : public std::exception
     {
     private:
