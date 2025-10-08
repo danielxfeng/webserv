@@ -128,11 +128,12 @@ std::string HttpRequests::httpTargetDecoder(std::string &target)
 	return (result);
 }
 
-
-bool check_dupl_backslash(std::string &target){
-	for(size_t i = 0; i < target.size(); i++ ){
-		if(target[i] =='/' && target[i+1] == '/')
-			return (false); 
+bool check_dupl_backslash(std::string &target)
+{
+	for (size_t i = 0; i < target.size(); i++)
+	{
+		if (target[i] == '/' && target[i + 1] == '/')
+			return (false);
 	}
 	return (true);
 }
@@ -141,7 +142,7 @@ void HttpRequests::validateTarget()
 {
 	bool encoded = false;
 	if (!check_dupl_backslash(requestLineMap["Target"]))
-			throw WebServErr::BadRequestException("target has duplicated slash");
+		throw WebServErr::BadRequestException("target has duplicated slash");
 	if (requestLineMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
@@ -167,7 +168,6 @@ void HttpRequests::validateTarget()
 					throw WebServErr::BadRequestException("target cannot has invalid characters");
 			}
 		}
-		
 	}
 }
 
@@ -550,9 +550,6 @@ void HttpRequests::validateContentType()
 
 void HttpRequests::validateRequestBody(void)
 {
-	/*
-	content-type:image/png
-content-disposition:form-data; name="file"; filename="example.png"*/
 
 	std::string firstPart;
 	std::string secondPart;
