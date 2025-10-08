@@ -1,14 +1,6 @@
 #include "HttpResponse.hpp"
 #include "HttpRequests.hpp"
 
-/*
- HTTP/1.1 200 OK
- Date: Wed, 21 Aug 2025 12:34:56 GMT
- Content-Type: text/html
- Content-Length: 72
-
- */
-
 std::string HttpResponse::successResponse(t_conn *conn, Cookie &cookie)
 {
     if (conn->is_cgi)
@@ -155,7 +147,6 @@ std::string HttpResponse::failedResponse(t_conn *conn, t_status_error_codes erro
 
 std::string HttpResponse::CGIResponse(std::string_view cgiString)
 {
-    LOG_DEBUG("***********************Check CGI response Parser Function ", cgiString);
     std::string result;
     std::string cleanStatus;
     bool has_status = false;
