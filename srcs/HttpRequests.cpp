@@ -1,14 +1,9 @@
 #include "../includes/HttpRequests.hpp"
 
-// default
 HttpRequests::HttpRequests() : upToBodyCounter(0), requestHeaderMap(),
 							   requestLineMap(), requestBodyMap(), is_chunked(false)
 {
 }
-/*
-std::string_view sv = string;
-sv.substr()
-*/
 
 HttpRequests::HttpRequests(const HttpRequests &obj)
 {
@@ -132,11 +127,12 @@ std::string HttpRequests::httpTargetDecoder(std::string &target)
 	return (result);
 }
 
-
-bool check_dupl_backslash(std::string &target){
-	for(size_t i = 0; i < target.size(); i++ ){
-		if(target[i] =='/' && target[i+1] == '/')
-			return (false); 
+bool check_dupl_backslash(std::string &target)
+{
+	for (size_t i = 0; i < target.size(); i++)
+	{
+		if (target[i] == '/' && target[i + 1] == '/')
+			return (false);
 	}
 	return (true);
 }
@@ -145,7 +141,7 @@ void HttpRequests::validateTarget()
 {
 	bool encoded = false;
 	if (!check_dupl_backslash(requestLineMap["Target"]))
-			throw WebServErr::BadRequestException("target has duplicated slash");
+		throw WebServErr::BadRequestException("target has duplicated slash");
 	if (requestLineMap["Target"].empty())
 		throw WebServErr::BadRequestException("target cannot be empty");
 	std::string invalidCharactersUri = " <>\"{}|\\^`";
@@ -171,7 +167,6 @@ void HttpRequests::validateTarget()
 					throw WebServErr::BadRequestException("target cannot has invalid characters");
 			}
 		}
-		
 	}
 }
 
@@ -202,13 +197,11 @@ void HttpRequests::validateMethod()
  */
 void HttpRequests::validateRequestLine()
 {
-	// validate the method type
 	validateMethod();
 	validateTarget();
 	validateHttpVersion();
 }
 
-// request header functions
 
 /**
  * @brief extract the request body from the request.
@@ -237,12 +230,10 @@ void HttpRequests::extractRequestHeader(size_t &i, size_t requestLength,
 	j = 0;
 	for (; j < requestHeader.length(); j++)
 	{
-		// TODO : u can use std::find and others and read bout it.
 		if (requestHeader[j] == '\r' && requestHeader[j + 1] && requestHeader[j + 1] == '\n')
 		{
 			j += 2;
 			secondPartBool = false;
-			// to make sure that Host and content-length has only one value,it is not allowed to be duplicated.
 			if ((requestHeaderMap.contains("host") && firstPart == "host") || (requestHeaderMap.contains("content-length") && firstPart == "content-length"))
 			{
 				std::cerr << "Error: we have host before" << std::endl;
@@ -293,8 +284,6 @@ void HttpRequests::host_validator(void)
 			secondPart += host_str[i];
 	}
 	requestHeaderMap["servername"] = firstPart;
-	// TODO check if the ServerName is valid from the list.
-	// validate Port
 	if (secondPartBool)
 	{
 		if ((std::stoi(secondPart) < 1 || std::stoi(secondPart) > 65535))
@@ -381,7 +370,6 @@ std::vector<std::string> HttpRequests::stov(std::string &string, char c)
 void HttpRequests::header_contenttype_validator()
 {
 	bool has_semicolon;
-	// bool valid_types;
 
 	if (requestLineMap["Method"] == "POST")
 	{
@@ -400,18 +388,6 @@ void HttpRequests::header_contenttype_validator()
 			requestHeaderMap["content-type"] = type[0];
 			requestHeaderMap["boundary"] = type[1].substr(9);
 		}
-		// valid_types = false;
-		// if (!requestHeaderMap.contains("content-type") || requestHeaderMap["content-type"].empty())
-		// 	throw WebServErr::BadRequestException("POST must have content-type value");
-		// std::vector<std::string> validAccepts = {"image/png",
-		// 										 "multipart/form-data"};
-		// for (std::string im : validAccepts)
-		// {
-		// 	if (requestHeaderMap["content-type"] == im)
-		// 		valid_types = true;
-		// }
-		// if (!valid_types)
-		// 	throw WebServErr::BadRequestException("content-type is Not Acceptable or not suppoted value");
 	}
 }
 
@@ -551,13 +527,10 @@ void HttpRequests::extractRequestBody(size_t &i, size_t requestLength,
 	boundarySize = requestHeaderMap.contains("boundary") ? requestHeaderMap["boundary"].size() : 0;
 	if (requestHeaderMap.contains("boundary") && (boundarySize == 0 || boundarySize > requestBody.size()))
 		throw WebServErr::BadRequestException("must have boundary");
-	// extract the first boundary line
 	requestBodyHeader = requestBody.substr(boundarySize + 4, requestLength);
-	// find end of the header part of the body
 	pos = requestBodyHeader.find("\r\n\r\n");
 	if (pos == std::string::npos)
 		throw WebServErr::BadRequestException("no file part found.");
-	// extract the body header part
 	requestBodyHeader = requestBodyHeader.substr(0, pos + 4);
 	upToBodyCounter += posToRawFile + 4;
 	parse_body_header(requestBodyHeader);
@@ -637,19 +610,6 @@ void HttpRequests::httpParser(const std::string_view &request)
 	validateRequestLine();
 	extractRequestHeader(i, requestLength, request);
 	validateRequestHeader();
-	// if (requestLineMap["Method"] == "POST")
-	// {
-	// 	extractRequestBody(i, requestLength, request);
-	// 	validateRequestBody();
-	// }
-
-	// for (const auto &pair : requestLineMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
-	// for (const auto &pair : requestHeaderMap)
-	// 	std::cout << pair.first << ": " << pair.second << std::endl;
-	// for (const auto &pair : requestBodyMap)
-	// 	std::cout << pair.first << ":" << pair.second << std::endl;
-	// return (*this);
 }
 
 /**

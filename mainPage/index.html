@@ -21,7 +21,17 @@
 					<button type="submit">Upload</button>
 				</form>
 			</div>
+
+
+			<div class="delete-file">
+				<h2>Delete delete.png</h2>
+				<button onclick="deleteFile()">Delete File</button>
+				<p id="message"></p>
+			</div>
 		</div>
+
+
+
 
 		<div className="footer">
 			<h5>Thank you so much </h5>
@@ -44,10 +54,10 @@
 			}
 
 			try {
-				const response = await fetch('/uploads', {
+				const response = await fetch('/uploads/', {
 					method: 'POST',
 					headers: {
-						'Content-Type': file.type | 'application/octet-stream', // send with file MIME type
+						'Content-Type': file.type || 'application/octet-stream', // send with file MIME type
 						// You can add other headers if needed
 					},
 					body: file,  // sending raw file content
@@ -63,6 +73,28 @@
 				alert('Error uploading file.');
 			}
 		});
+
+
+	</script>
+
+	<script>
+		async function deleteFile() {
+			if (!confirm('Are you sure you want to delete delete.png?')) return;
+
+			try {
+				const response = await fetch('/uploads/delete.png', {
+					method: 'DELETE'
+				});
+
+				const text = await response.text();
+				if(text)
+					document.getElementById('message').textContent = "File is not found";
+				else
+					document.getElementById('message').textContent = "file is deleted";
+			} catch (err) {
+				document.getElementById('message').textContent = 'Error deleting file.';
+			}
+		}
 	</script>
 
 </body>

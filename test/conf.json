@@ -3,7 +3,7 @@
     "max_poll_timeout": 250,
     "max_connections": 500,
     "global_request_timeout": 2000,
-    "max_request_size": 1024,
+    "max_request_size": 1000000,
     "max_headers_size": 4096,
     "max_heartbeat_timeout": 1000,
     "servers": [
