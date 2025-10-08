@@ -9,7 +9,9 @@ from urllib.parse import urljoin
 HOME = "/home/xifeng"
 HOST = "127.0.0.1"
 PORT = 8081
+PORT_CGI = 9000
 BASE = f"http://{HOST}:{PORT}"
+BASE_CGI = f"http://{HOST}:{PORT_CGI}/cgi-bin/"
 
 def send_raw(raw_bytes: bytes) -> bytes:
     with socket.create_connection((HOST, PORT), timeout=5) as s:
@@ -473,7 +475,7 @@ def test_keep_alive():
             if not chunk:
                 break
             resp1 += chunk
-            if b"\r\n\r\n" in resp1:  # crude stop after headers (or you could parse Content-Length)
+            if b"\r\n\r\n" in resp1:
                 break
         except socket.timeout:
             break
@@ -492,7 +494,7 @@ def test_keep_alive():
     resp2 = b""
     while True:
         chunk = sock.recv(4096)
-        if not chunk:  # server closed after response
+        if not chunk:
             break
         resp2 += chunk
 
@@ -504,10 +506,10 @@ def test_keep_alive():
         extra = sock.recv(1024)
         assert extra == b"", f"expected closed connection, got extra data: {extra}"
     except Exception:
-        pass  # already closed
+        pass
 
     sock.close()
-    print("Keep-Alive reuse + Connection: close test passed.")
+    print("Keep-alive test passed.")
 
 
 def test_max_request_size_exceeded():
@@ -531,7 +533,6 @@ def test_max_request_size_exceeded():
 def test_timeout():
     sock = socket.create_connection((HOST, PORT), timeout=5)
 
-    # Declare a big body so server expects more data
     body_size = 5000
     headers = (
         b"POST / HTTP/1.1\r\n"
@@ -557,8 +558,21 @@ def test_timeout():
     sock.close()
     print("Timeout test passed.")
 
-# test_cgi_execution()
+def test_simple_cgi_py():
+    r = requests.get(f"{BASE_CGI}test.py")
+    assert r.status_code == 200
+    print("Simple CGI test passed.")
 
+def test_simple_cgi_py_post():
+    r = requests.post(f"{BASE_CGI}test.py", data="Hello from POST")
+    assert r.status_code == 201
+    print("Simple CGI POST test passed.")
+
+def test_cgi_py_post_large():
+    large_content = "A" * 50_000_000  # 50 MB of 'A's
+    r = requests.post(f"{BASE_CGI}test.py", data=large_content)
+    assert r.status_code == 201
+    print("CGI POST large test passed.")
 
 def run_all():
     test_get_html()
@@ -600,14 +614,18 @@ def run_all():
     test_post_chunked_incorrect_chunk_tail()
     test_post_chunked_extra_data_after_last_chunk()
 
-    #test_keep_alive()
+    test_simple_cgi_py()
+    test_simple_cgi_py_post()
+    test_cgi_py_post_large()
+
+    test_keep_alive()
     test_max_request_size_exceeded()
     test_timeout()
 
     print("All tests passed.")
 
 def run_one():
-    test_timeout()
+    test_cgi_py_post_large()
 
 if __name__=="__main__":
     run_all()

@@ -58,19 +58,7 @@ public:
 
         const char *what() const noexcept override;
     };
-
-    // class MethodException: public std::exception
-    // {
-    // 	private:
-    // 		std::string what_;
-    // 	public:
-    // 		MethodException() = delete;
-    // 		explicit MethodException(t_status_error_codes code, const std::string &what_arg);
-    // 		MethodException(const MethodException &other) = default;
-    // 		MethodException &operator=(const MethodException &other) = delete;
-    // 		~MethodException() override = default;
-    // };
-
+    
     class MethodException : public std::exception
     {
     private:
@@ -130,6 +118,36 @@ public:
         ErrorResponseException(const ErrorResponseException &other) = default;
         ErrorResponseException &operator=(const ErrorResponseException &o) = delete;
         ~ErrorResponseException() override = default;
+
+        const char *what() const noexcept override;
+    };
+
+     class InvalidCgiHeader : public std::exception
+    {
+    private:
+        std::string what_;
+
+    public:
+        InvalidCgiHeader() = delete;
+        explicit InvalidCgiHeader(const std::string &what_arg);
+        InvalidCgiHeader(const InvalidCgiHeader &other) = default;
+        InvalidCgiHeader &operator=(const InvalidCgiHeader &o) = delete;
+        ~InvalidCgiHeader() override = default;
+
+        const char *what() const noexcept override;
+    };
+
+     class CgiHeaderNotFound : public std::exception
+    {
+    private:
+        std::string what_;
+
+    public:
+        CgiHeaderNotFound() = delete;
+        explicit CgiHeaderNotFound(const std::string &what_arg);
+        CgiHeaderNotFound(const CgiHeaderNotFound &other) = default;
+        CgiHeaderNotFound &operator=(const CgiHeaderNotFound &o) = delete;
+        ~CgiHeaderNotFound() override = default;
 
         const char *what() const noexcept override;
     };

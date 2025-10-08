@@ -10,6 +10,7 @@ MethodHandler::MethodHandler(EpollHelper &epoll_helper)
 	requested_.expectedSize = 0;
 	requested_.fileSize = 0;
 	requested_.isDynamic = false;
+	requested_.pid = -1;
 	LOG_TRACE("Method Handler created", " Yay!");
 }
 
@@ -18,9 +19,9 @@ MethodHandler::~MethodHandler()
 	LOG_TRACE("Method Handler deconstructed", " Yay!");
 }
 
-t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
+t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, EpollHelper &epoll_helper)
 {
-	LOG_TRACE("Handle Request Started: ", "Let's see what happens...");
+	LOG_TRACE("Handle Request Started: ");
 	std::string targetRef;
 
 	if (requestLine.contains("Target"))
@@ -38,12 +39,18 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	chosenMethod = requestLine["Method"];
 	LOG_TRACE("Method found: ", chosenMethod);
 
+	// Check if the server is_cgi
+	if (server.is_cgi)
+		return (callCGIMethod(targetRef, requestLine, requestHeader, epoll_helper, server));
+
 	std::string rootDestination = matchLocation(server.locations, targetRef); // Find best matching location
 	std::string root = server.locations[rootDestination].root;
 	LOG_DEBUG("rootDestination: ", rootDestination);
 	LOG_DEBUG("Root: ", root);
 
 	t_method realMethod = convertMethod(chosenMethod);
+
+	// Check Method
 	LOG_DEBUG("Real Method: ", realMethod);
 	if (std::find(server.locations[rootDestination].methods.begin(), server.locations[rootDestination].methods.end(), realMethod) == server.locations[rootDestination].methods.end())
 		throw WebServErr::MethodException(ERR_405_METHOD_NOT_ALLOWED, "Method not allowed or is unknown");
@@ -91,39 +98,12 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 		return (requested_);
 	}
 	case CGI:
-		return (callCGIMethod(canonical, requestLine, requestHeader, requestBody, epoll_helper));
+		throw WebServErr::MethodException(ERR_405_METHOD_NOT_ALLOWED, "This server does not support CGI");
 	default:
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Method not allowed or is unknown");
 	}
 }
 
-std::string MethodHandler::matchLocation(std::unordered_map<std::string, t_location_config> &locations, std::string &targetRef)
-{
-	LOG_TRACE("Matching Location for: ", targetRef);
-	std::string bestMatch = "";
-	size_t longestMatchLength = 0;
-	std::string normalizedTargetPath = targetRef;
-	if (!normalizedTargetPath.empty() && normalizedTargetPath.back() != '/')
-		normalizedTargetPath += '/';
-	for (auto it = locations.begin(); it != locations.end(); it++)
-	{
-		std::string normalizedLocPath = it->first;
-		if (!normalizedLocPath.empty() && normalizedLocPath.back() != '/')
-			normalizedLocPath += '/';
-		if (normalizedTargetPath.find(normalizedLocPath) == 0)
-		{
-			if (normalizedLocPath.length() > longestMatchLength)
-			{
-				bestMatch = it->first;
-				longestMatchLength = normalizedLocPath.length();
-			}
-		}
-	}
-	if (bestMatch.empty() && locations.count("/") > 0)
-		bestMatch = "/";
-	LOG_TRACE("Best Location Match: ", bestMatch, " Root: ", locations[bestMatch].root);
-	return (bestMatch);
-}
 
 t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &path, std::string &targetRef)
 {
@@ -209,11 +189,11 @@ void MethodHandler::callDeleteMethod(std::filesystem::path &path)
 		throw WebServErr::SysCallErrException("Failed to delete selected file");
 }
 
-t_file MethodHandler::callCGIMethod(std::filesystem::path &path, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, std::unordered_map<std::string, std::string> requestBody, EpollHelper &epoll_helper)
+t_file MethodHandler::callCGIMethod(std::string &targetRef, std::unordered_map<std::string, std::string> requestLine, std::unordered_map<std::string, std::string> requestHeader, EpollHelper &epoll_helper, t_server_config &server)
 {
-	LOG_TRACE("Calling CGI: ", path);
+	LOG_TRACE("Calling CGI targetRef: ", targetRef);
 	CGIHandler cgi(epoll_helper);
-	requested_ = cgi.getCGIOutput(path, requestLine, requestHeader, requestBody);
+	requested_ = cgi.getCGIOutput(targetRef, requestLine, requestHeader, server);
 	return (std::move(requested_));
 }
 
@@ -264,7 +244,7 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 	LOG_DEBUG("realPath: ", targetRef);
 	LOG_DEBUG("Canonical: ", path);
 	if (!targetRef.empty() && targetRef.back() != '/' && targetRef.back() != std::filesystem::path::preferred_separator)
-		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/'); // TODO @Mohammad use this string to create a url that is included in the response
+		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/');
 	LOG_TRACE("This is a directory: ", path);
 	if (locations.contains(rootDestination))
 	{
@@ -296,23 +276,6 @@ void MethodHandler::checkIfLocExists(const std::filesystem::path &path)
 	LOG_TRACE("Checking if this location exists: ", path);
 	if (!std::filesystem::exists(path))
 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Location does not exist");
-}
-
-std::string MethodHandler::stripLocation(const std::string &rootDestination, const std::string &targetRef)
-{
-	std::string path = targetRef;
-	LOG_TRACE("Target to be cleaned: ", path);
-	std::string toRemove = rootDestination;
-	size_t pos = path.find(toRemove);
-	LOG_DEBUG("Size of pos: ", pos);
-	if (pos != std::string::npos)
-		path.erase(pos, toRemove.length());
-	if (path.empty())
-		path = "/";
-	else if (path.front() != '/')
-		path = '/' + path;
-	LOG_TRACE("Cleaned target: ", path);
-	return (path);
 }
 
 std::filesystem::path MethodHandler::createRealPath(const std::string &root, const std::string &target)

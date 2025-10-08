@@ -5,11 +5,12 @@
 #include <string>
 #include <unordered_map>
 #include <algorithm>
+#include "urlHelper.hpp"
 
 class RedirectHandler
 {
 private:
-	std::string matchLocation(const std::unordered_map<std::string, t_location_config> &locations, const std::string &targetRef);
+	
 public:
 	RedirectHandler();
 	RedirectHandler(const RedirectHandler &copy) = delete;

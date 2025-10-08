@@ -1,4 +1,5 @@
 #include "WebServ.hpp"
+#include "signalHandler.hpp"
 
 bool validateConfigFile(std::string_view &fileName)
 {
@@ -26,22 +27,7 @@ int main(int argc, char **argv)
 		std::cerr << "Error, you have to include the config file.";
 		return (1);
 	}
-
-	/**
-	try
-	{
-		std::string_view fileName = argv[1];
-		if (!validateConfigFile(fileName))
-			throw std::invalid_argument("Invalid configuration file.");
-		auto webserv = WebServ(argv[1]);
-		webserv.eventLoop();
-	}
-	catch (const std::exception &e)
-	{
-		std::cerr << "Error: " << e.what() << std::endl;
-		return (1);
-	}
-	*/
+	setup_signal_handlers();
 	std::string_view fileName = argv[1];
 	if (!validateConfigFile(fileName))
 		throw std::invalid_argument("Invalid configuration file.");

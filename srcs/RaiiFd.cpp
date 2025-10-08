@@ -36,12 +36,10 @@ void RaiiFd::addToEpoll()
 {
     if (!isValid())
     {
-        LOG_ERROR("Trying to add an invalid fd to epoll", "");
         return;
     }
 
     epoll_helper_.addFd(fd_);
-    LOG_INFO("Added fd to epoll: ", fd_);
 }
 
 void RaiiFd::cleanUp()
@@ -55,11 +53,9 @@ void RaiiFd::cleanUp()
     }
     catch (const WebServErr::SysCallErrException &e)
     {
-        LOG_ERROR("epoll_unregister error", e.what());
     }
     catch (const std::exception &e)
     {
-        LOG_ERROR("RaiiFd::cleanUp exception: ", e.what());
     }
     
     close(fd_);
@@ -79,7 +75,6 @@ RaiiFd::~RaiiFd()
     }
     catch (const std::exception &e)
     {
-        LOG_ERROR("Exception in RaiiFd destructor: ", e.what());
     }
 }
 

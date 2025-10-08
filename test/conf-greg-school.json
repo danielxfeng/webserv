@@ -1,11 +1,11 @@
 {
     "max_poll_events": 128,
-    "max_poll_timeout": 250,
+    "max_poll_timeout": 5,
     "max_connections": 500,
-    "global_request_timeout": 2000,
-    "max_request_size": 1024,
+    "global_request_timeout": 30,
+    "max_request_size": 102400000,
     "max_headers_size": 4096,
-    "max_heartbeat_timeout": 1000,
+    "max_heartbeat_timeout": 5,
     "servers": [
       {
         "server_name": "localhost",
@@ -38,12 +38,30 @@
         }
       },
       {
+        "server_name": "size_limit.com",
+        "port": 8081,
+        "max_request_size": 1024,
+        "is_cgi": false,
+        "locations": {
+          "/":       { "methods": ["GET", "POST"], "root": "/home/goinfre/www/size_limit" }
+        }
+      },
+      {
+        "server_name": "timeout.com",
+        "port": 8081,
+        "max_request_timeout": 2,
+        "is_cgi": false,
+        "locations": {
+          "/":       { "methods": ["GET", "POST"], "root": "/home/goinfre/www/timeout" }
+        }
+      },
+      {
         "server_name": "cgi1",
         "port": 9000,
         "is_cgi": true,
         "cgi_config": {
-          ".py":  "/usr/bin/python3",
-          ".php": "/usr/bin/php-cgi"
+          ".py":  { "interpreter": "/usr/bin/python3", "root": "/home/goinfre/www/cgi/python" },
+          ".go": { "root": "/home/goinfre/www/cgi/go" }
         }
       }
     ]  
