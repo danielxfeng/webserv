@@ -164,27 +164,6 @@ t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::
 	return (result);
 }
 
-// std::filesystem::path CGIHandler::getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython)//TODO Make more robust
-// {
-// 	std::string targetCGI;
-// 	if (path.string().find("/cgi/python"))
-// 	{
-// 		targetCGI = "python";
-// 		*isPython = true;
-// 	}
-// 	else if (path.string().find("/cgi/go"))
-// 	{
-// 		targetCGI = "go";
-// 		*isPython = false;
-// 	}
-// 	else
-// 		throw WebServErr::MethodException(ERR_501_NOT_IMPLEMENTED, "CGI extension not supported");
-// 	if (server.cgi_paths.find(targetCGI) == server.cgi_paths.end())	
-// 		throw WebServErr::MethodException(ERR_404_NOT_FOUND, "CGI extension does not exist");
-// 	std::filesystem::path script(server.cgi_paths.find(targetCGI)->second);
-// 	return (script);
-// }
-
 void	CGIHandler::checkRootValidity(const std::filesystem::path &root)
 {
 	LOG_INFO("Checking root validity: ", root.string());
@@ -195,21 +174,3 @@ void	CGIHandler::checkRootValidity(const std::filesystem::path &root)
 	if (access(root.c_str(), R_OK | X_OK) == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "CGI script is not executable");
 }
-
-// void CGIHandler::checkCGIprograms(const t_server_config &server, const bool isPython)//TODO Make more robust
-// {
-// 	if (isPython)
-// 	{
-// 		if (!std::filesystem::exists("/usr/bin/python3"))
-// 			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Python not found");
-// 		if (access("/usr/bin/python3", X_OK) == -1)
-// 			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Python is not accessible");
-// 	}
-// 	else
-// 	{
-// 		if (!std::filesystem::exists("usr/bin/go"))
-// 			throw WebServErr::MethodException(ERR_404_NOT_FOUND, "Go not found");
-// 		if (access("/usr/bin/go", X_OK) == -1)
-// 			throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Go is not accessible");
-// 	}
-// }
