@@ -574,6 +574,22 @@ def test_cgi_py_post_large():
     assert r.status_code == 201
     print("CGI POST large test passed.")
 
+def test_simple_cgi_go():
+    r = requests.get(f"{BASE_CGI}test.go")
+    assert r.status_code == 200
+    print("Simple CGI Go test passed.")
+
+def test_simple_cgi_go_post():
+    r = requests.post(f"{BASE_CGI}test.go", data="Hello from POST")
+    assert r.status_code == 201
+    print("Simple CGI Go POST test passed.")
+
+def test_cgi_go_post_large():
+    large_content = "A" * 50_000_000  # 50 MB of 'A's
+    r = requests.post(f"{BASE_CGI}test.go", data=large_content)
+    assert r.status_code == 201
+    print("CGI Go POST large test passed.")
+
 def run_all():
     test_get_html()
     test_default_html()
@@ -617,6 +633,10 @@ def run_all():
     test_simple_cgi_py()
     test_simple_cgi_py_post()
     test_cgi_py_post_large()
+
+    test_simple_cgi_go()
+    test_simple_cgi_go_post()
+    test_cgi_go_post_large()
 
     test_keep_alive()
     test_max_request_size_exceeded()
