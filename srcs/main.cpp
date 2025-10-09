@@ -20,6 +20,7 @@ bool validateConfigFile(std::string_view &fileName)
 	return (true);
 }
 
+
 int main(int argc, char **argv)
 {
 	if (argc != 2)
@@ -29,10 +30,13 @@ int main(int argc, char **argv)
 	}
 	setup_signal_handlers();
 	std::string_view fileName = argv[1];
-	if (!validateConfigFile(fileName))
-		throw std::invalid_argument("Invalid configuration file.");
+	if (!validateConfigFile(fileName)){
+		std::cerr << "Error, configuration file not found.";
+		return (1);
+	}
 	auto webserv = WebServ(argv[1]);
 	webserv.eventLoop();
 
 	return (0);
 }
+
