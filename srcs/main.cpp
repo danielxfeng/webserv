@@ -31,8 +31,8 @@ int main(int argc, char **argv)
 	std::string_view fileName = argv[1];
 	try
 	{
-	if (!validateConfigFile(fileName))
-		throw std::invalid_argument("Invalid configuration file.");
+		if (!validateConfigFile(fileName))
+			throw std::invalid_argument("Invalid configuration file.");
 		auto webserv = WebServ(argv[1]);
 		webserv.eventLoop();
 	} 
