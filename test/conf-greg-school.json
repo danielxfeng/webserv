@@ -15,15 +15,15 @@
         "max_headers_size": 99999999,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET", "POST", "DELETE"], "root": "/home/goinfre/www/app", "index": "index.html" },
-          "/static": { "methods": ["GET"], "root": "/home/goinfre/www/app/static" },
-          "/uploads": { "methods": ["POST", "DELETE"], "root": "/home/goinfre/www/app/uploads" },
-          "/second": { "methods": ["GET"], "root": "/home/goinfre/www/app/second" },
-          "/uploads2": { "methods": ["GET", "POST", "DELETE"], "root": "/home/goinfre/www/app/uploads2" },
+          "/":       { "methods": ["GET", "POST"], "root": "/home/gpellech/goinfre/www/app", "index": "index.html" },
+          "/static": { "methods": ["GET"], "root": "/home/gpellech/goinfre/www/app/static" },
+          "/uploads": { "methods": ["POST", "DELETE"], "root": "/home/gpellech/goinfre/www/app/uploads" },
+          "/second": { "methods": ["GET"], "root": "/home/gpellech/goinfre/www/app/second" },
+          "/uploads2": { "methods": ["GET", "POST", "DELETE"], "root": "/home/gpellech/goinfre/www/app/uploads2" },
           "/redirect": { "methods": ["REDIRECT"], "root": "http://localhost:8081/second/" }
         },
         "error_pages": {
-          "404": "/home/goinfre/www/app/errors/404.html"
+          "404": "/home/gpellech/goinfre/www/app/errors/404.html"
         }
       },
       {
@@ -31,10 +31,10 @@
         "port": 8081,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET"], "root": "/home/goinfre/www/app2", "index": "index.html" }
+          "/":       { "methods": ["GET"], "root": "/home/gpellech/goinfre/www/app2", "index": "index.html" }
         },
         "error_pages": {
-          "404": "/home/goinfre/www/app2/errors/404.html"
+          "404": "/home/gpellech/goinfre/www/app2/errors/404.html"
         }
       },
       {
@@ -43,7 +43,7 @@
         "max_request_size": 1024,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET", "POST"], "root": "/home/goinfre/www/size_limit" }
+          "/":       { "methods": ["GET", "POST"], "root": "/home/gpellech/goinfre/www/size_limit" }
         }
       },
       {
@@ -52,7 +52,7 @@
         "max_request_timeout": 2,
         "is_cgi": false,
         "locations": {
-          "/":       { "methods": ["GET", "POST"], "root": "/home/goinfre/www/timeout" }
+          "/":       { "methods": ["GET", "POST"], "root": "/home/gpellech/goinfre/www/timeout" }
         }
       },
       {
@@ -60,8 +60,8 @@
         "port": 9000,
         "is_cgi": true,
         "cgi_config": {
-          ".py":  { "interpreter": "/usr/bin/python3", "root": "/home/goinfre/www/cgi/python" },
-          ".go": { "root": "/home/goinfre/www/cgi/go" }
+          ".py":  { "interpreter": "/usr/bin/python3", "root": "/home/gpellech/goinfre/www/cgi/python" },
+          ".go": { "root": "/home/gpellech/goinfre/www/cgi/go" }
         }
       }
     ]  
