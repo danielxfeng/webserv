@@ -312,12 +312,11 @@ bool MethodHandler::checkIfSafe(const std::filesystem::path &root, const std::fi
 size_t MethodHandler::checkFileCount(const std::string &root)
 {
 	size_t fileCount = 0;
-	LOG_TRACE("Directory File Count for: ", root);
 	for (const auto &entry : std::filesystem::directory_iterator(root))
 	{
 		if (std::filesystem::is_regular_file(entry.path()))
 			fileCount++;
 	}
-	LOG_TRACE("Directory File Count: ", fileCount);
+	LOG_TRACE("Directory File Count for: ", root, " Files: ", fileCount);
 	return (fileCount);
 }

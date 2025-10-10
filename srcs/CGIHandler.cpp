@@ -77,7 +77,7 @@ void CGIHandler::setENVP(
     envp.push_back(nullptr);
 }
 
-void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, std::string &cmd, int inPipe[2], int outPipe[2])
+void CGIHandler::handleCGIProcess( std::filesystem::path &path, std::string &cmd, int inPipe[2], int outPipe[2])
 {
 	char **final_envp = envp.data();
 
@@ -92,7 +92,7 @@ void CGIHandler::handleCGIProcess(char **argv, std::filesystem::path &path, std:
 
 	close(inPipe[READ]);
     close(outPipe[WRITE]);
-	if (execve(cmd.c_str(), argv, final_envp) == -1)
+	if (execve(cmd.c_str(), argv.data(), final_envp) == -1)
 		return;
 }
 
@@ -131,12 +131,7 @@ t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::
 	
 	//Set up ENVP and ARGV
 	setENVP(requestLine, requestHeader);
-	// Set up ARGV
-	std::vector<char*> argv;
-	if (isInterpreter)
-		argv.push_back(const_cast<char*>(interpreter.c_str()));
-	argv.push_back(const_cast<char*>(prog_name.c_str()));
-	argv.push_back(nullptr);
+	setARGV(isInterpreter, interpreter, prog_name);
 	
 	int inPipe[2] = {-1, -1};
 	int outPipe[2] = {-1, -1};
@@ -153,7 +148,7 @@ t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::
 	std::string cmd = isInterpreter ? interpreter : prog_name;
 	if (result.pid == 0)
 	{
-		handleCGIProcess(argv.data(), rootPath, cmd, inPipe, outPipe);
+		handleCGIProcess(rootPath, cmd, inPipe, outPipe);
 		return {}; // We cannot throw or exit in child process
 	}
 		
@@ -162,6 +157,14 @@ t_file CGIHandler::getCGIOutput(std::string &targetRef, std::unordered_map<std::
 	close(inPipe[READ]);
 	close(outPipe[WRITE]);
 	return (result);
+}
+
+void	CGIHandler::setARGV(bool isInterpreter, const std::string &interpreter, std::string &prog_name)
+{
+	if (isInterpreter)
+		argv.push_back(const_cast<char*>(interpreter.c_str()));
+	argv.push_back(const_cast<char*>(prog_name.c_str()));
+	argv.push_back(nullptr);
 }
 
 void	CGIHandler::checkRootValidity(const std::filesystem::path &root)

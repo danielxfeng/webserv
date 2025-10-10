@@ -24,13 +24,15 @@ class CGIHandler
 {
 private:
     std::vector<char*> envp;
+    std::vector<char*> argv;
     t_file result;
 
     // Setters
     void setENVP(const std::unordered_map<std::string, std::string> &requestLine, const std::unordered_map<std::string, std::string> &requestHeader);
+    void setARGV(bool isInterpreter, const std::string &interpreter, std::string &prog_name);
 
     // Processes
-    void handleCGIProcess(char **argv, std::filesystem::path &path, std::string &cmd, int inPipe[2], int outPipe[2]);
+    void handleCGIProcess(std::filesystem::path &path, std::string &cmd, int inPipe[2], int outPipe[2]);
     std::filesystem::path getTargetCGI(const std::filesystem::path &path, t_server_config &server, bool *isPython);
     void checkRootValidity(const std::filesystem::path &root);
 
