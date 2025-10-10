@@ -17,7 +17,7 @@
         "locations": {
           "/":       { "methods": ["GET", "POST"], "root": "/home/xifeng/www/app", "index": "index.html" },
           "/static": { "methods": ["GET"], "root": "/home/xifeng/www/app/static" },
-          "/uploads": { "methods": ["GET", "POST", "DELETE"], "root": "/home/xifeng/www/app/uploads" },
+          "/uploads": { "methods": ["POST", "DELETE"], "root": "/home/xifeng/www/app/uploads" },
           "/second": { "methods": ["GET"], "root": "/home/xifeng/www/app/second" },
           "/uploads2": { "methods": ["GET", "POST", "DELETE"], "root": "/home/xifeng/www/app/uploads2" },
           "/redirect": { "methods": ["REDIRECT"], "root": "http://localhost:8081/second/" }
