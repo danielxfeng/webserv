@@ -11,13 +11,18 @@ NAME      := webserv
 CXX       := g++
 RM        := rm -rf
 
+SRCS_FILES := /Buffer.cpp /CGIHandler.cpp /Config.cpp /Cookie.cpp /EpollHelper.cpp /ErrorResponse.cpp \
+			  /HttpRequests.cpp /HttpResponse.cpp /main.cpp /MethodHandler.cpp /RaiiFd.cpp \
+			  /RedirectHandler.cpp /Server.cpp /SharedTypes.cpp /signalHandler.cpp /TinyJson.cpp \
+			  /urlHelper.cpp /utils.cpp /WebServ.cpp /WebServErr.cpp
+
 SRCS_DIR  := srcs
 OBJS_DIR  := objs
 INCL_DIR  := includes
 
 # Sources (supports nested folders; change to a static list if you prefer)
-SRCS      := $(shell find $(SRCS_DIR) -name '*.cpp')
-OBJS      := $(patsubst $(SRCS_DIR)/%.cpp,$(OBJS_DIR)/%.o,$(SRCS))
+SRCS	  := $(addprefix $(SRCS_DIR), $(SRCS_FILES))
+OBJS 	  := $(addprefix $(OBJS_DIR), $(SRCS_FILES:.cpp=.o))
 DEPS      := $(OBJS:.o=.d)
 
 # Flags
