@@ -11,4 +11,3 @@ webserv
 *.log
 *.tmp
 .vscode/settings.json
-conf-d.json

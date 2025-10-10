@@ -1,4 +1,0 @@
-for http parsing:
-the content type, for post method, can be limited to Png only.
-
-and for accept keyword, we can ignored as most of server ignore it becaause they response as files.. and the type will be automatically impiles.

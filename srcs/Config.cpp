@@ -102,6 +102,8 @@ void Config::fromJson(const std::string &json_string)
             for (const auto &location_pair : locations_obj)
             {
                 const std::string location_path = location_pair.first;
+                if (location_path.empty())
+                    throw std::invalid_argument("invalid location path: " + location_path);
                 const JsonObject location_obj = TinyJson::as<JsonObject>(*location_pair.second);
                 t_location_config location_config;
                 location_config.root = TinyJson::as<std::string>(*location_obj.at("root"));

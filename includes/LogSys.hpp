@@ -21,7 +21,7 @@ class LogSys {
 private:
     t_priority priority_ = TRACE;
     std::queue<LogMessage> logQueue;
-    const size_t autoFlushSize = 10; // Flush automatically when queue reaches this size
+    const size_t autoFlushSize = 1; // Flush automatically when queue reaches this size
 
     LogSys() {}
     LogSys(const LogSys&) = delete;
