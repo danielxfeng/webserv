@@ -25,10 +25,7 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 	std::string targetRef;
 
 	if (requestLine.contains("Target"))
-	{
 		targetRef = requestLine["Target"];
-		LOG_TRACE("Target found: ", targetRef);
-	}
 	else
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Http Target does not exist");
 	std::string chosenMethod;
@@ -45,13 +42,10 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 
 	std::string rootDestination = matchLocation(server.locations, targetRef); // Find best matching location
 	std::string root = server.locations[rootDestination].root;
-	LOG_DEBUG("rootDestination: ", rootDestination);
-	LOG_DEBUG("Root: ", root);
 
 	t_method realMethod = convertMethod(chosenMethod);
 
 	// Check Method
-	LOG_DEBUG("Real Method: ", realMethod);
 	if (std::find(server.locations[rootDestination].methods.begin(), server.locations[rootDestination].methods.end(), realMethod) == server.locations[rootDestination].methods.end())
 		throw WebServErr::MethodException(ERR_405_METHOD_NOT_ALLOWED, "Method not allowed or is unknown");
 
@@ -64,14 +58,12 @@ t_file MethodHandler::handleRequest(t_server_config server, std::unordered_map<s
 
 	// Create realPath
 	std::filesystem::path realPath(root + path);
-	LOG_DEBUG("Real Path: ", realPath);
 
 	// Check if location exists
 	checkIfLocExists(realPath);
 
 	// Make canonical
 	std::filesystem::path canonical = std::filesystem::weakly_canonical(realPath);
-	LOG_DEBUG("Canonical Path: ", canonical);
 
 	// Check if Symlink
 	if (std::filesystem::is_symlink(canonical))
@@ -110,13 +102,11 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 	LOG_TRACE("Calling GET: ", path);
 	if (useAutoIndex)
 	{
-		LOG_TRACE("Directory is: ", "auto-index");
 		try
 		{
 			requested_.dynamicPage = generateDynamicPage(path, targetRef);
 			requested_.isDynamic = true;
 			requested_.fileSize = requested_.dynamicPage.size();
-			LOG_TRACE("Dynamic Page Size: ", requested_.fileSize);
 		}
 		catch (...)
 		{
@@ -124,7 +114,6 @@ t_file MethodHandler::callGetMethod(bool useAutoIndex, std::filesystem::path &pa
 		}
 		return (requested_);
 	}
-	LOG_WARN("Path.c_str: ", path.c_str());
 	if (access(path.string().c_str(), R_OK) == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout GET file");
 	requested_.FD_handler_OUT->setFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
@@ -151,12 +140,10 @@ t_file MethodHandler::callPostMethod(std::filesystem::path &path, std::unordered
 		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Wrong File Type");
 	std::filesystem::path filename = createRandomFilename(path, extension);
 	std::string result = targetRef.back() == '/' ? targetRef + filename.filename().string() : targetRef + '/' + filename.filename().string();
-	LOG_DEBUG("postFilename: ", result);
 	requested_.postFilename = result;
 	requested_.FD_handler_OUT->setFd(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK, 0644));
 	if (requested_.FD_handler_OUT.get()->get() == -1)
 		throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Permission denied, cannout POST file");
-	LOG_TRACE("GET FD: ", requested_.FD_handler_OUT->get());
 	requested_.fileSize = static_cast<int>(std::filesystem::file_size(filename));
 	return (std::move(requested_));
 }
@@ -199,17 +186,15 @@ t_file MethodHandler::callCGIMethod(std::string &targetRef, std::unordered_map<s
 
 void MethodHandler::setContentLength(std::unordered_map<std::string, std::string> requestHeader)
 {
-	LOG_TRACE("Setting Content Length", "... let's see how big this sucker gets");
+	LOG_TRACE("Setting Content Length");
 	if (!requestHeader.contains("content-length"))
-		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Failed to get content length."); // TODO double check error code
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Failed to get content length.");
 	std::stringstream length(requestHeader["content-length"]);
 	length >> requested_.expectedSize;
 	if (length.fail())
-		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, content length not found."); // TODO double check error code
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, content length not found.");
 	if (!length.eof())
-		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, failed to get end of file for content length."); // TODO double check error code
-																															  // if (requested_.expectedSize > MAX_BODY_SIZE)
-																															  //	throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "Body size too large."); // TODO double check error code
+		throw WebServErr::MethodException(ERR_400_BAD_REQUEST, "Bad Request, failed to get end of file for content length.");
 }
 
 void MethodHandler::checkContentType(std::unordered_map<std::string, std::string> requestBody) const
@@ -241,32 +226,21 @@ bool MethodHandler::checkIfDirectory(std::unordered_map<std::string, t_location_
 	LOG_TRACE("Checking if this is a directory: ", path);
 	if (!std::filesystem::is_directory(path))
 		return (false);
-	LOG_DEBUG("realPath: ", targetRef);
-	LOG_DEBUG("Canonical: ", path);
 	if (!targetRef.empty() && targetRef.back() != '/' && targetRef.back() != std::filesystem::path::preferred_separator)
 		throw WebServErr::MethodException(ERR_301_REDIRECT, targetRef + '/');
-	LOG_TRACE("This is a directory: ", path);
 	if (locations.contains(rootDestination))
 	{
 		std::filesystem::path tempDir(rootDestination);
 		if (locations.contains(path))
 		{
 			tempDir /= std::filesystem::path(locations[path].index);
-			LOG_TRACE("Attempting to add index.html: ", tempDir);
 			if (!std::filesystem::exists(tempDir))
-			{
-				LOG_TRACE("Auto Index set to: ", "ON");
 				return (true);
-			}
 			path = std::filesystem::path(tempDir);
-			LOG_TRACE("Auto Index set to: ", "OFF");
 			return (false);
 		}
 		else
-		{
-			LOG_TRACE("Auto Index set to: ", "ON");
 			return (true);
-		}
 	}
 	throw WebServErr::MethodException(ERR_403_FORBIDDEN, "Target is a forbidden directory");
 }
@@ -283,15 +257,12 @@ std::filesystem::path MethodHandler::createRealPath(const std::string &root, con
 	LOG_TRACE("Creating real path for: ", target);
 	std::filesystem::path targetPath(target);
 
-	LOG_TRACE("Weakly Canonical Target Path: ", targetPath);
 	std::filesystem::path prefix(root);
-	LOG_TRACE("Root Path: ", prefix);
 	std::filesystem::path combinedPath;
 	if (targetPath == "/")
 		combinedPath = root + '/';
 	else
 		combinedPath = prefix / targetPath;
-	LOG_TRACE("Checking if this is a symlink: ", combinedPath);
 	if (std::filesystem::is_symlink(combinedPath))
 		throw WebServErr::MethodException(ERR_500_INTERNAL_SERVER_ERROR, "File or Directory is a symlink");
 	std::filesystem::path canonical = std::filesystem::weakly_canonical(combinedPath);
@@ -341,12 +312,11 @@ bool MethodHandler::checkIfSafe(const std::filesystem::path &root, const std::fi
 size_t MethodHandler::checkFileCount(const std::string &root)
 {
 	size_t fileCount = 0;
-	LOG_TRACE("Directory File Count for: ", root);
 	for (const auto &entry : std::filesystem::directory_iterator(root))
 	{
 		if (std::filesystem::is_regular_file(entry.path()))
 			fileCount++;
 	}
-	LOG_TRACE("Directory File Count: ", fileCount);
+	LOG_TRACE("Directory File Count for: ", root, " Files: ", fileCount);
 	return (fileCount);
 }
