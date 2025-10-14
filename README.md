@@ -18,6 +18,9 @@ Down the repository
 Set up your own config file. You can copy the structure of the one provided "/tests/conf-d.json"
 ```bash
 make
+```
+Once Make has finished running use:
+```bash
 ./webserv [config file path]
 ```
 
