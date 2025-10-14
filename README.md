@@ -8,10 +8,11 @@ Webserv is part of a the 42 core curriculum, and is meant to teach students netw
 ![alt text] (./WebservFSM.jpg "Webserv Finite State Machine Diagram")
 
 ## Authors
-This was a group project at Hive Helsinki, and was created by
-[Xin (Daniel) Feng] (https://github.com/danielxfeng)
-[Mohammad Khlouf] (https://github.com/Mohdkhlouf)
-[Gregory Pellechi] (https://github.com/OneGameDad)
+This was a group project at Hive Helsinki, and was created by:
+
+- [Xin (Daniel) Feng](https://github.com/danielxfeng)
+- [Mohammad Khlouf](https://github.com/Mohdkhlouf)
+- [Gregory Pellechi](https://github.com/OneGameDad)
 
 ## Installation
 Down the repository
